@@ -64,20 +64,27 @@ function SheetContent({
         {...props}
       >
         {showCloseButton && (
-          <SheetPrimitive.Close
-            data-slot="sheet-close"
-            render={
-              <Button
-                aria-label="ปิดเมนู"
-                className="absolute top-3 right-3"
-                data-slot="sheet-close"
-                size="icon-sm"
-                variant="ghost"
-              />
-            }
-          >
-            <XIcon />
-          </SheetPrimitive.Close>
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <SheetPrimitive.Close
+                  data-slot="sheet-close"
+                  render={
+                    <Button
+                      aria-label="ปิดเมนู"
+                      className="absolute top-3 right-3"
+                      data-slot="sheet-close"
+                      size="icon-sm"
+                      variant="ghost"
+                    />
+                  }
+                >
+                  <XIcon />
+                </SheetPrimitive.Close>
+              }
+            />
+            <TooltipContent>ปิดเมนู</TooltipContent>
+          </Tooltip>
         )}
         {children}
       </SheetPrimitive.Popup>

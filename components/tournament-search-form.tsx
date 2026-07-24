@@ -40,28 +40,28 @@ export function TournamentSearchForm({ initialFilters }: TournamentSearchFormPro
   }
 
   return (
-    <form className="grid grid-cols-3 gap-3 sm:grid-cols-2 lg:grid-cols-6" onSubmit={handleSubmit}>
-      <div className="col-span-3 grid gap-1.5 sm:col-span-2 lg:col-span-2">
+    <form className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.75fr)] gap-2 sm:grid-cols-2 sm:gap-3 lg:grid-cols-6" onSubmit={handleSubmit}>
+      <div className="col-span-2 grid gap-1 sm:gap-1.5 lg:col-span-2">
         <label className="text-xs font-medium" htmlFor="q">ค้นหาชื่อรายการ</label>
         <Input
-          className="h-10"
+          className="h-9 sm:h-10"
           defaultValue={initialFilters.query}
           id="q"
           name="q"
           placeholder="เช่น Bangkok Hoops"
         />
       </div>
-      <div className="grid gap-1.5">
+      <div className="grid gap-1 sm:gap-1.5">
         <label className="text-xs font-medium" htmlFor="province">จังหวัด</label>
         <Input
-          className="h-10"
+          className="h-9 sm:h-10"
           defaultValue={initialFilters.province}
           id="province"
           name="province"
           placeholder="กรุงเทพฯ"
         />
       </div>
-      <div className="grid gap-1.5">
+      <div className="grid gap-1 sm:gap-1.5">
         <label className="text-xs font-medium" htmlFor="format">รูปแบบ</label>
         <Select
           defaultValue={initialFilters.format}
@@ -71,7 +71,7 @@ export function TournamentSearchForm({ initialFilters }: TournamentSearchFormPro
           ]}
           name="format"
         >
-          <SelectTrigger className="h-10 w-full" id="format">
+          <SelectTrigger className="h-9 w-full sm:h-10" id="format">
             <SelectValue placeholder="ทั้งหมด" />
           </SelectTrigger>
           <SelectContent>
@@ -80,41 +80,41 @@ export function TournamentSearchForm({ initialFilters }: TournamentSearchFormPro
           </SelectContent>
         </Select>
       </div>
-      <div className="grid gap-1.5">
+      <div className="grid gap-1 sm:gap-1.5">
         <label className="text-xs font-medium" htmlFor="ageGroup">รุ่นอายุ</label>
         <Input
-          className="h-10"
+          className="h-9 sm:h-10"
           defaultValue={initialFilters.ageGroup}
           id="ageGroup"
           name="ageGroup"
           placeholder="U18"
         />
       </div>
-      <div className="grid gap-1.5">
+      <div className="grid gap-1 sm:gap-1.5">
         <label className="text-xs font-medium" htmlFor="venue">สนาม</label>
         <Input
-          className="h-10"
+          className="h-9 sm:h-10"
           defaultValue={initialFilters.venue}
           id="venue"
           name="venue"
           placeholder="ชื่อสนาม"
         />
       </div>
-      <div className="grid gap-1.5">
+      <Button className="h-9 lg:col-span-1 sm:h-10" type="submit">
+        <Search aria-hidden="true" />
+        ค้นหา
+      </Button>
+      <div className="grid gap-1 sm:gap-1.5">
         <label className="text-xs font-medium" htmlFor="date">วันที่แข่ง</label>
         <Input
           aria-label="วันที่แข่ง"
-          className="h-10"
+          className="h-9 sm:h-10"
           defaultValue={initialFilters.date}
           id="date"
           name="date"
           type="date"
         />
       </div>
-      <Button className="h-10 sm:col-span-2 lg:col-span-1" type="submit">
-        <Search aria-hidden="true" />
-        ค้นหา
-      </Button>
     </form>
   )
 }
