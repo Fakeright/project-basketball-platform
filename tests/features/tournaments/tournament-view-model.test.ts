@@ -10,6 +10,10 @@ describe("tournament view model", () => {
     expect(formatTournamentDateRange("2026-07-27", "2026-07-29")).toBe("27-29 ก.ค. 2026")
   })
 
+  it("formats a same-day tournament as one Thai date", () => {
+    expect(formatTournamentDateRange("2026-10-04", "2026-10-04")).toBe("4 ต.ค. 2026")
+  })
+
   it("formats the three-on-three tournament format", () => {
     expect(formatTournamentFormat("THREE_V_THREE")).toBe("3x3")
   })

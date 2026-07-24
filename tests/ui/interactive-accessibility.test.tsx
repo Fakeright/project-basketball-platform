@@ -1,9 +1,12 @@
-import { useState } from "react"
+import { act, useState } from "react"
 import Link from "next/link"
-import { render, screen, waitFor } from "@testing-library/react"
+import { hydrateRoot } from "react-dom/client"
+import { renderToString } from "react-dom/server"
+import { cleanup, render, screen, waitFor, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
-import { beforeEach, describe, expect, it, vi } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
+import { SiteHeader } from "@/components/site-header"
 import { TournamentSearchForm } from "@/components/tournament-search-form"
 import {
   Sheet,
@@ -35,6 +38,7 @@ function TestSheet() {
 
 describe("interactive accessibility", () => {
   beforeEach(() => push.mockReset())
+  afterEach(() => cleanup())
 
   it("associates every discovery control with its visible label", () => {
     render(<TournamentSearchForm initialFilters={{ date: "2026-11-15" }} />)
@@ -45,6 +49,21 @@ describe("interactive accessibility", () => {
     expect(screen.getByLabelText("รุ่นอายุ")).toBeTruthy()
     expect(screen.getByLabelText("สนาม")).toBeTruthy()
     expect((screen.getByLabelText("วันที่แข่ง") as HTMLInputElement).value).toBe("2026-11-15")
+  })
+
+  it("clears the selected tournament format before submitting", async () => {
+    const user = userEvent.setup()
+    const { container } = render(
+      <TournamentSearchForm
+        initialFilters={{ format: "FIVE_V_FIVE", query: "Bangkok" }}
+      />,
+    )
+
+    await user.click(screen.getByLabelText("รูปแบบ"))
+    await user.click(await screen.findByRole("option", { name: "ทั้งหมด" }))
+    await user.click(within(container).getByRole("button", { name: "ค้นหา" }))
+
+    expect(push).toHaveBeenCalledWith("/tournaments?q=Bangkok")
   })
 
   it("shows the sheet close tooltip and returns focus to its trigger", async () => {
@@ -64,5 +83,39 @@ describe("interactive accessibility", () => {
     await user.click(closeButton)
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull())
     expect(document.activeElement).toBe(trigger)
+  })
+
+  it("opens the real mobile navigation and closes it after selecting a link", async () => {
+    const user = userEvent.setup()
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined)
+    const container = document.createElement("div")
+    const header = (
+      <TooltipProvider>
+        <SiteHeader />
+      </TooltipProvider>
+    )
+    container.innerHTML = renderToString(header)
+    document.body.appendChild(container)
+
+    const root = hydrateRoot(container, header)
+
+    const trigger = within(container).getByRole("button", { name: "เปิดเมนูนำทาง" })
+    expect(trigger.hasAttribute("data-base-ui-tooltip-trigger")).toBe(false)
+    await user.click(trigger)
+
+    const dialog = await screen.findByRole("dialog")
+    const tournamentLink = within(dialog).getByRole("link", { name: "ทัวร์นาเมนต์" })
+    expect(tournamentLink.getAttribute("type")).toBeNull()
+    tournamentLink.addEventListener("click", (event) => event.preventDefault())
+    await user.click(tournamentLink)
+
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull())
+    expect(consoleError.mock.calls.flat().join(" ")).not.toMatch(
+      /hydration|cannot be a descendant/i,
+    )
+
+    await act(async () => root.unmount())
+    container.remove()
+    consoleError.mockRestore()
   })
 })

@@ -15,6 +15,10 @@ export function formatTournamentDateRange(start: string, end: string): string {
   const startDate = parseDate(start)
   const endDate = parseDate(end)
 
+  if (startDate.getTime() === endDate.getTime()) {
+    return thaiDateFormatter.format(startDate)
+  }
+
   if (
     startDate.getUTCFullYear() === endDate.getUTCFullYear() &&
     startDate.getUTCMonth() === endDate.getUTCMonth()

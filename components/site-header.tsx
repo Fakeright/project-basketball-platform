@@ -7,13 +7,7 @@ import { Menu } from "lucide-react"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { Button } from "@/components/ui/button"
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip"
-import {
   Sheet,
-  SheetClose,
   SheetCloseButton,
   SheetContent,
   SheetHeader,
@@ -53,26 +47,19 @@ export function SiteHeader() {
         <div className="flex items-center gap-1">
           <ThemeToggle />
           <Sheet onOpenChange={setMobileMenuOpen} open={mobileMenuOpen}>
-            <Tooltip>
-              <SheetTrigger
-                render={
-                  <TooltipTrigger
-                    render={
-                      <Button
-                        aria-label="เปิดเมนูนำทาง"
-                        className="md:hidden"
-                        data-slot="sheet-trigger"
-                        size="icon"
-                        variant="ghost"
-                      >
-                        <Menu />
-                      </Button>
-                    }
-                  />
-                }
-              />
-              <TooltipContent>เปิดเมนูนำทาง</TooltipContent>
-            </Tooltip>
+            <SheetTrigger
+              render={
+                <Button
+                  aria-label="เปิดเมนูนำทาง"
+                  className="md:hidden"
+                  size="icon"
+                  title="เปิดเมนูนำทาง"
+                  variant="ghost"
+                >
+                  <Menu />
+                </Button>
+              }
+            />
             <SheetContent className="w-[min(20rem,85vw)]" showCloseButton={false} side="right">
               <SheetCloseButton onClick={() => setMobileMenuOpen(false)} />
               <SheetHeader>
@@ -80,9 +67,14 @@ export function SiteHeader() {
               </SheetHeader>
               <nav aria-label="เมนูหลักบนมือถือ" className="flex flex-col px-4 pb-6">
                 {navigation.map((item) => (
-                  <SheetClose key={item.href} render={<Link href={item.href} />}>
+                  <Link
+                    className="flex min-h-6 items-center py-2 text-muted-foreground transition-colors hover:text-foreground"
+                    href={item.href}
+                    key={item.href}
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
                     {item.label}
-                  </SheetClose>
+                  </Link>
                 ))}
               </nav>
             </SheetContent>

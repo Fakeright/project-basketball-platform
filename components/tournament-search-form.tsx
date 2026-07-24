@@ -64,8 +64,9 @@ export function TournamentSearchForm({ initialFilters }: TournamentSearchFormPro
       <div className="grid gap-1 sm:gap-1.5">
         <label className="text-xs font-medium" htmlFor="format">รูปแบบ</label>
         <Select
-          defaultValue={initialFilters.format}
+          defaultValue={initialFilters.format ?? null}
           items={[
+            { label: "ทั้งหมด", value: null },
             { label: "5x5", value: "FIVE_V_FIVE" },
             { label: "3x3", value: "THREE_V_THREE" },
           ]}
@@ -75,6 +76,7 @@ export function TournamentSearchForm({ initialFilters }: TournamentSearchFormPro
             <SelectValue placeholder="ทั้งหมด" />
           </SelectTrigger>
           <SelectContent>
+            <SelectItem value={null}>ทั้งหมด</SelectItem>
             <SelectItem value="FIVE_V_FIVE">5x5</SelectItem>
             <SelectItem value="THREE_V_THREE">3x3</SelectItem>
           </SelectContent>
