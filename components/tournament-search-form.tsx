@@ -40,8 +40,8 @@ export function TournamentSearchForm({ initialFilters }: TournamentSearchFormPro
   }
 
   return (
-    <form className="grid grid-cols-2 gap-3 lg:grid-cols-6" onSubmit={handleSubmit}>
-      <div className="col-span-2 grid gap-1.5 lg:col-span-2">
+    <form className="grid grid-cols-3 gap-3 sm:grid-cols-2 lg:grid-cols-6" onSubmit={handleSubmit}>
+      <div className="col-span-3 grid gap-1.5 sm:col-span-2 lg:col-span-2">
         <label className="text-xs font-medium" htmlFor="q">ค้นหาชื่อรายการ</label>
         <Input
           className="h-10"

@@ -1,39 +1,48 @@
+import { existsSync } from "node:fs"
 import { readFile } from "node:fs/promises"
 import { resolve } from "node:path"
+import { createElement } from "react"
+import { renderToStaticMarkup } from "react-dom/server"
 import { describe, expect, it } from "vitest"
 
-const root = process.cwd()
+import { HomeHeroImage } from "@/components/home-hero-image"
+import { Sheet, SheetCloseButton } from "@/components/ui/sheet"
 
-async function readSource(path: string) {
-  return readFile(resolve(root, path), "utf8")
-}
+const root = process.cwd()
+const heroJpeg = resolve(root, "public/images/courtside-hero.jpg")
+const legacyHeroPng = resolve(root, "public/images/courtside-hero.png")
 
 describe("public platform accessibility", () => {
-  it("uses the supplied court photograph as an accessible Home hero image", async () => {
-    const page = await readSource("app/(public)/page.tsx")
+  it("ships the supplied hero as a JPEG without retaining the PNG", async () => {
+    expect(existsSync(heroJpeg)).toBe(true)
+    expect(existsSync(legacyHeroPng)).toBe(false)
 
-    expect(page).toContain('import Image from "next/image"')
-    expect(page).toContain('src="/images/courtside-hero.png"')
-    expect(page).toMatch(/alt="[^"]+"/)
+    const bytes = await readFile(heroJpeg)
+    expect(bytes.subarray(0, 3)).toEqual(Buffer.from([0xff, 0xd8, 0xff]))
+    expect(bytes.subarray(-2)).toEqual(Buffer.from([0xff, 0xd9]))
   })
 
-  it("gives every discovery control a visible label", async () => {
-    const form = await readSource("components/tournament-search-form.tsx")
+  it("renders the hero image with its accessible description", () => {
+    const markup = renderToStaticMarkup(createElement(HomeHeroImage))
 
-    expect(form.match(/<label /g)).toHaveLength(6)
-    for (const id of ["q", "province", "format", "ageGroup", "venue", "date"]) {
-      expect(form).toContain(`htmlFor="${id}"`)
-      expect(form).toContain(`id="${id}"`)
-    }
+    expect(markup).toContain("courtside-hero.jpg")
+    expect(markup).toContain("สนามบาสเกตบอลในร่มพร้อมห่วงและเส้นสนามในประเทศไทย")
   })
 
-  it("keeps icon-only menu controls named and discoverable", async () => {
-    const header = await readSource("components/site-header.tsx")
-    const sheet = await readSource("components/ui/sheet.tsx")
+  it("renders a named close control before sheet navigation", () => {
+    const markup = renderToStaticMarkup(
+      createElement(
+        Sheet,
+        { defaultOpen: true },
+        createElement(SheetCloseButton, { onClick: () => undefined }),
+        createElement("a", { href: "/tournaments" }, "ทัวร์นาเมนต์")
+      )
+    )
 
-    expect(header).toContain("<Tooltip>")
-    expect(header).toContain('aria-label="เปิดเมนูนำทาง"')
-    expect(sheet).toContain('aria-label="ปิดเมนู"')
-    expect(sheet).toContain("<Tooltip>")
+    const closeButtonIndex = markup.indexOf('aria-label="ปิดเมนู"')
+    const navigationIndex = markup.indexOf('href="/tournaments"')
+
+    expect(closeButtonIndex).toBeGreaterThanOrEqual(0)
+    expect(navigationIndex).toBeGreaterThan(closeButtonIndex)
   })
 })

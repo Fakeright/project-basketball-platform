@@ -45,7 +45,7 @@ function SheetContent({
   className,
   children,
   side = "right",
-  showCloseButton = true,
+  showCloseButton = false,
   ...props
 }: SheetPrimitive.Popup.Props & {
   side?: "top" | "right" | "bottom" | "left"
@@ -63,32 +63,51 @@ function SheetContent({
         )}
         {...props}
       >
-        {children}
         {showCloseButton && (
-          <Tooltip>
-            <TooltipTrigger
-              render={
-                <SheetPrimitive.Close
-                  data-slot="sheet-close"
-                  render={
-                    <Button
-                      aria-label="ปิดเมนู"
-                      className="absolute top-3 right-3"
-                      data-slot="sheet-close"
-                      size="icon-sm"
-                      variant="ghost"
-                    />
-                  }
-                >
-                  <XIcon />
-                </SheetPrimitive.Close>
-              }
-            />
-            <TooltipContent>ปิดเมนู</TooltipContent>
-          </Tooltip>
+          <SheetPrimitive.Close
+            data-slot="sheet-close"
+            render={
+              <Button
+                aria-label="ปิดเมนู"
+                className="absolute top-3 right-3"
+                data-slot="sheet-close"
+                size="icon-sm"
+                variant="ghost"
+              />
+            }
+          >
+            <XIcon />
+          </SheetPrimitive.Close>
         )}
+        {children}
       </SheetPrimitive.Popup>
     </SheetPortal>
+  )
+}
+
+function SheetCloseButton({
+  onClick,
+}: {
+  onClick: () => void
+}) {
+  return (
+    <Tooltip>
+      <TooltipTrigger
+        render={
+          <Button
+            aria-label="ปิดเมนู"
+            className="absolute top-3 right-3"
+            data-slot="sheet-close"
+            onClick={onClick}
+            size="icon-sm"
+            variant="ghost"
+          >
+            <XIcon />
+          </Button>
+        }
+      />
+      <TooltipContent>ปิดเมนู</TooltipContent>
+    </Tooltip>
   )
 }
 
@@ -142,6 +161,7 @@ export {
   Sheet,
   SheetTrigger,
   SheetClose,
+  SheetCloseButton,
   SheetContent,
   SheetHeader,
   SheetFooter,

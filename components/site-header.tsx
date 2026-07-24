@@ -1,4 +1,7 @@
+"use client"
+
 import Link from "next/link"
+import { useState } from "react"
 import { Menu } from "lucide-react"
 
 import { ThemeToggle } from "@/components/theme-toggle"
@@ -11,6 +14,7 @@ import {
 import {
   Sheet,
   SheetClose,
+  SheetCloseButton,
   SheetContent,
   SheetHeader,
   SheetTitle,
@@ -25,6 +29,8 @@ const navigation = [
 ]
 
 export function SiteHeader() {
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+
   return (
     <header className="border-b border-border bg-background">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6 lg:px-8">
@@ -46,7 +52,7 @@ export function SiteHeader() {
 
         <div className="flex items-center gap-1">
           <ThemeToggle />
-          <Sheet>
+          <Sheet onOpenChange={setMobileMenuOpen} open={mobileMenuOpen}>
             <Tooltip>
               <SheetTrigger
                 render={
@@ -67,7 +73,8 @@ export function SiteHeader() {
               />
               <TooltipContent>เปิดเมนูนำทาง</TooltipContent>
             </Tooltip>
-            <SheetContent className="w-[min(20rem,85vw)]" side="right">
+            <SheetContent className="w-[min(20rem,85vw)]" showCloseButton={false} side="right">
+              <SheetCloseButton onClick={() => setMobileMenuOpen(false)} />
               <SheetHeader>
                 <SheetTitle>เมนู</SheetTitle>
               </SheetHeader>
