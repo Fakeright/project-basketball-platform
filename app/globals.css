@@ -68,7 +68,7 @@
   --muted-foreground: oklch(0.5 0.01 75);
   --accent: oklch(0.93 0.012 85);
   --accent-foreground: var(--ink);
-  --court: oklch(0.68 0.17 55);
+  --court: oklch(0.52 0.13 55);
   --scoreboard: oklch(0.5 0.11 145);
   --court-blue: oklch(0.52 0.11 245);
   --destructive: oklch(0.577 0.245 27.325);

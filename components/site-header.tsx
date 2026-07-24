@@ -4,6 +4,11 @@ import { Menu } from "lucide-react"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { Button } from "@/components/ui/button"
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
+import {
   Sheet,
   SheetClose,
   SheetContent,
@@ -42,13 +47,26 @@ export function SiteHeader() {
         <div className="flex items-center gap-1">
           <ThemeToggle />
           <Sheet>
-            <SheetTrigger
-              render={
-                <Button aria-label="เปิดเมนูนำทาง" className="md:hidden" size="icon" variant="ghost">
-                  <Menu />
-                </Button>
-              }
-            />
+            <Tooltip>
+              <SheetTrigger
+                render={
+                  <TooltipTrigger
+                    render={
+                      <Button
+                        aria-label="เปิดเมนูนำทาง"
+                        className="md:hidden"
+                        data-slot="sheet-trigger"
+                        size="icon"
+                        variant="ghost"
+                      >
+                        <Menu />
+                      </Button>
+                    }
+                  />
+                }
+              />
+              <TooltipContent>เปิดเมนูนำทาง</TooltipContent>
+            </Tooltip>
             <SheetContent className="w-[min(20rem,85vw)]" side="right">
               <SheetHeader>
                 <SheetTitle>เมนู</SheetTitle>

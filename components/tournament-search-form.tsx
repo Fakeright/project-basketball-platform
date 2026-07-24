@@ -40,58 +40,77 @@ export function TournamentSearchForm({ initialFilters }: TournamentSearchFormPro
   }
 
   return (
-    <form className="grid gap-3 sm:grid-cols-2 lg:grid-cols-6" onSubmit={handleSubmit}>
-      <Input
-        aria-label="ค้นหาชื่อรายการ"
-        className="h-10 lg:col-span-2"
-        defaultValue={initialFilters.query}
-        name="q"
-        placeholder="ค้นหาชื่อรายการ"
-      />
-      <Input
-        aria-label="จังหวัด"
-        className="h-10"
-        defaultValue={initialFilters.province}
-        name="province"
-        placeholder="จังหวัด"
-      />
-      <Select
-        defaultValue={initialFilters.format}
-        items={[
-          { label: "5x5", value: "FIVE_V_FIVE" },
-          { label: "3x3", value: "THREE_V_THREE" },
-        ]}
-        name="format"
-      >
-        <SelectTrigger aria-label="รูปแบบการแข่งขัน" className="h-10 w-full">
-          <SelectValue placeholder="รูปแบบ" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="FIVE_V_FIVE">5x5</SelectItem>
-          <SelectItem value="THREE_V_THREE">3x3</SelectItem>
-        </SelectContent>
-      </Select>
-      <Input
-        aria-label="รุ่นอายุ"
-        className="h-10"
-        defaultValue={initialFilters.ageGroup}
-        name="ageGroup"
-        placeholder="รุ่นอายุ"
-      />
-      <Input
-        aria-label="สนามแข่งขัน"
-        className="h-10"
-        defaultValue={initialFilters.venue}
-        name="venue"
-        placeholder="สนามแข่งขัน"
-      />
-      <Input
-        aria-label="วันที่แข่งขัน"
-        className="h-10"
-        defaultValue={initialFilters.date}
-        name="date"
-        type="date"
-      />
+    <form className="grid grid-cols-2 gap-3 lg:grid-cols-6" onSubmit={handleSubmit}>
+      <div className="col-span-2 grid gap-1.5 lg:col-span-2">
+        <label className="text-xs font-medium" htmlFor="q">ค้นหาชื่อรายการ</label>
+        <Input
+          className="h-10"
+          defaultValue={initialFilters.query}
+          id="q"
+          name="q"
+          placeholder="เช่น Bangkok Hoops"
+        />
+      </div>
+      <div className="grid gap-1.5">
+        <label className="text-xs font-medium" htmlFor="province">จังหวัด</label>
+        <Input
+          className="h-10"
+          defaultValue={initialFilters.province}
+          id="province"
+          name="province"
+          placeholder="กรุงเทพฯ"
+        />
+      </div>
+      <div className="grid gap-1.5">
+        <label className="text-xs font-medium" htmlFor="format">รูปแบบ</label>
+        <Select
+          defaultValue={initialFilters.format}
+          items={[
+            { label: "5x5", value: "FIVE_V_FIVE" },
+            { label: "3x3", value: "THREE_V_THREE" },
+          ]}
+          name="format"
+        >
+          <SelectTrigger className="h-10 w-full" id="format">
+            <SelectValue placeholder="ทั้งหมด" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="FIVE_V_FIVE">5x5</SelectItem>
+            <SelectItem value="THREE_V_THREE">3x3</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      <div className="grid gap-1.5">
+        <label className="text-xs font-medium" htmlFor="ageGroup">รุ่นอายุ</label>
+        <Input
+          className="h-10"
+          defaultValue={initialFilters.ageGroup}
+          id="ageGroup"
+          name="ageGroup"
+          placeholder="U18"
+        />
+      </div>
+      <div className="grid gap-1.5">
+        <label className="text-xs font-medium" htmlFor="venue">สนาม</label>
+        <Input
+          className="h-10"
+          defaultValue={initialFilters.venue}
+          id="venue"
+          name="venue"
+          placeholder="ชื่อสนาม"
+        />
+      </div>
+      <div className="grid gap-1.5">
+        <label className="text-xs font-medium" htmlFor="date">วันที่แข่ง</label>
+        <Input
+          aria-label="วันที่แข่ง"
+          className="h-10"
+          defaultValue={initialFilters.date}
+          id="date"
+          name="date"
+          type="date"
+        />
+      </div>
       <Button className="h-10 sm:col-span-2 lg:col-span-1" type="submit">
         <Search aria-hidden="true" />
         ค้นหา
