@@ -63,6 +63,11 @@ enum MatchStatus {
   COMPLETED
 }
 
+enum MediaAssetKind {
+  POSTER
+  DOCUMENT
+}
+
 model User {
   id                String             @id @default(cuid())
   email             String             @unique
@@ -74,6 +79,7 @@ model User {
   organizedTournaments Tournament[]     @relation("TournamentOrganizer")
   reviews           TournamentReview[] @relation("ReviewAuthor")
   auditEvents       AuditLog[]         @relation("AuditActor")
+  mediaAssets       MediaAsset[]       @relation("MediaAssetCreator")
   createdAt         DateTime           @default(now())
   updatedAt         DateTime           @updatedAt
 }
@@ -135,6 +141,7 @@ model Tournament {
   brackets             Bracket[]
   matches              Match[]
   auditEvents          AuditLog[]
+  mediaAssets          MediaAsset[]
   createdAt            DateTime           @default(now())
   updatedAt            DateTime           @updatedAt
   @@index([organizerId, status])
@@ -222,6 +229,25 @@ model MatchResult {
   winnerTeamId String
   confirmedAt DateTime @default(now())
   match       Match    @relation(fields: [matchId], references: [id], onDelete: Cascade)
+}
+
+model MediaAsset {
+  id          String         @id @default(cuid())
+  tournamentId String
+  kind        MediaAssetKind
+  bucket      String
+  objectPath  String
+  fileName    String
+  contentType String
+  byteSize    Int
+  createdById String
+  tournament  Tournament     @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  createdBy   User           @relation("MediaAssetCreator", fields: [createdById], references: [id])
+  createdAt   DateTime       @default(now())
+  deletedAt   DateTime?
+  @@unique([bucket, objectPath])
+  @@index([tournamentId, kind])
+  @@index([tournamentId, deletedAt])
 }
 
 model AuditLog {
