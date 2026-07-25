@@ -10,6 +10,25 @@ export async function createTournament(repository: TournamentOperationsRepositor
   return repository.create({ ...input, organizerId: actor.id })
 }
 
+export async function updateTournament(
+  repository: TournamentOperationsRepository,
+  id: string,
+  input: TournamentOperationInput & { version: number },
+  actor: Actor,
+): Promise<TournamentOperation> {
+  const tournament = await repository.findById(id)
+  if (!tournament) throw new Error("NOT_FOUND")
+  authorize(actor, "tournament.update", {
+    organizerId: tournament.organizerId,
+  })
+  if (tournament.status !== "DRAFT" && tournament.status !== "CHANGES_REQUESTED") {
+    throw new Error("INVALID_UPDATE_STATUS")
+  }
+  validateTournamentInput(input)
+  const { version, ...changes } = input
+  return repository.updateWithVersion(id, version, changes)
+}
+
 export async function submitTournament(repository: TournamentOperationsRepository, id: string, actor: Actor): Promise<TournamentOperation> {
   const tournament = await repository.findById(id)
   if (!tournament) throw new Error("NOT_FOUND")

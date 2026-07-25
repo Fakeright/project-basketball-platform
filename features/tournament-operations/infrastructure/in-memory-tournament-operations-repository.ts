@@ -14,6 +14,12 @@ export class InMemoryTournamentOperationsRepository implements TournamentOperati
 
   async findById(id: string) { return this.tournaments.get(id) ?? null }
 
+  async listByOrganizer(organizerId: string) {
+    return [...this.tournaments.values()].filter(
+      (tournament) => tournament.organizerId === organizerId,
+    )
+  }
+
   async updateWithVersion(id: string, version: number, changes: Partial<TournamentOperation>) {
     const current = this.tournaments.get(id)
     if (!current) throw new Error("NOT_FOUND")

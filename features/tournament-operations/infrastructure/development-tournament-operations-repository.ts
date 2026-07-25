@@ -1,40 +1,133 @@
 import "server-only"
 
-import { InMemoryTournamentOperationsRepository } from "./in-memory-tournament-operations-repository"
+import { mkdir, readFile, writeFile } from "node:fs/promises"
+import path from "node:path"
 
-let repositoryPromise:
-  | Promise<InMemoryTournamentOperationsRepository>
-  | undefined
+import type {
+  TournamentOperation,
+  TournamentOperationInput,
+  TournamentReviewInput,
+} from "@/features/tournament-operations/domain/tournament-operation"
 
-export function getDevelopmentTournamentOperationsRepository() {
+import type { TournamentOperationsRepository } from "./tournament-operations-repository"
+
+interface DevelopmentState {
+  tournaments: TournamentOperation[]
+  reviews: Array<{
+    tournamentId: string
+    reviewerId: string
+    decision: TournamentReviewInput["decision"]
+    note: string
+  }>
+}
+
+const stateDirectory = path.join(process.cwd(), ".superpowers")
+const statePath = path.join(stateDirectory, "development-tournaments.json")
+
+export async function getDevelopmentTournamentOperationsRepository() {
   if (process.env.NODE_ENV === "production") {
     throw new Error("TOURNAMENT_REPOSITORY_NOT_CONFIGURED")
   }
 
-  repositoryPromise ??= createSeededRepository()
-  return repositoryPromise
+  await ensureDevelopmentState()
+  return new DevelopmentTournamentOperationsRepository()
 }
 
-async function createSeededRepository() {
-  const repository = new InMemoryTournamentOperationsRepository()
+class DevelopmentTournamentOperationsRepository
+  implements TournamentOperationsRepository
+{
+  async create(
+    input: TournamentOperationInput & { organizerId: string },
+  ): Promise<TournamentOperation> {
+    const state = await readState()
+    const now = new Date().toISOString()
+    const tournament: TournamentOperation = {
+      ...input,
+      id: `tournament-${state.tournaments.length + 1}`,
+      status: "DRAFT",
+      version: 0,
+      createdAt: now,
+      updatedAt: now,
+    }
+    state.tournaments.push(tournament)
+    await writeState(state)
+    return tournament
+  }
+
+  async findById(id: string) {
+    const state = await readState()
+    return state.tournaments.find((tournament) => tournament.id === id) ?? null
+  }
+
+  async listByOrganizer(organizerId: string) {
+    const state = await readState()
+    return state.tournaments.filter(
+      (tournament) => tournament.organizerId === organizerId,
+    )
+  }
+
+  async updateWithVersion(
+    id: string,
+    version: number,
+    changes: Partial<TournamentOperation>,
+  ) {
+    const state = await readState()
+    const index = state.tournaments.findIndex(
+      (tournament) => tournament.id === id,
+    )
+    if (index < 0) throw new Error("NOT_FOUND")
+
+    const current = state.tournaments[index]
+    if (current.version !== version) throw new Error("CONFLICT")
+
+    const updated: TournamentOperation = {
+      ...current,
+      ...changes,
+      version: version + 1,
+      updatedAt: new Date().toISOString(),
+    }
+    state.tournaments[index] = updated
+    await writeState(state)
+    return updated
+  }
+
+  async appendReview(input: DevelopmentState["reviews"][number]) {
+    const state = await readState()
+    state.reviews.push(input)
+    await writeState(state)
+  }
+}
+
+async function ensureDevelopmentState() {
+  try {
+    await readFile(statePath, "utf8")
+  } catch {
+    await mkdir(stateDirectory, { recursive: true })
+    await writeState(createSeedState())
+  }
+}
+
+async function readState(): Promise<DevelopmentState> {
+  return JSON.parse(await readFile(statePath, "utf8")) as DevelopmentState
+}
+
+async function writeState(state: DevelopmentState) {
+  await writeFile(statePath, JSON.stringify(state, null, 2), "utf8")
+}
+
+function createSeedState(): DevelopmentState {
+  const now = new Date().toISOString()
   const submissions = [
-    {
-      title: "Bangkok Community Cup",
-      organizerId: "organizer-1",
-    },
-    {
-      title: "North Court U18",
-      organizerId: "organizer-1",
-    },
-    {
-      title: "Chonburi Coast League",
-      organizerId: "organizer-2",
-    },
+    ["Bangkok Community Cup", "organizer-1"],
+    ["North Court U18", "organizer-1"],
+    ["Chonburi Coast League", "organizer-2"],
   ] as const
 
-  for (const submission of submissions) {
-    const tournament = await repository.create({
-      ...submission,
+  return {
+    tournaments: submissions.map(([title, organizerId], index) => ({
+      id: `tournament-${index + 1}`,
+      title,
+      organizerId,
       description: "รายการตัวอย่างสำหรับคิวตรวจสอบ",
       rules: "กติกามาตรฐาน",
       province: "Bangkok",
@@ -45,11 +138,11 @@ async function createSeededRepository() {
       endsAt: "2026-11-16T18:00:00+07:00",
       registrationDeadline: "2026-11-01T23:59:00+07:00",
       capacity: 16,
-    })
-    await repository.updateWithVersion(tournament.id, 0, {
       status: "SUBMITTED",
-    })
+      version: 1,
+      createdAt: now,
+      updatedAt: now,
+    })),
+    reviews: [],
   }
-
-  return repository
 }

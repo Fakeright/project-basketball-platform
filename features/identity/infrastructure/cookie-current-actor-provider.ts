@@ -17,6 +17,12 @@ const developmentActors: Readonly<Record<string, Actor>> = {
 
 export const developmentActorIds = Object.keys(developmentActors)
 
+export function getDevelopmentSessionDestination(actorId: string) {
+  return developmentActors[actorId]?.role === "TOURNAMENT_ORGANIZER"
+    ? "/organizer"
+    : "/admin"
+}
+
 export class CookieCurrentActorProvider implements CurrentActorProvider {
   constructor(
     private readonly readActorCookie: () => Promise<string | undefined>,

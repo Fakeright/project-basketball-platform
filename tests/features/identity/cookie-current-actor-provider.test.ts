@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest"
 
-import { CookieCurrentActorProvider } from "@/features/identity/infrastructure/cookie-current-actor-provider"
+import {
+  CookieCurrentActorProvider,
+  getDevelopmentSessionDestination,
+} from "@/features/identity/infrastructure/cookie-current-actor-provider"
 
 describe("CookieCurrentActorProvider", () => {
   it("resolves a known development actor", async () => {
@@ -22,5 +25,15 @@ describe("CookieCurrentActorProvider", () => {
     )
 
     await expect(provider.getCurrentActor()).resolves.toBeNull()
+  })
+})
+
+describe("getDevelopmentSessionDestination", () => {
+  it("sends organizers to their workspace", () => {
+    expect(getDevelopmentSessionDestination("organizer-1")).toBe("/organizer")
+  })
+
+  it("sends platform admins to the admin dashboard", () => {
+    expect(getDevelopmentSessionDestination("admin-1")).toBe("/admin")
   })
 })
