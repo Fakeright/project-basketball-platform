@@ -9,6 +9,7 @@ export const mockTournamentData: Tournament[] = [
     format: "FIVE_V_FIVE",
     ageGroup: "Open",
     status: "OPEN",
+    posterUrl: "/images/courtside-hero.jpg",
     startsAt: "2026-11-15T09:00:00+07:00",
     endsAt: "2026-11-16T18:00:00+07:00",
     registrationDeadline: "2026-11-01T23:59:00+07:00",

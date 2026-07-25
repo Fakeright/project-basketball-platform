@@ -35,6 +35,7 @@ export interface Tournament {
   endsAt: string
   registrationDeadline: string
   description: string
+  posterUrl?: string
   teams: string[]
   matches: Match[]
 }
