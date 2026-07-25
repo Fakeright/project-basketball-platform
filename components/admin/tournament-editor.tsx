@@ -7,10 +7,15 @@ import {
   tournamentEditorSchema,
   type TournamentEditorInput,
 } from "@/features/admin/presentation/tournament-editor-schema"
+import {
+  TournamentMediaManager,
+  type TournamentMediaManagerAsset,
+} from "./tournament-media-manager"
 
 export interface EditableTournament extends TournamentEditorInput {
   id: string
   version: number
+  mediaAssets?: TournamentMediaManagerAsset[]
 }
 
 const fieldClassName =
@@ -156,6 +161,20 @@ export function TournamentEditor({
           name="rules"
         />
       </div>
+
+      {initialTournament ? (
+        <TournamentMediaManager
+          assets={initialTournament.mediaAssets ?? []}
+          tournamentId={initialTournament.id}
+        />
+      ) : (
+        <section className="border-t border-border pt-8">
+          <h2 className="text-xl font-semibold">สื่อและเอกสาร</h2>
+          <p className="mt-2 text-sm text-muted-foreground">
+            บันทึกฉบับร่างก่อน แล้วจึงอัปโหลดโปสเตอร์และเอกสารประกอบได้
+          </p>
+        </section>
+      )}
 
       {message ? (
         <p aria-live="polite" className="border-l-4 border-court px-3 py-2 text-sm">
