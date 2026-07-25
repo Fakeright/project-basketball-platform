@@ -1,6 +1,10 @@
+import "dotenv/config"
+
+import { PrismaPg } from "@prisma/adapter-pg"
 import { PrismaClient, Role, TournamentFormat, TournamentStatus } from "../lib/generated/prisma/client"
 
-const prisma = new PrismaClient()
+const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL })
+const prisma = new PrismaClient({ adapter })
 
 const tournaments: Array<{ id: string; slug: string; title: string; status: TournamentStatus; organizerId: string }> = [
   { id: "tournament-draft", slug: "admin-draft-cup", title: "Admin Draft Cup", status: "DRAFT", organizerId: "organizer-1" },
