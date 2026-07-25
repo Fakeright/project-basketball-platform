@@ -49,6 +49,13 @@ enum RegistrationStatus {
   PENDING
   APPROVED
   REJECTED
+  CANCELLED
+  WITHDRAWN
+}
+
+enum TeamMemberRole {
+  PLAYER
+  COACH
 }
 
 enum BracketStatus {
@@ -109,12 +116,15 @@ model Team {
 }
 
 model TeamMember {
-  id        String   @id @default(cuid())
-  teamId    String
-  userId    String
-  team      Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  createdAt DateTime @default(now())
+  id            String         @id @default(cuid())
+  teamId        String
+  userId        String
+  role          TeamMemberRole
+  isActive      Boolean        @default(true)
+  deactivatedAt DateTime?
+  team          Team           @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt     DateTime       @default(now())
   @@unique([teamId, userId])
 }
 
@@ -167,12 +177,15 @@ model Registration {
   status       RegistrationStatus @default(PENDING)
   decisionNote String?
   decidedAt    DateTime?
+  cancelledAt  DateTime?
+  withdrawnAt  DateTime?
+  version      Int                @default(0)
   tournament   Tournament         @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
   team         Team               @relation(fields: [teamId], references: [id])
   createdAt    DateTime           @default(now())
   updatedAt    DateTime           @updatedAt
-  @@unique([tournamentId, teamId])
   @@index([tournamentId, status])
+  @@index([tournamentId, teamId, createdAt])
 }
 
 model Bracket {
