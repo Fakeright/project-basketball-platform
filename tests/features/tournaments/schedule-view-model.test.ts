@@ -38,3 +38,38 @@ test("omits matches that do not have a confirmed schedule yet", () => {
 
   expect(groupMatchesByDateAndCourt([unscheduled])).toEqual({})
 })
+
+test("groups UTC instants by the Bangkok calendar day", () => {
+  const beforeBangkokMidnight: Match = {
+    id: "match-before-midnight",
+    tournamentSlug: "bangkok-open-2026",
+    round: "Group stage",
+    court: "Court A",
+    scheduledAt: "2026-10-03T16:59:59.000Z",
+    homeTeam: "Home",
+    awayTeam: "Away",
+    homeScore: null,
+    awayScore: null,
+  }
+  const afterBangkokMidnight: Match = {
+    ...beforeBangkokMidnight,
+    id: "match-after-midnight",
+    scheduledAt: "2026-10-03T17:30:00.000Z",
+  }
+  const beforeBangkokSeven: Match = {
+    ...beforeBangkokMidnight,
+    id: "match-before-seven",
+    scheduledAt: "2026-10-03T23:59:59.000Z",
+  }
+
+  const matchesByDate = groupMatchesByDateAndCourt([
+    beforeBangkokMidnight,
+    afterBangkokMidnight,
+    beforeBangkokSeven,
+  ])
+
+  expect(Object.keys(matchesByDate)).toEqual(["2026-10-03", "2026-10-04"])
+  expect(
+    matchesByDate["2026-10-04"]?.["Court A"]?.map((match) => match.id),
+  ).toEqual(["match-after-midnight", "match-before-seven"])
+})

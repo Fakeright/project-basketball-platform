@@ -5,6 +5,7 @@ import type {
   TournamentSearchFilters,
   TournamentStatus,
 } from "@/features/tournaments/domain/tournament"
+import { getBangkokCalendarDayUtcRange } from "@/features/tournaments/domain/tournament-calendar"
 
 import type { TournamentRepository } from "./tournament-repository"
 
@@ -16,27 +17,61 @@ const publicStatuses = [
   "ARCHIVED",
 ] as const
 
-const publicTournamentInclude = {
-  registrations: {
-    where: { status: "APPROVED" },
-    orderBy: { createdAt: "asc" },
-    include: { team: { select: { id: true, name: true } } },
-  },
-  matches: {
-    orderBy: [{ scheduledAt: "asc" }, { sequence: "asc" }],
-    include: {
-      round: { select: { name: true } },
-      result: { select: { homeScore: true, awayScore: true } },
+const approvedRegistrationsInclude = {
+  where: { status: "APPROVED" },
+  orderBy: { createdAt: "asc" },
+  include: { team: { select: { id: true, name: true } } },
+} satisfies Prisma.Tournament$registrationsArgs
+
+const publishedMatchesInclude = {
+  where: {
+    bracket: {
+      is: { status: "PUBLISHED" },
     },
   },
+  orderBy: [{ scheduledAt: "asc" }, { sequence: "asc" }],
+  include: {
+    bracket: { select: { status: true } },
+    round: { select: { name: true } },
+    result: { select: { homeScore: true, awayScore: true } },
+  },
+} satisfies Prisma.Tournament$matchesArgs
+
+const posterMediaInclude = {
+  where: { deletedAt: null, kind: "POSTER" },
+  orderBy: { createdAt: "desc" },
+  take: 1,
+} satisfies Prisma.Tournament$mediaAssetsArgs
+
+const publicDiscoveryInclude = {
+  mediaAssets: posterMediaInclude,
+} satisfies Prisma.TournamentInclude
+
+const publicCompetitionInclude = {
+  registrations: approvedRegistrationsInclude,
+  matches: publishedMatchesInclude,
+  mediaAssets: posterMediaInclude,
+} satisfies Prisma.TournamentInclude
+
+const publicDetailInclude = {
+  registrations: approvedRegistrationsInclude,
+  matches: publishedMatchesInclude,
   mediaAssets: {
     where: { deletedAt: null },
     orderBy: { createdAt: "desc" },
   },
 } satisfies Prisma.TournamentInclude
 
-type PublicTournamentRow = Prisma.TournamentGetPayload<{
-  include: typeof publicTournamentInclude
+type PublicDiscoveryRow = Prisma.TournamentGetPayload<{
+  include: typeof publicDiscoveryInclude
+}>
+
+type PublicCompetitionRow = Prisma.TournamentGetPayload<{
+  include: typeof publicCompetitionInclude
+}>
+
+type PublicDetailRow = Prisma.TournamentGetPayload<{
+  include: typeof publicDetailInclude
 }>
 
 const statusMap = {
@@ -47,6 +82,13 @@ const statusMap = {
   ARCHIVED: "COMPLETED",
 } as const satisfies Record<(typeof publicStatuses)[number], TournamentStatus>
 
+const databaseStatusesByPublicStatus = {
+  OPEN: ["PUBLISHED"],
+  CLOSED: ["REGISTRATION_CLOSED"],
+  ONGOING: ["IN_PROGRESS"],
+  COMPLETED: ["COMPLETED", "ARCHIVED"],
+} as const satisfies Record<TournamentStatus, readonly (typeof publicStatuses)[number][]>
+
 export class PrismaTournamentRepository implements TournamentRepository {
   constructor(
     private readonly prisma: PrismaClient,
@@ -55,16 +97,12 @@ export class PrismaTournamentRepository implements TournamentRepository {
 
   async list(filters: TournamentSearchFilters): Promise<Tournament[]> {
     const rows = await this.prisma.tournament.findMany({
-      where: { status: { in: [...publicStatuses] } },
-      include: publicTournamentInclude,
+      where: buildDiscoveryWhere(filters),
+      include: publicDiscoveryInclude,
       orderBy: { startsAt: "desc" },
     })
 
-    return Promise.all(
-      rows
-        .filter((row) => matchesFilters(row, filters))
-        .map((row) => this.mapTournament(row)),
-    )
+    return rows.map((row) => this.mapDiscoveryTournament(row))
   }
 
   async findBySlug(slug: string): Promise<Tournament | null> {
@@ -73,17 +111,60 @@ export class PrismaTournamentRepository implements TournamentRepository {
         slug,
         status: { in: [...publicStatuses] },
       },
-      include: publicTournamentInclude,
+      include: publicDetailInclude,
     })
 
-    return row ? this.mapTournament(row) : null
+    return row ? this.mapDetailTournament(row) : null
   }
 
-  private async mapTournament(row: PublicTournamentRow): Promise<Tournament> {
+  async findCompetitionBySlug(slug: string): Promise<Tournament | null> {
+    const row = await this.prisma.tournament.findFirst({
+      where: {
+        slug,
+        status: { in: [...publicStatuses] },
+      },
+      include: publicCompetitionInclude,
+    })
+
+    return row ? this.mapCompetitionTournament(row) : null
+  }
+
+  private mapDiscoveryTournament(row: PublicDiscoveryRow): Tournament {
+    return mapTournamentBase(row, {
+      posterUrl: getPosterUrl(row.mediaAssets, this.storage),
+    })
+  }
+
+  private mapCompetitionTournament(
+    row: PublicCompetitionRow | PublicDetailRow,
+  ): Tournament {
     const teamNames = new Map(
       row.registrations.map(({ team }) => [team.id, team.name]),
     )
-    const poster = row.mediaAssets.find((asset) => asset.kind === "POSTER")
+
+    return mapTournamentBase(row, {
+      posterUrl: getPosterUrl(row.mediaAssets, this.storage),
+      teams: row.registrations.map(({ team }) => team.name),
+      matches: row.matches
+        .filter((match) => match.bracket.status === "PUBLISHED")
+        .map((match) => ({
+          id: match.id,
+          tournamentSlug: row.slug,
+          round: match.round.name,
+          court: match.court ?? "ยังไม่กำหนดสนาม",
+          scheduledAt: match.scheduledAt?.toISOString() ?? null,
+          homeTeam:
+            teamNames.get(match.homeTeamId ?? "") ?? "รอยืนยันทีม",
+          awayTeam:
+            teamNames.get(match.awayTeamId ?? "") ?? "รอยืนยันทีม",
+          homeScore: match.result?.homeScore ?? null,
+          awayScore: match.result?.awayScore ?? null,
+        })),
+    })
+  }
+
+  private async mapDetailTournament(row: PublicDetailRow): Promise<Tournament> {
+    const tournament = this.mapCompetitionTournament(row)
     const documents = await Promise.all(
       row.mediaAssets
         .filter((asset) => asset.kind === "DOCUMENT")
@@ -100,70 +181,104 @@ export class PrismaTournamentRepository implements TournamentRepository {
         })),
     )
 
-    return {
-      id: row.id,
-      slug: row.slug,
-      title: row.title,
-      province: row.province,
-      venue: row.venue,
-      format: row.format,
-      ageGroup: row.ageGroup,
-      status: statusMap[row.status as keyof typeof statusMap],
-      startsAt: row.startsAt.toISOString(),
-      endsAt: row.endsAt.toISOString(),
-      registrationDeadline: row.registrationDeadline.toISOString(),
-      description: row.description,
-      posterUrl: poster
-        ? this.storage.getPublicUrl(poster.bucket, poster.objectPath)
-        : undefined,
-      documents,
-      teams: row.registrations.map(({ team }) => team.name),
-      matches: row.matches.map((match) => ({
-        id: match.id,
-        tournamentSlug: row.slug,
-        round: match.round.name,
-        court: match.court ?? "ยังไม่กำหนดสนาม",
-        scheduledAt: match.scheduledAt?.toISOString() ?? null,
-        homeTeam: teamNames.get(match.homeTeamId ?? "") ?? "รอยืนยันทีม",
-        awayTeam: teamNames.get(match.awayTeamId ?? "") ?? "รอยืนยันทีม",
-        homeScore: match.result?.homeScore ?? null,
-        awayScore: match.result?.awayScore ?? null,
-      })),
-    }
+    return { ...tournament, documents }
   }
 }
 
-function matchesFilters(
-  tournament: PublicTournamentRow,
+function buildDiscoveryWhere(
   filters: TournamentSearchFilters,
-) {
-  const searchText = [
-    tournament.slug,
-    tournament.title,
-    tournament.province,
-    tournament.venue,
-    tournament.ageGroup,
-    tournament.description,
-    ...tournament.registrations.map(({ team }) => team.name),
-  ].join(" ")
+): Prisma.TournamentWhereInput {
+  const statuses = filters.status
+    ? databaseStatusesByPublicStatus[filters.status]
+    : publicStatuses
+  const calendarDayRange = filters.date
+    ? getBangkokCalendarDayUtcRange(filters.date)
+    : undefined
 
-  return (
-    (!filters.query || matchesText(searchText, filters.query)) &&
-    (!filters.province ||
-      matchesText(tournament.province, filters.province)) &&
-    (!filters.format || tournament.format === filters.format) &&
-    (!filters.ageGroup ||
-      matchesText(tournament.ageGroup, filters.ageGroup)) &&
-    (!filters.venue || matchesText(tournament.venue, filters.venue)) &&
-    (!filters.date ||
-      tournament.startsAt.toISOString().startsWith(filters.date)) &&
-    (!filters.status ||
-      statusMap[tournament.status as keyof typeof statusMap] === filters.status)
-  )
+  return {
+    status: { in: [...statuses] },
+    ...(filters.query
+      ? {
+          OR: [
+            { slug: containsText(filters.query) },
+            { title: containsText(filters.query) },
+            { province: containsText(filters.query) },
+            { venue: containsText(filters.query) },
+            { ageGroup: containsText(filters.query) },
+            { description: containsText(filters.query) },
+            {
+              registrations: {
+                some: {
+                  status: "APPROVED",
+                  team: { name: containsText(filters.query) },
+                },
+              },
+            },
+          ],
+        }
+      : {}),
+    ...(filters.province
+      ? { province: containsText(filters.province) }
+      : {}),
+    ...(filters.format ? { format: filters.format } : {}),
+    ...(filters.ageGroup
+      ? { ageGroup: containsText(filters.ageGroup) }
+      : {}),
+    ...(filters.venue ? { venue: containsText(filters.venue) } : {}),
+    ...(calendarDayRange ? { startsAt: calendarDayRange } : {}),
+    ...(filters.date && !calendarDayRange ? { id: { in: [] } } : {}),
+  }
 }
 
-function matchesText(value: string, filter: string) {
-  return value
-    .toLocaleLowerCase("th-TH")
-    .includes(filter.toLocaleLowerCase("th-TH"))
+function containsText(value: string) {
+  return {
+    contains: value,
+    mode: "insensitive" as const,
+  }
+}
+
+function mapTournamentBase(
+  row: PublicDiscoveryRow | PublicCompetitionRow | PublicDetailRow,
+  additions: Partial<
+    Pick<Tournament, "posterUrl" | "documents" | "teams" | "matches">
+  >,
+): Tournament {
+  return {
+    id: row.id,
+    slug: row.slug,
+    title: row.title,
+    province: row.province,
+    venue: row.venue,
+    format: row.format,
+    ageGroup: row.ageGroup,
+    status: mapPublicStatus(row.status),
+    startsAt: row.startsAt.toISOString(),
+    endsAt: row.endsAt.toISOString(),
+    registrationDeadline: row.registrationDeadline.toISOString(),
+    description: row.description,
+    documents: additions.documents ?? [],
+    teams: additions.teams ?? [],
+    matches: additions.matches ?? [],
+    ...(additions.posterUrl ? { posterUrl: additions.posterUrl } : {}),
+  }
+}
+
+function mapPublicStatus(status: string): TournamentStatus {
+  const publicStatus = statusMap[status as keyof typeof statusMap]
+  if (!publicStatus) throw new Error("NON_PUBLIC_TOURNAMENT_STATUS")
+  return publicStatus
+}
+
+function getPosterUrl(
+  mediaAssets: Array<{
+    bucket: string
+    objectPath: string
+    kind: string
+  }>,
+  storage: ObjectStorage,
+): string | undefined {
+  const poster = mediaAssets.find((asset) => asset.kind === "POSTER")
+  return poster
+    ? storage.getPublicUrl(poster.bucket, poster.objectPath)
+    : undefined
 }

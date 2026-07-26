@@ -1,6 +1,6 @@
 import { ScheduleTable } from "@/components/schedule-table"
 import { StatePanel } from "@/components/state-panel"
-import { getTournamentBySlug } from "@/features/tournaments/application/get-tournament-by-slug"
+import { getTournamentCompetitionBySlug } from "@/features/tournaments/application/get-tournament-competition-by-slug"
 import { searchTournaments } from "@/features/tournaments/application/search-tournaments"
 import { getTournamentRepository } from "@/features/tournaments/infrastructure/get-tournament-repository"
 
@@ -8,9 +8,12 @@ export default async function SchedulePage({ searchParams }: PageProps<"/schedul
   const repository = getTournamentRepository()
   const { tournament: requestedTournament } = await searchParams
   const slug = typeof requestedTournament === "string" ? requestedTournament : undefined
-  const selectedTournament = slug
-    ? await getTournamentBySlug(repository, slug)
-    : (await searchTournaments(repository, { status: "OPEN" }))[0] ?? null
+  const selectedSlug =
+    slug ??
+    (await searchTournaments(repository, { status: "OPEN" }))[0]?.slug
+  const selectedTournament = selectedSlug
+    ? await getTournamentCompetitionBySlug(repository, selectedSlug)
+    : null
 
   return (
     <div className="py-8 sm:py-12">

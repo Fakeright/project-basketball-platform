@@ -14,6 +14,15 @@ describe("tournament view model", () => {
     expect(formatTournamentDateRange("2026-10-04", "2026-10-04")).toBe("4 ต.ค. 2026")
   })
 
+  it("formats tournament instants using the Bangkok calendar day", () => {
+    expect(
+      formatTournamentDateRange(
+        "2026-10-03T17:30:00.000Z",
+        "2026-10-03T17:30:00.000Z",
+      ),
+    ).toBe("4 ต.ค. 2026")
+  })
+
   it("formats the three-on-three tournament format", () => {
     expect(formatTournamentFormat("THREE_V_THREE")).toBe("3x3")
   })

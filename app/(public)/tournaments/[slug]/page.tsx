@@ -10,6 +10,7 @@ import { getTournamentBySlug } from "@/features/tournaments/application/get-tour
 import { getTournamentRegistrationOptions } from "@/features/tournaments/application/get-tournament-registration-options"
 import { getTournamentRepository } from "@/features/tournaments/infrastructure/get-tournament-repository"
 import {
+  formatThaiCalendarDate,
   formatTournamentDateRange,
   formatTournamentFormat,
 } from "@/features/tournaments/presentation/tournament-view-model"
@@ -20,13 +21,6 @@ const statusLabels = {
   ONGOING: "กำลังแข่งขัน",
   COMPLETED: "แข่งขันจบแล้ว",
 } as const
-
-const thaiDateFormatter = new Intl.DateTimeFormat("th-TH-u-ca-gregory", {
-  day: "numeric",
-  month: "long",
-  year: "numeric",
-  timeZone: "UTC",
-})
 
 export default async function TournamentDetailPage({
   params,
@@ -93,9 +87,7 @@ export default async function TournamentDetailPage({
               <div>
                 <dt className="text-muted-foreground">ปิดรับสมัคร</dt>
                 <dd className="mt-1 font-medium">
-                  {thaiDateFormatter.format(
-                    new Date(`${tournament.registrationDeadline.slice(0, 10)}T00:00:00Z`),
-                  )}
+                  {formatThaiCalendarDate(tournament.registrationDeadline)}
                 </dd>
               </div>
             </dl>

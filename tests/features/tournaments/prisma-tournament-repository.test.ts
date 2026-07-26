@@ -41,6 +41,7 @@ const publicTournamentRow = {
       awayTeamId: "team-2",
       homeScore: 99,
       awayScore: 98,
+      bracket: { status: "PUBLISHED" as const },
       round: { name: "รอบชิงชนะเลิศ" },
       result: {
         homeScore: 72,
@@ -72,7 +73,10 @@ const publicTournamentRow = {
   ],
 }
 
-function createRepository(rows = [publicTournamentRow]) {
+function createRepository(
+  rows = [publicTournamentRow],
+  options: { signedUrlError?: Error } = {},
+) {
   const prisma = {
     tournament: {
       findMany: vi.fn(async () => rows),
@@ -85,10 +89,10 @@ function createRepository(rows = [publicTournamentRow]) {
     getPublicUrl: vi.fn(
       (_bucket, objectPath) => `https://storage.test/public/${objectPath}`,
     ),
-    createSignedUrl: vi.fn(
-      async (_bucket, objectPath) =>
-        `https://storage.test/signed/${objectPath}?token=public`,
-    ),
+    createSignedUrl: vi.fn(async (_bucket, objectPath) => {
+      if (options.signedUrlError) throw options.signedUrlError
+      return `https://storage.test/signed/${objectPath}?token=public`
+    }),
   }
 
   return {
@@ -134,7 +138,7 @@ describe("PrismaTournamentRepository", () => {
   it("maps approved teams, confirmed scores, poster, and signed documents", async () => {
     const { repository, storage } = createRepository()
 
-    const [tournament] = await repository.list({})
+    const tournament = await repository.findBySlug("published-bangkok-open")
 
     expect(tournament).toEqual(
       expect.objectContaining({
@@ -166,6 +170,110 @@ describe("PrismaTournamentRepository", () => {
     )
   })
 
+  it("never exposes matches from draft or archived brackets", async () => {
+    const rowWithPrivateBrackets = {
+      ...publicTournamentRow,
+      matches: [
+        publicTournamentRow.matches[0],
+        {
+          ...publicTournamentRow.matches[0],
+          id: "match-draft",
+          sequence: 2,
+          bracket: { status: "DRAFT" as const },
+        },
+        {
+          ...publicTournamentRow.matches[0],
+          id: "match-archived",
+          sequence: 3,
+          bracket: { status: "ARCHIVED" as const },
+        },
+      ],
+    }
+    const { prisma, repository } = createRepository([rowWithPrivateBrackets])
+
+    const tournament = await repository.findBySlug("published-bangkok-open")
+
+    expect(tournament?.matches.map((match) => match.id)).toEqual(["match-1"])
+    expect(prisma.tournament.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        include: expect.objectContaining({
+          matches: expect.objectContaining({
+            where: {
+              bracket: {
+                is: { status: "PUBLISHED" },
+              },
+            },
+          }),
+        }),
+      }),
+    )
+  })
+
+  it("keeps list discovery independent from document URL signing", async () => {
+    const { prisma, repository, storage } = createRepository(
+      [publicTournamentRow],
+      { signedUrlError: new Error("SIGNING_FAILED") },
+    )
+
+    await expect(repository.list({})).resolves.toEqual([
+      expect.objectContaining({
+        id: "tournament-published",
+        documents: [],
+        matches: [],
+        posterUrl:
+          "https://storage.test/public/tournaments/tournament-published/poster/poster.webp",
+        teams: [],
+      }),
+    ])
+    expect(storage.createSignedUrl).not.toHaveBeenCalled()
+    expect(prisma.tournament.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        include: {
+          mediaAssets: expect.objectContaining({
+            where: { deletedAt: null, kind: "POSTER" },
+          }),
+        },
+      }),
+    )
+  })
+
+  it("signs active documents only for tournament detail", async () => {
+    const { repository, storage } = createRepository()
+
+    const tournament = await repository.findBySlug("published-bangkok-open")
+
+    expect(tournament?.documents).toEqual([
+      expect.objectContaining({
+        id: "document-1",
+        url: expect.stringContaining("token=public"),
+      }),
+    ])
+    expect(storage.createSignedUrl).toHaveBeenCalledTimes(1)
+  })
+
+  it("loads published competition data without signing documents", async () => {
+    const { repository, storage } = createRepository()
+
+    const tournament = await repository.findCompetitionBySlug(
+      "published-bangkok-open",
+    )
+
+    expect(tournament).toEqual(
+      expect.objectContaining({
+        documents: [],
+        matches: [
+          expect.objectContaining({
+            id: "match-1",
+            homeScore: 72,
+            awayScore: 68,
+          }),
+        ],
+        teams: ["Bangkok Ballers", "Chiang Mai Hoops"],
+      }),
+    )
+    expect(storage.createSignedUrl).not.toHaveBeenCalled()
+  })
+
   it("preserves an unscheduled match without inventing a date", async () => {
     const unscheduledRow = {
       ...publicTournamentRow,
@@ -179,14 +287,16 @@ describe("PrismaTournamentRepository", () => {
     }
     const { repository } = createRepository([unscheduledRow])
 
-    const [tournament] = await repository.list({})
+    const tournament = await repository.findCompetitionBySlug(
+      "published-bangkok-open",
+    )
 
-    expect(tournament.matches[0]?.scheduledAt).toBeNull()
-    expect(tournament.matches[0]?.homeScore).toBeNull()
-    expect(tournament.matches[0]?.awayScore).toBeNull()
+    expect(tournament?.matches[0]?.scheduledAt).toBeNull()
+    expect(tournament?.matches[0]?.homeScore).toBeNull()
+    expect(tournament?.matches[0]?.awayScore).toBeNull()
   })
 
-  it("preserves public text and date filters after Prisma projection", async () => {
+  it("pushes public text and Bangkok calendar-day filters to Prisma", async () => {
     const closedTournament = {
       ...publicTournamentRow,
       id: "tournament-closed",
@@ -197,15 +307,12 @@ describe("PrismaTournamentRepository", () => {
       format: "THREE_V_THREE" as const,
       ageGroup: "U18",
       status: "REGISTRATION_CLOSED" as const,
-      startsAt: new Date("2026-10-04T03:00:00.000Z"),
+      startsAt: new Date("2026-10-03T17:30:00.000Z"),
       registrations: [],
       matches: [],
       mediaAssets: [],
     }
-    const { repository } = createRepository([
-      publicTournamentRow,
-      closedTournament,
-    ])
+    const { prisma, repository } = createRepository([closedTournament])
 
     const tournaments = await repository.list({
       query: "north",
@@ -220,5 +327,33 @@ describe("PrismaTournamentRepository", () => {
     expect(tournaments.map((tournament) => tournament.id)).toEqual([
       "tournament-closed",
     ])
+    expect(prisma.tournament.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          status: { in: ["REGISTRATION_CLOSED"] },
+          province: { contains: "chiang", mode: "insensitive" },
+          format: "THREE_V_THREE",
+          ageGroup: { contains: "u18", mode: "insensitive" },
+          venue: { contains: "นิมมาน", mode: "insensitive" },
+          startsAt: {
+            gte: new Date("2026-10-03T17:00:00.000Z"),
+            lt: new Date("2026-10-04T17:00:00.000Z"),
+          },
+          OR: expect.arrayContaining([
+            { title: { contains: "north", mode: "insensitive" } },
+            {
+              registrations: {
+                some: {
+                  status: "APPROVED",
+                  team: {
+                    name: { contains: "north", mode: "insensitive" },
+                  },
+                },
+              },
+            },
+          ]),
+        }),
+      }),
+    )
   })
 })

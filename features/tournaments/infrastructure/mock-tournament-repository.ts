@@ -1,4 +1,5 @@
 import type { Tournament, TournamentSearchFilters } from "@/features/tournaments/domain/tournament"
+import { toBangkokCalendarDate } from "@/features/tournaments/domain/tournament-calendar"
 import type { TournamentRepository } from "@/features/tournaments/infrastructure/tournament-repository"
 import { mockTournamentData } from "@/features/tournaments/infrastructure/mock-tournament-data"
 
@@ -30,7 +31,8 @@ export class MockTournamentRepository implements TournamentRepository {
           (!filters.format || tournament.format === filters.format) &&
           (!filters.ageGroup || matchesText(tournament.ageGroup, filters.ageGroup)) &&
           (!filters.venue || matchesText(tournament.venue, filters.venue)) &&
-          (!filters.date || tournament.startsAt.startsWith(filters.date)) &&
+          (!filters.date ||
+            toBangkokCalendarDate(tournament.startsAt) === filters.date) &&
           (!filters.status || tournament.status === filters.status)
         )
       })
@@ -39,5 +41,10 @@ export class MockTournamentRepository implements TournamentRepository {
 
   async findBySlug(slug: string): Promise<Tournament | null> {
     return mockTournamentData.find((tournament) => tournament.slug === slug) ?? null
+  }
+
+  async findCompetitionBySlug(slug: string): Promise<Tournament | null> {
+    const tournament = await this.findBySlug(slug)
+    return tournament ? { ...tournament, documents: [] } : null
   }
 }

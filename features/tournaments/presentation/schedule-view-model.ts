@@ -1,4 +1,5 @@
 import type { Match } from "@/features/tournaments/domain/tournament"
+import { toBangkokCalendarDate } from "@/features/tournaments/domain/tournament-calendar"
 
 export type ScheduledMatch = Match & { scheduledAt: string }
 
@@ -8,7 +9,7 @@ export function groupMatchesByDateAndCourt(
   return matches.reduce<Record<string, Record<string, ScheduledMatch[]>>>((groupedMatches, match) => {
     if (!match.scheduledAt) return groupedMatches
 
-    const date = match.scheduledAt.slice(0, 10)
+    const date = toBangkokCalendarDate(match.scheduledAt)
     const courts = (groupedMatches[date] ??= {})
     const matchesForCourt = (courts[match.court] ??= [])
 

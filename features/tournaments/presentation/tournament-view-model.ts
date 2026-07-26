@@ -1,4 +1,5 @@
 import type { TournamentFormat } from "@/features/tournaments/domain/tournament"
+import { toBangkokCalendarDate } from "@/features/tournaments/domain/tournament-calendar"
 
 const thaiDateFormatter = new Intl.DateTimeFormat("th-TH-u-ca-gregory", {
   day: "numeric",
@@ -8,7 +9,11 @@ const thaiDateFormatter = new Intl.DateTimeFormat("th-TH-u-ca-gregory", {
 })
 
 function parseDate(value: string) {
-  return new Date(`${value.slice(0, 10)}T00:00:00Z`)
+  return new Date(`${toBangkokCalendarDate(value)}T00:00:00Z`)
+}
+
+export function formatThaiCalendarDate(value: string): string {
+  return thaiDateFormatter.format(parseDate(value))
 }
 
 export function formatTournamentDateRange(start: string, end: string): string {
