@@ -19,27 +19,29 @@ export async function updateTeam(
   if (!team) throw new Error("NOT_FOUND")
 
   const isOverride = authorizeTeamAccess(actor, "team.update", team)
-  const updated = await dependencies.teams.update(team.id, {
-    name: input.name,
-    province: input.province,
-  })
+  return dependencies.teams.inTransaction(async (teams) => {
+    const updated = await teams.update(team.id, {
+      name: input.name,
+      province: input.province,
+    })
 
-  await dependencies.teams.appendAuditEvent({
-    actorId: actor.id,
-    action: "team.updated",
-    entityId: team.id,
-    before: team,
-    after: updated,
-  })
-  if (isOverride) {
-    await dependencies.teams.appendAuditEvent({
+    await teams.appendAuditEvent({
       actorId: actor.id,
-      action: "team.admin_override",
+      action: "team.updated",
       entityId: team.id,
       before: team,
       after: updated,
     })
-  }
+    if (isOverride) {
+      await teams.appendAuditEvent({
+        actorId: actor.id,
+        action: "team.admin_override",
+        entityId: team.id,
+        before: team,
+        after: updated,
+      })
+    }
 
-  return updated
+    return updated
+  })
 }

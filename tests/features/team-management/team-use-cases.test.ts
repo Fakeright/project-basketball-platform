@@ -17,8 +17,12 @@ const team = {
   ownerId: teamManager.id,
 }
 
-function createRepository(overrides: Partial<TeamRepository> = {}): TeamRepository {
-  return {
+type TransactionalTeamRepository = TeamRepository
+
+function createRepository(
+  overrides: Partial<TransactionalTeamRepository> = {},
+): TransactionalTeamRepository {
+  const repository: TransactionalTeamRepository = {
     create: vi.fn(async (input) => ({ id: "team-new", ...input })),
     findById: vi.fn(async () => team),
     listByOwner: vi.fn(async () => [team]),
@@ -37,8 +41,10 @@ function createRepository(overrides: Partial<TeamRepository> = {}): TeamReposito
     })),
     deactivateMember: vi.fn(async () => undefined),
     appendAuditEvent: vi.fn(async () => undefined),
+    inTransaction: vi.fn(async (operation) => operation(repository)),
     ...overrides,
   }
+  return repository
 }
 
 describe("team use cases", () => {
@@ -162,5 +168,73 @@ describe("team use cases", () => {
 
     expect(teams).toEqual([team])
     expect(repository.listByOwner).toHaveBeenCalledWith(teamManager.id)
+  })
+
+  it("performs each team mutation in a repository transaction", async () => {
+    const repository = createRepository({
+      listActiveMembers: vi.fn(async () => [
+        {
+          id: "membership-1",
+          userId: "player-1",
+          role: "PLAYER",
+          isActive: true,
+          deactivatedAt: null,
+        },
+      ]),
+    })
+
+    await createTeam({ name: "Khon Kaen Hoops", province: "Khon Kaen" }, teamManager, {
+      teams: repository,
+    })
+    await updateTeam(
+      { teamId: team.id, name: "Changed", province: "Bangkok" },
+      teamManager,
+      { teams: repository },
+    )
+    await addTeamMember(
+      { teamId: team.id, userId: "player-1", role: "PLAYER" },
+      teamManager,
+      { teams: repository },
+    )
+    await deactivateTeamMember(
+      { teamId: team.id, memberId: "membership-1", at: "2026-07-26T00:00:00.000Z" },
+      teamManager,
+      { teams: repository },
+    )
+
+    expect(repository.inTransaction).toHaveBeenCalledTimes(4)
+  })
+
+  it("does not commit a team update when its audit write fails", async () => {
+    let persistedTeam = { ...team }
+    const repository = createRepository({
+      findById: vi.fn(async () => persistedTeam),
+      update: vi.fn(async (_id, input) => {
+        persistedTeam = { ...persistedTeam, ...input }
+        return persistedTeam
+      }),
+      appendAuditEvent: vi.fn(async () => {
+        throw new Error("AUDIT_FAILED")
+      }),
+      inTransaction: vi.fn(async (operation) => {
+        const before = persistedTeam
+        try {
+          return await operation(repository)
+        } catch (error) {
+          persistedTeam = before
+          throw error
+        }
+      }),
+    })
+
+    await expect(
+      updateTeam(
+        { teamId: team.id, name: "Changed", province: "Bangkok" },
+        teamManager,
+        { teams: repository },
+      ),
+    ).rejects.toThrow("AUDIT_FAILED")
+
+    expect(persistedTeam).toEqual(team)
   })
 })

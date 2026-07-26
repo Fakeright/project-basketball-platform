@@ -2,7 +2,10 @@ import { authorize } from "@/features/identity/application/authorize"
 import type { Actor } from "@/features/identity/domain/actor"
 import type { TeamSummary } from "@/features/team-management/domain/team"
 
-import type { TeamRepository } from "./ports/team-repository"
+import type {
+  TeamMutationRepository,
+  TeamRepository,
+} from "./ports/team-repository"
 
 export interface CreateTeamInput {
   name: string
@@ -15,21 +18,23 @@ export async function createTeam(
   dependencies: { teams: TeamRepository },
 ): Promise<TeamSummary> {
   authorize(actor, "team.create", { organizerId: actor.id })
-  const team = await dependencies.teams.create({ ...input, ownerId: actor.id })
+  return dependencies.teams.inTransaction(async (teams) => {
+    const team = await teams.create({ ...input, ownerId: actor.id })
 
-  await dependencies.teams.appendAuditEvent({
-    actorId: actor.id,
-    action: "team.created",
-    entityId: team.id,
-    after: team,
+    await teams.appendAuditEvent({
+      actorId: actor.id,
+      action: "team.created",
+      entityId: team.id,
+      after: team,
+    })
+    await appendOverrideAudit(teams, actor, team.id)
+
+    return team
   })
-  await appendOverrideAudit(dependencies.teams, actor, team.id)
-
-  return team
 }
 
 async function appendOverrideAudit(
-  teams: TeamRepository,
+  teams: TeamMutationRepository,
   actor: Actor,
   teamId: string,
 ) {

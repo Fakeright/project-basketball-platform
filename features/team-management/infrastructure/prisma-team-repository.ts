@@ -4,19 +4,38 @@ import type {
   Team,
   TeamMember,
 } from "@/lib/generated/prisma/client"
-import type { TeamRepository } from "@/features/team-management/application/ports/team-repository"
+import type {
+  TeamMutationRepository,
+  TeamRepository,
+} from "@/features/team-management/application/ports/team-repository"
 import type { Role } from "@/features/identity/domain/actor"
 import type {
   TeamRosterMember,
   TeamSummary,
 } from "@/features/team-management/domain/team"
 
-export class PrismaTeamRepository implements TeamRepository {
-  constructor(private readonly prisma: PrismaClient) {}
+type TeamDatabaseClient = Pick<
+  PrismaClient,
+  "team" | "teamMember" | "auditLog"
+>
 
-  async create(input: { name: string; province: string; ownerId: string }) {
-    const team = await this.prisma.team.create({ data: input })
-    return mapTeam(team)
+export class PrismaTeamRepository implements TeamRepository {
+  private readonly mutations: PrismaTeamMutationRepository
+
+  constructor(private readonly prisma: PrismaClient) {
+    this.mutations = new PrismaTeamMutationRepository(prisma)
+  }
+
+  async inTransaction<T>(
+    operation: (repository: TeamMutationRepository) => Promise<T>,
+  ): Promise<T> {
+    return this.prisma.$transaction((transaction) =>
+      operation(new PrismaTeamMutationRepository(transaction)),
+    )
+  }
+
+  create(input: Parameters<TeamMutationRepository["create"]>[0]) {
+    return this.mutations.create(input)
   }
 
   async findById(id: string) {
@@ -32,9 +51,11 @@ export class PrismaTeamRepository implements TeamRepository {
     return teams.map(mapTeam)
   }
 
-  async update(id: string, input: { name: string; province: string }) {
-    const team = await this.prisma.team.update({ where: { id }, data: input })
-    return mapTeam(team)
+  update(
+    id: string,
+    input: Parameters<TeamMutationRepository["update"]>[1],
+  ) {
+    return this.mutations.update(id, input)
   }
 
   async findUser(id: string) {
@@ -55,19 +76,68 @@ export class PrismaTeamRepository implements TeamRepository {
     return members.map(mapMember)
   }
 
-  async addMember(input: Parameters<TeamRepository["addMember"]>[0]) {
+  addMember(input: Parameters<TeamMutationRepository["addMember"]>[0]) {
+    return this.mutations.addMember(input)
+  }
+
+  deactivateMember(
+    teamId: string,
+    memberId: string,
+    at: string,
+  ) {
+    return this.mutations.deactivateMember(teamId, memberId, at)
+  }
+
+  appendAuditEvent(
+    input: Parameters<TeamMutationRepository["appendAuditEvent"]>[0],
+  ) {
+    return this.mutations.appendAuditEvent(input)
+  }
+}
+
+class PrismaTeamMutationRepository implements TeamMutationRepository {
+  constructor(private readonly prisma: TeamDatabaseClient) {}
+
+  async create(input: Parameters<TeamMutationRepository["create"]>[0]) {
+    const team = await this.prisma.team.create({ data: input })
+    return mapTeam(team)
+  }
+
+  async update(
+    id: string,
+    input: Parameters<TeamMutationRepository["update"]>[1],
+  ) {
+    const team = await this.prisma.team.update({ where: { id }, data: input })
+    return mapTeam(team)
+  }
+
+  async addMember(input: Parameters<TeamMutationRepository["addMember"]>[0]) {
     const existing = await this.prisma.teamMember.findUnique({
       where: { teamId_userId: { teamId: input.teamId, userId: input.userId } },
     })
     if (existing?.isActive) throw new Error("MEMBER_ALREADY_ACTIVE")
 
+    if (existing) {
+      const updated = await this.prisma.teamMember.updateMany({
+        where: {
+          id: existing.id,
+          teamId: input.teamId,
+          userId: input.userId,
+          isActive: false,
+        },
+        data: { role: input.role, isActive: true, deactivatedAt: null },
+      })
+      if (updated.count !== 1) throw new Error("MEMBER_ALREADY_ACTIVE")
+
+      const member = await this.prisma.teamMember.findUnique({
+        where: { teamId_userId: { teamId: input.teamId, userId: input.userId } },
+      })
+      if (!member) throw new Error("MEMBER_NOT_FOUND")
+      return mapMember(member)
+    }
+
     try {
-      const member = existing
-        ? await this.prisma.teamMember.update({
-            where: { id: existing.id },
-            data: { role: input.role, isActive: true, deactivatedAt: null },
-          })
-        : await this.prisma.teamMember.create({ data: input })
+      const member = await this.prisma.teamMember.create({ data: input })
       return mapMember(member)
     } catch (error) {
       if (isPrismaUniqueError(error)) throw new Error("MEMBER_ALREADY_ACTIVE")
@@ -84,7 +154,7 @@ export class PrismaTeamRepository implements TeamRepository {
   }
 
   async appendAuditEvent(
-    input: Parameters<TeamRepository["appendAuditEvent"]>[0],
+    input: Parameters<TeamMutationRepository["appendAuditEvent"]>[0],
   ) {
     await this.prisma.auditLog.create({
       data: {

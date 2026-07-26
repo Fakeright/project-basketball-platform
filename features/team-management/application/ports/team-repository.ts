@@ -5,21 +5,13 @@ import type {
   TeamSummary,
 } from "@/features/team-management/domain/team"
 
-export interface TeamRepository {
+export interface TeamMutationRepository {
   create(input: {
     name: string
     province: string
     ownerId: string
   }): Promise<TeamSummary>
-  findById(id: string): Promise<TeamSummary | null>
-  listByOwner(ownerId: string): Promise<TeamSummary[]>
   update(id: string, input: { name: string; province: string }): Promise<TeamSummary>
-  findUser(id: string): Promise<{
-    id: string
-    displayName: string
-    role: Role
-  } | null>
-  listActiveMembers(teamId: string): Promise<TeamRosterMember[]>
   addMember(input: {
     teamId: string
     userId: string
@@ -33,4 +25,18 @@ export interface TeamRepository {
     before?: unknown
     after?: unknown
   }): Promise<void>
+}
+
+export interface TeamRepository extends TeamMutationRepository {
+  inTransaction<T>(
+    operation: (repository: TeamMutationRepository) => Promise<T>,
+  ): Promise<T>
+  findById(id: string): Promise<TeamSummary | null>
+  listByOwner(ownerId: string): Promise<TeamSummary[]>
+  findUser(id: string): Promise<{
+    id: string
+    displayName: string
+    role: Role
+  } | null>
+  listActiveMembers(teamId: string): Promise<TeamRosterMember[]>
 }

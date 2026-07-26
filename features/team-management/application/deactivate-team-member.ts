@@ -23,26 +23,28 @@ export async function deactivateTeamMember(
   )
   if (!member) throw new Error("MEMBER_NOT_FOUND")
 
-  await dependencies.teams.deactivateMember(team.id, member.id, input.at)
   const deactivatedMember = {
     ...member,
     isActive: false,
     deactivatedAt: input.at,
   }
-  await dependencies.teams.appendAuditEvent({
-    actorId: actor.id,
-    action: "team.member_deactivated",
-    entityId: team.id,
-    before: member,
-    after: deactivatedMember,
-  })
-  if (isOverride) {
-    await dependencies.teams.appendAuditEvent({
+  await dependencies.teams.inTransaction(async (teams) => {
+    await teams.deactivateMember(team.id, member.id, input.at)
+    await teams.appendAuditEvent({
       actorId: actor.id,
-      action: "team.admin_override",
+      action: "team.member_deactivated",
       entityId: team.id,
       before: member,
       after: deactivatedMember,
     })
-  }
+    if (isOverride) {
+      await teams.appendAuditEvent({
+        actorId: actor.id,
+        action: "team.admin_override",
+        entityId: team.id,
+        before: member,
+        after: deactivatedMember,
+      })
+    }
+  })
 }

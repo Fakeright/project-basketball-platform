@@ -26,21 +26,23 @@ export async function addTeamMember(
   if (!user) throw new Error("MEMBER_NOT_FOUND")
   if (user.role !== input.role) throw new Error("MEMBER_ROLE_MISMATCH")
 
-  const member = await dependencies.teams.addMember(input)
-  await dependencies.teams.appendAuditEvent({
-    actorId: actor.id,
-    action: "team.member_added",
-    entityId: team.id,
-    after: member,
-  })
-  if (isOverride) {
-    await dependencies.teams.appendAuditEvent({
+  return dependencies.teams.inTransaction(async (teams) => {
+    const member = await teams.addMember(input)
+    await teams.appendAuditEvent({
       actorId: actor.id,
-      action: "team.admin_override",
+      action: "team.member_added",
       entityId: team.id,
       after: member,
     })
-  }
+    if (isOverride) {
+      await teams.appendAuditEvent({
+        actorId: actor.id,
+        action: "team.admin_override",
+        entityId: team.id,
+        after: member,
+      })
+    }
 
-  return member
+    return member
+  })
 }
