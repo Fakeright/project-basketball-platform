@@ -2,7 +2,7 @@ import Link from "next/link"
 import { redirect } from "next/navigation"
 
 import { createNextCookieCurrentActorProvider } from "@/features/identity/infrastructure/next-cookie-current-actor-provider"
-import { getDevelopmentTournamentOperationsRepository } from "@/features/tournament-operations/infrastructure/development-tournament-operations-repository"
+import { getTournamentOperationsRepository } from "@/features/tournament-operations/infrastructure/get-tournament-operations-repository"
 
 const statusLabel = {
   DRAFT: "ฉบับร่าง",
@@ -22,7 +22,7 @@ export default async function OrganizerPage() {
   const actor = await createNextCookieCurrentActorProvider().getCurrentActor()
   if (!actor) redirect("/login")
 
-  const repository = await getDevelopmentTournamentOperationsRepository()
+  const repository = await getTournamentOperationsRepository()
   const tournaments = await repository.listByOrganizer(actor.id)
 
   return (

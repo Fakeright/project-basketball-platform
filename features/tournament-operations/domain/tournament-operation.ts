@@ -32,6 +32,7 @@ export interface TournamentOperationInput {
 export interface TournamentOperation extends TournamentOperationInput {
   id: string
   organizerId: string
+  organizerName?: string
   status: TournamentOperationStatus
   version: number
   createdAt: string

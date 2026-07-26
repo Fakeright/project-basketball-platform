@@ -3,18 +3,18 @@ import { randomUUID } from "node:crypto"
 import { handleTournamentMediaUpload } from "@/features/admin/presentation/tournament-media-handler"
 import { createNextCookieCurrentActorProvider } from "@/features/identity/infrastructure/next-cookie-current-actor-provider"
 import { uploadTournamentMedia } from "@/features/tournament-media/application/upload-tournament-media"
-import { DevelopmentTournamentMediaRepository } from "@/features/tournament-media/infrastructure/development-tournament-media-repository"
+import { getTournamentMediaRepository } from "@/features/tournament-media/infrastructure/get-tournament-media-repository"
 import { SupabaseObjectStorage } from "@/features/tournament-media/infrastructure/supabase-object-storage"
-import { getDevelopmentTournamentOperationsRepository } from "@/features/tournament-operations/infrastructure/development-tournament-operations-repository"
+import { getTournamentOperationsRepository } from "@/features/tournament-operations/infrastructure/get-tournament-operations-repository"
 
 export async function POST(
   request: Request,
   context: RouteContext<"/api/admin/tournaments/[id]/media">,
 ) {
   const { id } = await context.params
-  const tournaments = await getDevelopmentTournamentOperationsRepository()
+  const tournaments = await getTournamentOperationsRepository()
   const storage = new SupabaseObjectStorage()
-  const media = new DevelopmentTournamentMediaRepository()
+  const media = await getTournamentMediaRepository()
 
   return handleTournamentMediaUpload(request, id, {
     actorProvider: createNextCookieCurrentActorProvider(),

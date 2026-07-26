@@ -10,7 +10,12 @@ export async function reviewTournament(repository: TournamentOperationsRepositor
   authorize(actor, "tournament.review", { organizerId: tournament.organizerId })
   if (input.decision !== "APPROVED" && !input.note.trim()) throw new Error("REVIEW_NOTE_REQUIRED")
   const status = applyReviewDecision(tournament, input.decision)
-  const updated = await repository.updateWithVersion(id, input.version, { status })
-  await repository.appendReview({ tournamentId: id, reviewerId: actor.id, decision: input.decision, note: input.note })
-  return updated
+  return repository.reviewWithVersion({
+    tournamentId: id,
+    version: input.version,
+    status,
+    reviewerId: actor.id,
+    decision: input.decision,
+    note: input.note,
+  })
 }

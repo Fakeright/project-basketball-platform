@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest"
+import { describe, expect, it, vi } from "vitest"
 
 import { createTournament } from "@/features/tournament-operations/application/create-tournament"
 import { reviewTournament } from "@/features/tournament-operations/application/review-tournament"
@@ -17,10 +17,14 @@ describe("reviewTournament", () => {
     const repository = new InMemoryTournamentOperationsRepository()
     const tournament = await createTournament(repository, input, organizer)
     await repository.updateWithVersion(tournament.id, 0, { status: "SUBMITTED" })
+    const reviewWithVersion = vi.spyOn(repository, "reviewWithVersion")
+    const appendReview = vi.spyOn(repository, "appendReview")
 
     const approved = await reviewTournament(repository, tournament.id, { decision: "APPROVED", note: "ผ่าน", version: 1 }, admin)
 
     expect(approved.status).toBe("APPROVED")
+    expect(reviewWithVersion).toHaveBeenCalledOnce()
+    expect(appendReview).not.toHaveBeenCalled()
   })
 
   it("rejects a stale review version", async () => {

@@ -66,6 +66,13 @@ class DevelopmentTournamentOperationsRepository
     )
   }
 
+  async listByStatus(status: TournamentOperation["status"]) {
+    const state = await readState()
+    return state.tournaments.filter(
+      (tournament) => tournament.status === status,
+    )
+  }
+
   async updateWithVersion(
     id: string,
     version: number,
@@ -95,6 +102,35 @@ class DevelopmentTournamentOperationsRepository
     const state = await readState()
     state.reviews.push(input)
     await writeState(state)
+  }
+
+  async reviewWithVersion(input: {
+    tournamentId: string
+    version: number
+    status: TournamentOperation["status"]
+    reviewerId: string
+    decision: TournamentReviewInput["decision"]
+    note: string
+  }) {
+    const state = await readState()
+    const index = state.tournaments.findIndex(
+      (tournament) => tournament.id === input.tournamentId,
+    )
+    if (index < 0) throw new Error("NOT_FOUND")
+
+    const current = state.tournaments[index]
+    if (current.version !== input.version) throw new Error("CONFLICT")
+
+    const updated: TournamentOperation = {
+      ...current,
+      status: input.status,
+      version: input.version + 1,
+      updatedAt: new Date().toISOString(),
+    }
+    state.tournaments[index] = updated
+    state.reviews.push(input)
+    await writeState(state)
+    return updated
   }
 }
 

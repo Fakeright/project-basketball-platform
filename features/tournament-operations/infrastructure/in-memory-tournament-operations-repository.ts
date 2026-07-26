@@ -20,6 +20,12 @@ export class InMemoryTournamentOperationsRepository implements TournamentOperati
     )
   }
 
+  async listByStatus(status: TournamentOperation["status"]) {
+    return [...this.tournaments.values()].filter(
+      (tournament) => tournament.status === status,
+    )
+  }
+
   async updateWithVersion(id: string, version: number, changes: Partial<TournamentOperation>) {
     const current = this.tournaments.get(id)
     if (!current) throw new Error("NOT_FOUND")
@@ -31,5 +37,22 @@ export class InMemoryTournamentOperationsRepository implements TournamentOperati
 
   async appendReview(input: { tournamentId: string; reviewerId: string; decision: TournamentReviewInput["decision"]; note: string }) {
     this.reviews.push(input)
+  }
+
+  async reviewWithVersion(input: {
+    tournamentId: string
+    version: number
+    status: TournamentOperation["status"]
+    reviewerId: string
+    decision: TournamentReviewInput["decision"]
+    note: string
+  }) {
+    const updated = await this.updateWithVersion(
+      input.tournamentId,
+      input.version,
+      { status: input.status },
+    )
+    this.reviews.push(input)
+    return updated
   }
 }

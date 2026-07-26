@@ -3,8 +3,8 @@ import { notFound, redirect } from "next/navigation"
 import { TournamentEditor } from "@/components/admin/tournament-editor"
 import { authorize } from "@/features/identity/application/authorize"
 import { createNextCookieCurrentActorProvider } from "@/features/identity/infrastructure/next-cookie-current-actor-provider"
-import { getDevelopmentTournamentOperationsRepository } from "@/features/tournament-operations/infrastructure/development-tournament-operations-repository"
-import { DevelopmentTournamentMediaRepository } from "@/features/tournament-media/infrastructure/development-tournament-media-repository"
+import { getTournamentOperationsRepository } from "@/features/tournament-operations/infrastructure/get-tournament-operations-repository"
+import { getTournamentMediaRepository } from "@/features/tournament-media/infrastructure/get-tournament-media-repository"
 import { SupabaseObjectStorage } from "@/features/tournament-media/infrastructure/supabase-object-storage"
 
 function toLocalDateTime(value: string) {
@@ -18,8 +18,8 @@ export default async function EditTournamentPage({
   if (!actor) redirect("/login")
 
   const { id } = await params
-  const repository = await getDevelopmentTournamentOperationsRepository()
-  const mediaRepository = new DevelopmentTournamentMediaRepository()
+  const repository = await getTournamentOperationsRepository()
+  const mediaRepository = await getTournamentMediaRepository()
   const tournament = await repository.findById(id)
   if (!tournament) notFound()
 

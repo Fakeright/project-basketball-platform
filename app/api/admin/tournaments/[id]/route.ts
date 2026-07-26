@@ -1,6 +1,6 @@
 import { saveTournamentHandler } from "@/features/admin/presentation/save-tournament-handler"
 import { createNextCookieCurrentActorProvider } from "@/features/identity/infrastructure/next-cookie-current-actor-provider"
-import { getDevelopmentTournamentOperationsRepository } from "@/features/tournament-operations/infrastructure/development-tournament-operations-repository"
+import { getTournamentOperationsRepository } from "@/features/tournament-operations/infrastructure/get-tournament-operations-repository"
 
 export async function PUT(
   request: Request,
@@ -11,7 +11,7 @@ export async function PUT(
   return saveTournamentHandler({
     actor: await actorProvider.getCurrentActor(),
     request,
-    repository: await getDevelopmentTournamentOperationsRepository(),
+    repository: await getTournamentOperationsRepository(),
     id,
   })
 }
