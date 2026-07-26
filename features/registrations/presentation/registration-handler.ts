@@ -65,17 +65,22 @@ export async function handleApplyToTournament(
   request: Request,
   dependencies: ApplyHandlerDependencies,
 ) {
-  const actor = await dependencies.actorProvider.getCurrentActor()
-  if (!actor) return unauthorizedResponse()
-
-  const parsed = applySchema.safeParse(await parseJson(request))
-  if (!parsed.success) return validationResponse()
-
   try {
-    const registration = await dependencies.apply({ tournamentId, ...parsed.data }, actor)
+    const actor = await dependencies.actorProvider.getCurrentActor()
+    if (!actor) return unauthorizedResponse()
+
+    const parsed = applySchema.safeParse(await parseJson(request))
+    if (!parsed.success) return validationResponse()
+
+    let registration: TournamentRegistration
+    try {
+      registration = await dependencies.apply({ tournamentId, ...parsed.data }, actor)
+    } catch (error) {
+      return registrationFailureResponse(error, "registration.apply", dependencies)
+    }
     return Response.json({ registration }, { status: 201 })
   } catch (error) {
-    return registrationFailureResponse(error, "registration.apply", dependencies)
+    return unexpectedRegistrationFailureResponse(error, "registration.apply", dependencies)
   }
 }
 
@@ -84,17 +89,21 @@ export async function handleCancelRegistration(
   request: Request,
   dependencies: CancelHandlerDependencies,
 ) {
-  const actor = await dependencies.actorProvider.getCurrentActor()
-  if (!actor) return unauthorizedResponse()
-
-  const parsed = cancelSchema.safeParse(await parseJson(request))
-  if (!parsed.success) return validationResponse()
-
   try {
-    await dependencies.cancel({ registrationId, ...parsed.data }, actor)
+    const actor = await dependencies.actorProvider.getCurrentActor()
+    if (!actor) return unauthorizedResponse()
+
+    const parsed = cancelSchema.safeParse(await parseJson(request))
+    if (!parsed.success) return validationResponse()
+
+    try {
+      await dependencies.cancel({ registrationId, ...parsed.data }, actor)
+    } catch (error) {
+      return registrationFailureResponse(error, "registration.cancel", dependencies)
+    }
     return new Response(null, { status: 204 })
   } catch (error) {
-    return registrationFailureResponse(error, "registration.cancel", dependencies)
+    return unexpectedRegistrationFailureResponse(error, "registration.cancel", dependencies)
   }
 }
 
@@ -104,20 +113,25 @@ export async function handleDecideRegistration(
   request: Request,
   dependencies: DecisionHandlerDependencies,
 ) {
-  const actor = await dependencies.actorProvider.getCurrentActor()
-  if (!actor) return unauthorizedResponse()
-
-  const parsed = decisionSchema.safeParse(await parseJson(request))
-  if (!parsed.success) return validationResponse()
-
   try {
-    const registration = await dependencies.decide(
-      { tournamentId, registrationId, ...parsed.data },
-      actor,
-    )
+    const actor = await dependencies.actorProvider.getCurrentActor()
+    if (!actor) return unauthorizedResponse()
+
+    const parsed = decisionSchema.safeParse(await parseJson(request))
+    if (!parsed.success) return validationResponse()
+
+    let registration: TournamentRegistration
+    try {
+      registration = await dependencies.decide(
+        { tournamentId, registrationId, ...parsed.data },
+        actor,
+      )
+    } catch (error) {
+      return registrationFailureResponse(error, "registration.decide", dependencies)
+    }
     return Response.json({ registration })
   } catch (error) {
-    return registrationFailureResponse(error, "registration.decide", dependencies)
+    return unexpectedRegistrationFailureResponse(error, "registration.decide", dependencies)
   }
 }
 
@@ -127,20 +141,25 @@ export async function handleWithdrawRegistration(
   request: Request,
   dependencies: WithdrawalHandlerDependencies,
 ) {
-  const actor = await dependencies.actorProvider.getCurrentActor()
-  if (!actor) return unauthorizedResponse()
-
-  const parsed = withdrawalSchema.safeParse(await parseJson(request))
-  if (!parsed.success) return validationResponse()
-
   try {
-    const registration = await dependencies.withdraw(
-      { tournamentId, registrationId, ...parsed.data },
-      actor,
-    )
+    const actor = await dependencies.actorProvider.getCurrentActor()
+    if (!actor) return unauthorizedResponse()
+
+    const parsed = withdrawalSchema.safeParse(await parseJson(request))
+    if (!parsed.success) return validationResponse()
+
+    let registration: TournamentRegistration
+    try {
+      registration = await dependencies.withdraw(
+        { tournamentId, registrationId, ...parsed.data },
+        actor,
+      )
+    } catch (error) {
+      return registrationFailureResponse(error, "registration.withdraw", dependencies)
+    }
     return Response.json({ registration })
   } catch (error) {
-    return registrationFailureResponse(error, "registration.withdraw", dependencies)
+    return unexpectedRegistrationFailureResponse(error, "registration.withdraw", dependencies)
   }
 }
 
@@ -198,18 +217,42 @@ function unexpectedRegistrationFailureResponse(
   operation: RegistrationOperation,
   diagnostics: RegistrationHandlerDiagnostics,
 ) {
-  const correlationId = (diagnostics.createCorrelationId ?? randomUUID)()
+  const correlationId = createRegistrationCorrelationId(diagnostics.createCorrelationId)
   const event: UnexpectedRegistrationFailure = {
     operation,
     correlationId,
     errorType: error instanceof Error ? "Error" : "NonError",
   }
-  const logger = diagnostics.logger ?? defaultRegistrationLogger
-  logger.error(event)
+  logUnexpectedRegistrationFailure(event, diagnostics.logger)
   return Response.json(
     { message: "ไม่สามารถจัดการการสมัครได้", correlationId },
     { status: 500 },
   )
+}
+
+function createRegistrationCorrelationId(factory?: () => string) {
+  if (factory) {
+    try {
+      return factory()
+    } catch {}
+  }
+  return randomUUID()
+}
+
+function logUnexpectedRegistrationFailure(
+  event: UnexpectedRegistrationFailure,
+  logger?: RegistrationHandlerDiagnostics["logger"],
+) {
+  if (logger) {
+    try {
+      logger.error(event)
+      return
+    } catch {}
+  }
+
+  try {
+    defaultRegistrationLogger.error(event)
+  } catch {}
 }
 
 const defaultRegistrationLogger = {
