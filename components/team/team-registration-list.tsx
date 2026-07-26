@@ -1,6 +1,9 @@
 "use client"
 
 import { useState } from "react"
+import { Dialog as DialogPrimitive } from "@base-ui/react/dialog"
+
+import { Button } from "@/components/ui/button"
 
 export interface TeamRegistrationListItem {
   id: string
@@ -18,8 +21,14 @@ export function TeamRegistrationList({
 }) {
   const [pendingId, setPendingId] = useState<string | null>(null)
   const [feedback, setFeedback] = useState<string | null>(null)
+  const [registrationToCancel, setRegistrationToCancel] =
+    useState<TeamRegistrationListItem | null>(null)
 
-  async function cancelRegistration(registration: TeamRegistrationListItem) {
+  async function cancelRegistration() {
+    const registration = registrationToCancel
+    if (!registration) return
+
+    setRegistrationToCancel(null)
     setPendingId(registration.id)
     setFeedback(null)
     try {
@@ -59,7 +68,7 @@ export function TeamRegistrationList({
                   aria-label={`ยกเลิกการสมัคร ${registration.tournamentName}`}
                   className="w-fit border border-border px-3 py-1.5 text-xs font-medium disabled:opacity-60"
                   disabled={pendingId === registration.id}
-                  onClick={() => cancelRegistration(registration)}
+                  onClick={() => setRegistrationToCancel(registration)}
                   type="button"
                 >
                   {pendingId === registration.id ? "กำลังยกเลิก" : "ยกเลิก"}
@@ -69,6 +78,36 @@ export function TeamRegistrationList({
           ))}
         </ul>
       )}
+      <DialogPrimitive.Root
+        onOpenChange={(open) => {
+          if (!open) setRegistrationToCancel(null)
+        }}
+        open={registrationToCancel !== null}
+      >
+        <DialogPrimitive.Portal>
+          <DialogPrimitive.Backdrop className="fixed inset-0 z-50 bg-black/20" />
+          <DialogPrimitive.Popup className="fixed top-1/2 left-1/2 z-50 w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 border border-border bg-background p-5 shadow-lg">
+            <DialogPrimitive.Title className="text-base font-semibold">
+              ยืนยันการยกเลิกการสมัคร
+            </DialogPrimitive.Title>
+            <DialogPrimitive.Description className="mt-2 text-sm text-muted-foreground">
+              คุณต้องการยกเลิกการสมัคร {registrationToCancel?.tournamentName} ใช่หรือไม่
+            </DialogPrimitive.Description>
+            <div className="mt-5 flex justify-end gap-2">
+              <DialogPrimitive.Close
+                render={<Button type="button" variant="outline">กลับ</Button>}
+              />
+              <Button
+                onClick={cancelRegistration}
+                type="button"
+                variant="destructive"
+              >
+                ยืนยันยกเลิกการสมัคร
+              </Button>
+            </div>
+          </DialogPrimitive.Popup>
+        </DialogPrimitive.Portal>
+      </DialogPrimitive.Root>
       <p aria-live="polite" className="mt-3 min-h-5 text-sm text-muted-foreground">
         {feedback}
       </p>

@@ -10,7 +10,7 @@ afterEach(() => {
 })
 
 describe("TeamRegistrationList", () => {
-  it("cancels only the pending row and announces success", async () => {
+  it("waits for confirmation before cancelling only the pending row", async () => {
     const fetchMock = vi.fn().mockResolvedValue(new Response(null, { status: 204 }))
     vi.stubGlobal("fetch", fetchMock)
     const user = userEvent.setup()
@@ -39,6 +39,11 @@ describe("TeamRegistrationList", () => {
     )
 
     await user.click(screen.getByRole("button", { name: "ยกเลิกการสมัคร Bangkok Open" }))
+
+    expect(fetchMock).not.toHaveBeenCalled()
+    expect(screen.getByRole("dialog", { name: "ยืนยันการยกเลิกการสมัคร" })).toBeTruthy()
+
+    await user.click(screen.getByRole("button", { name: "ยืนยันยกเลิกการสมัคร" }))
 
     expect(fetchMock).toHaveBeenCalledWith(
       "/api/registrations/registration-1",

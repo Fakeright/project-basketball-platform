@@ -1,4 +1,4 @@
-import type { Prisma, PrismaClient, Registration, Team, TeamMember } from "@/lib/generated/prisma/client"
+import { Prisma, type PrismaClient, type Registration, type Team, type TeamMember } from "@/lib/generated/prisma/client"
 import type {
   RegistrationApplicationContext,
   RegistrationRepository,
@@ -14,6 +14,8 @@ type RegistrationDatabaseClient = Pick<
   "registration" | "team" | "teamMember" | "tournament" | "auditLog"
 >
 
+const maxSerializationAttempts = 3
+
 export class PrismaRegistrationRepository implements RegistrationRepository {
   private readonly operations: PrismaRegistrationOperations
 
@@ -21,12 +23,22 @@ export class PrismaRegistrationRepository implements RegistrationRepository {
     this.operations = new PrismaRegistrationOperations(prisma)
   }
 
-  inTransaction<T>(
+  async inTransaction<T>(
     operation: (repository: RegistrationRepositoryTransaction) => Promise<T>,
   ): Promise<T> {
-    return this.prisma.$transaction((transaction) =>
-      operation(new PrismaRegistrationOperations(transaction)),
-    )
+    for (let attempt = 1; attempt <= maxSerializationAttempts; attempt += 1) {
+      try {
+        return await this.prisma.$transaction(
+          (transaction) => operation(new PrismaRegistrationOperations(transaction)),
+          { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+        )
+      } catch (error) {
+        if (!isPrismaSerializationConflict(error)) throw error
+        if (attempt === maxSerializationAttempts) throw new Error("CONFLICT")
+      }
+    }
+
+    throw new Error("CONFLICT")
   }
 
   getApplicationContext(tournamentId: string, teamId: string) {
@@ -199,4 +211,8 @@ function toJsonValue(value: unknown): Prisma.InputJsonValue {
 
 function isPrismaUniqueError(error: unknown) {
   return typeof error === "object" && error !== null && "code" in error && error.code === "P2002"
+}
+
+function isPrismaSerializationConflict(error: unknown) {
+  return typeof error === "object" && error !== null && "code" in error && error.code === "P2034"
 }
