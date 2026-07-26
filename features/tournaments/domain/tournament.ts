@@ -16,14 +16,23 @@ export interface Match {
   tournamentSlug: string
   round: string
   court: string
-  scheduledAt: string
+  scheduledAt: string | null
   homeTeam: string
   awayTeam: string
   homeScore: number | null
   awayScore: number | null
 }
 
+export interface TournamentDocument {
+  id: string
+  fileName: string
+  contentType: string
+  byteSize: number
+  url: string
+}
+
 export interface Tournament {
+  id: string
   slug: string
   title: string
   province: string
@@ -36,6 +45,7 @@ export interface Tournament {
   registrationDeadline: string
   description: string
   posterUrl?: string
+  documents: TournamentDocument[]
   teams: string[]
   matches: Match[]
 }

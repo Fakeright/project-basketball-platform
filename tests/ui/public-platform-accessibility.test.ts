@@ -7,12 +7,22 @@ import { describe, expect, it } from "vitest"
 
 import { HomeHeroImage } from "@/components/home-hero-image"
 import { Sheet, SheetCloseButton } from "@/components/ui/sheet"
+import PublicLayout from "@/app/(public)/layout"
+import LoginPage from "@/app/(public)/login/page"
 
 const root = process.cwd()
 const heroJpeg = resolve(root, "public/images/courtside-hero.jpg")
 const legacyHeroPng = resolve(root, "public/images/courtside-hero.png")
 
 describe("public platform accessibility", () => {
+  it("keeps a single main landmark on the login route", () => {
+    const markup = renderToStaticMarkup(
+      createElement(PublicLayout, null, createElement(LoginPage)),
+    )
+
+    expect(markup.match(/<main\b/g)).toHaveLength(1)
+  })
+
   it("ships the supplied hero as a JPEG without retaining the PNG", async () => {
     expect(existsSync(heroJpeg)).toBe(true)
     expect(existsSync(legacyHeroPng)).toBe(false)

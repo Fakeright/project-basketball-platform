@@ -1,14 +1,15 @@
 import Link from "next/link"
+import { connection } from "next/server"
 
 import { HomeHeroImage } from "@/components/home-hero-image"
 import { TournamentSearchForm } from "@/components/tournament-search-form"
 import { TournamentRow } from "@/components/tournament-row"
 import { searchTournaments } from "@/features/tournaments/application/search-tournaments"
-import { MockTournamentRepository } from "@/features/tournaments/infrastructure/mock-tournament-repository"
-
-const repository = new MockTournamentRepository()
+import { getTournamentRepository } from "@/features/tournaments/infrastructure/get-tournament-repository"
 
 export default async function HomePage() {
+  await connection()
+  const repository = getTournamentRepository()
   const openTournaments = await searchTournaments(repository, { status: "OPEN" })
 
   return (

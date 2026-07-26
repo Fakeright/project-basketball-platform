@@ -1,17 +1,18 @@
 import Link from "next/link"
 import { notFound } from "next/navigation"
 
+import { TournamentRegistrationAction } from "@/components/tournaments/tournament-registration-action"
 import { TournamentDocumentList } from "@/components/tournaments/tournament-document-list"
 import { TournamentPoster } from "@/components/tournaments/tournament-poster"
-import type { PublicDocumentLink } from "@/features/tournament-media/application/get-public-tournament-media"
+import { createNextCookieCurrentActorProvider } from "@/features/identity/infrastructure/next-cookie-current-actor-provider"
+import { getTeamRepository } from "@/features/team-management/infrastructure/get-team-repository"
 import { getTournamentBySlug } from "@/features/tournaments/application/get-tournament-by-slug"
-import { MockTournamentRepository } from "@/features/tournaments/infrastructure/mock-tournament-repository"
+import { getTournamentRegistrationOptions } from "@/features/tournaments/application/get-tournament-registration-options"
+import { getTournamentRepository } from "@/features/tournaments/infrastructure/get-tournament-repository"
 import {
   formatTournamentDateRange,
   formatTournamentFormat,
 } from "@/features/tournaments/presentation/tournament-view-model"
-
-const repository = new MockTournamentRepository()
 
 const statusLabels = {
   OPEN: "เปิดรับสมัคร",
@@ -31,13 +32,20 @@ export default async function TournamentDetailPage({
   params,
 }: PageProps<"/tournaments/[slug]">) {
   const { slug } = await params
+  const repository = getTournamentRepository()
   const tournament = await getTournamentBySlug(repository, slug)
 
   if (!tournament) {
     notFound()
   }
 
-  const documents: PublicDocumentLink[] = []
+  const registrationTeams = process.env.DATABASE_URL
+    ? await getTournamentRegistrationOptions(
+        tournament,
+        await createNextCookieCurrentActorProvider().getCurrentActor(),
+        { teams: getTeamRepository() },
+      )
+    : []
 
   return (
     <div className="py-8 sm:py-12">
@@ -95,6 +103,15 @@ export default async function TournamentDetailPage({
         </div>
       </header>
 
+      {registrationTeams.length > 0 ? (
+        <div className="mt-8">
+          <TournamentRegistrationAction
+            teams={registrationTeams}
+            tournamentId={tournament.id}
+          />
+        </div>
+      ) : null}
+
       <div className="mt-8 grid gap-8 lg:grid-cols-[minmax(0,1fr)_18rem]">
         <section>
           <h2 className="text-xl font-semibold">ทีมที่เข้าร่วม</h2>
@@ -126,7 +143,7 @@ export default async function TournamentDetailPage({
       </div>
 
       <div className="mt-8">
-        <TournamentDocumentList documents={documents} />
+        <TournamentDocumentList documents={tournament.documents} />
       </div>
     </div>
   )

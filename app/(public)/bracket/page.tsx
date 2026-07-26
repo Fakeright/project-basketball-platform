@@ -2,11 +2,10 @@ import { BracketView } from "@/components/bracket-view"
 import { StatePanel } from "@/components/state-panel"
 import { getTournamentBySlug } from "@/features/tournaments/application/get-tournament-by-slug"
 import { searchTournaments } from "@/features/tournaments/application/search-tournaments"
-import { MockTournamentRepository } from "@/features/tournaments/infrastructure/mock-tournament-repository"
-
-const repository = new MockTournamentRepository()
+import { getTournamentRepository } from "@/features/tournaments/infrastructure/get-tournament-repository"
 
 export default async function BracketPage({ searchParams }: PageProps<"/bracket">) {
+  const repository = getTournamentRepository()
   const { tournament: requestedTournament } = await searchParams
   const slug = typeof requestedTournament === "string" ? requestedTournament : undefined
   const selectedTournament = slug

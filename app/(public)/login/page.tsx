@@ -2,7 +2,7 @@ export default function LoginPage() {
   const developmentEnabled = process.env.NODE_ENV !== "production"
 
   return (
-    <main className="mx-auto max-w-xl px-4 py-16 sm:px-6">
+    <div className="mx-auto max-w-xl px-4 py-16 sm:px-6">
       <p className="text-sm font-medium text-court">COURTSIDE ACCESS</p>
       <h1 className="mt-2 text-3xl font-semibold">เข้าสู่พื้นที่จัดการแข่งขัน</h1>
       <p className="mt-3 text-muted-foreground">
@@ -46,6 +46,6 @@ export default function LoginPage() {
           ระบบเข้าสู่ระบบยังไม่เปิดใช้งาน
         </p>
       )}
-    </main>
+    </div>
   )
 }

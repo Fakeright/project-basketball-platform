@@ -2,6 +2,7 @@ import type { Tournament } from "@/features/tournaments/domain/tournament"
 
 export const mockTournamentData: Tournament[] = [
   {
+    id: "mock-bangkok-open-2026",
     slug: "bangkok-open-2026",
     title: "Bangkok Open 2026",
     province: "Bangkok",
@@ -9,6 +10,7 @@ export const mockTournamentData: Tournament[] = [
     format: "FIVE_V_FIVE",
     ageGroup: "Open",
     status: "OPEN",
+    documents: [],
     posterUrl: "/images/courtside-hero.jpg",
     startsAt: "2026-11-15T09:00:00+07:00",
     endsAt: "2026-11-16T18:00:00+07:00",
@@ -30,6 +32,7 @@ export const mockTournamentData: Tournament[] = [
     ],
   },
   {
+    id: "mock-north-court-3x3",
     slug: "north-court-3x3",
     title: "North Court 3x3 เชียงใหม่",
     province: "Chiang Mai",
@@ -37,6 +40,7 @@ export const mockTournamentData: Tournament[] = [
     format: "THREE_V_THREE",
     ageGroup: "U18",
     status: "CLOSED",
+    documents: [],
     startsAt: "2026-10-04T10:00:00+07:00",
     endsAt: "2026-10-04T19:00:00+07:00",
     registrationDeadline: "2026-09-25T23:59:00+07:00",
@@ -45,6 +49,7 @@ export const mockTournamentData: Tournament[] = [
     matches: [],
   },
   {
+    id: "mock-chonburi-coast-cup",
     slug: "chonburi-coast-cup",
     title: "ชลบุรี โคสต์ คัพ",
     province: "Chonburi",
@@ -52,6 +57,7 @@ export const mockTournamentData: Tournament[] = [
     format: "FIVE_V_FIVE",
     ageGroup: "U16",
     status: "ONGOING",
+    documents: [],
     startsAt: "2026-07-24T09:00:00+07:00",
     endsAt: "2026-07-26T18:00:00+07:00",
     registrationDeadline: "2026-07-10T23:59:00+07:00",
@@ -72,6 +78,7 @@ export const mockTournamentData: Tournament[] = [
     ],
   },
   {
+    id: "mock-chiang-mai-hoops-classic",
     slug: "chiang-mai-hoops-classic",
     title: "เชียงใหม่ ฮูปส์ คลาสสิก",
     province: "Chiang Mai",
@@ -79,6 +86,7 @@ export const mockTournamentData: Tournament[] = [
     format: "FIVE_V_FIVE",
     ageGroup: "U14",
     status: "COMPLETED",
+    documents: [],
     startsAt: "2026-06-20T09:00:00+07:00",
     endsAt: "2026-06-21T17:00:00+07:00",
     registrationDeadline: "2026-06-05T23:59:00+07:00",
@@ -99,6 +107,7 @@ export const mockTournamentData: Tournament[] = [
     ],
   },
   {
+    id: "mock-chonburi-veterans-league",
     slug: "chonburi-veterans-league",
     title: "ชลบุรี วีเทอรันส์ ลีก",
     province: "Chonburi",
@@ -106,6 +115,7 @@ export const mockTournamentData: Tournament[] = [
     format: "FIVE_V_FIVE",
     ageGroup: "35+",
     status: "COMPLETED",
+    documents: [],
     startsAt: "2026-04-11T09:00:00+07:00",
     endsAt: "2026-04-12T18:00:00+07:00",
     registrationDeadline: "2026-03-28T23:59:00+07:00",
@@ -114,6 +124,7 @@ export const mockTournamentData: Tournament[] = [
     matches: [],
   },
   {
+    id: "mock-lanna-community-cup",
     slug: "lanna-community-cup",
     title: "ล้านนา คอมมูนิตี้ คัพ",
     province: "Chiang Mai",
@@ -121,6 +132,7 @@ export const mockTournamentData: Tournament[] = [
     format: "FIVE_V_FIVE",
     ageGroup: "U20",
     status: "CLOSED",
+    documents: [],
     startsAt: "2026-03-08T09:00:00+07:00",
     endsAt: "2026-03-09T18:00:00+07:00",
     registrationDeadline: "2026-02-20T23:59:00+07:00",

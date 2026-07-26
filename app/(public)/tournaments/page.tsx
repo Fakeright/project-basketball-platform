@@ -2,12 +2,11 @@ import { TournamentSearchForm } from "@/components/tournament-search-form"
 import { TournamentRow } from "@/components/tournament-row"
 import { StatePanel } from "@/components/state-panel"
 import { searchTournaments } from "@/features/tournaments/application/search-tournaments"
-import { MockTournamentRepository } from "@/features/tournaments/infrastructure/mock-tournament-repository"
+import { getTournamentRepository } from "@/features/tournaments/infrastructure/get-tournament-repository"
 import { parseTournamentSearchParams } from "@/features/tournaments/presentation/tournament-search-params"
 
-const repository = new MockTournamentRepository()
-
 export default async function TournamentListPage({ searchParams }: PageProps<"/tournaments">) {
+  const repository = getTournamentRepository()
   const filters = parseTournamentSearchParams(await searchParams)
   const tournaments = await searchTournaments(repository, filters)
 

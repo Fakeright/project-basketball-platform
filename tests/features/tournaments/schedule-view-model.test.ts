@@ -22,3 +22,19 @@ test("groups matches under their scheduled date and court", () => {
     "2026-07-27": { "Court A": [matches[0]] },
   })
 })
+
+test("omits matches that do not have a confirmed schedule yet", () => {
+  const unscheduled: Match = {
+    id: "match-unscheduled",
+    tournamentSlug: "bangkok-open-2026",
+    round: "Semi Final",
+    court: "Court A",
+    scheduledAt: null,
+    homeTeam: "Home",
+    awayTeam: "Away",
+    homeScore: null,
+    awayScore: null,
+  }
+
+  expect(groupMatchesByDateAndCourt([unscheduled])).toEqual({})
+})
