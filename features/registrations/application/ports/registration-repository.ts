@@ -24,6 +24,51 @@ export interface TeamRegistrationListItem extends TournamentRegistration {
   organizerNote: string | null
 }
 
+export interface RegistrationReviewTournament {
+  id: string
+  title: string
+  organizerId: string
+  status: RegistrationTournamentStatus
+  capacity: number
+}
+
+export interface RegistrationReviewContext {
+  registration: TournamentRegistration
+  tournament: RegistrationReviewTournament
+}
+
+export interface TournamentRegistrationReviewItem
+  extends TournamentRegistration {
+  teamName: string
+  province: string
+  playerCount: number
+  coachCount: number
+  submittedAt: string
+}
+
+interface RegistrationReviewMutationInput {
+  before: TournamentRegistration
+  version: number
+  actorId: string
+  at: string
+  adminOverride: boolean
+}
+
+export interface ApproveRegistrationInput
+  extends RegistrationReviewMutationInput {
+  note: string
+}
+
+export interface RejectRegistrationInput
+  extends RegistrationReviewMutationInput {
+  note: string
+}
+
+export interface WithdrawRegistrationMutationInput
+  extends RegistrationReviewMutationInput {
+  reason: string
+}
+
 export interface RegistrationRepositoryTransaction {
   getApplicationContext(
     tournamentId: string,
@@ -42,6 +87,16 @@ export interface RegistrationRepositoryTransaction {
     actorId: string,
     at: string,
   ): Promise<TournamentRegistration>
+  findReviewContext(id: string): Promise<RegistrationReviewContext | null>
+  approveWithCapacity(
+    input: ApproveRegistrationInput,
+  ): Promise<TournamentRegistration>
+  rejectWithVersion(
+    input: RejectRegistrationInput,
+  ): Promise<TournamentRegistration>
+  withdrawWithVersion(
+    input: WithdrawRegistrationMutationInput,
+  ): Promise<TournamentRegistration>
 }
 
 export interface RegistrationRepository extends RegistrationRepositoryTransaction {
@@ -50,4 +105,10 @@ export interface RegistrationRepository extends RegistrationRepositoryTransactio
   ): Promise<T>
   findTeam(teamId: string): Promise<TeamSummary | null>
   listByTeam(teamId: string): Promise<TeamRegistrationListItem[]>
+  findTournamentForReview(
+    tournamentId: string,
+  ): Promise<RegistrationReviewTournament | null>
+  listByTournament(
+    tournamentId: string,
+  ): Promise<TournamentRegistrationReviewItem[]>
 }

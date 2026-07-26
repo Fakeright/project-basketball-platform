@@ -1,17 +1,28 @@
 import { Prisma, type PrismaClient, type Registration, type Team, type TeamMember } from "@/lib/generated/prisma/client"
 import type {
+  ApproveRegistrationInput,
   RegistrationApplicationContext,
   RegistrationRepository,
   RegistrationRepositoryTransaction,
+  RegistrationReviewContext,
+  RegistrationReviewTournament,
+  RejectRegistrationInput,
   TeamRegistrationListItem,
+  TournamentRegistrationReviewItem,
   TournamentRegistrationWithOwnership,
+  WithdrawRegistrationMutationInput,
 } from "@/features/registrations/application/ports/registration-repository"
 import type { TeamRosterMember, TeamSummary } from "@/features/team-management/domain/team"
 import type { TournamentRegistration } from "@/features/registrations/domain/registration"
 
 type RegistrationDatabaseClient = Pick<
   PrismaClient,
-  "registration" | "team" | "teamMember" | "tournament" | "auditLog"
+  | "registration"
+  | "team"
+  | "teamMember"
+  | "tournament"
+  | "auditLog"
+  | "$queryRaw"
 >
 
 const maxSerializationAttempts = 3
@@ -61,6 +72,22 @@ export class PrismaRegistrationRepository implements RegistrationRepository {
     return this.operations.cancelWithVersion(id, version, actorId, at)
   }
 
+  findReviewContext(id: string) {
+    return this.operations.findReviewContext(id)
+  }
+
+  approveWithCapacity(input: ApproveRegistrationInput) {
+    return this.operations.approveWithCapacity(input)
+  }
+
+  rejectWithVersion(input: RejectRegistrationInput) {
+    return this.operations.rejectWithVersion(input)
+  }
+
+  withdrawWithVersion(input: WithdrawRegistrationMutationInput) {
+    return this.operations.withdrawWithVersion(input)
+  }
+
   async findTeam(teamId: string): Promise<TeamSummary | null> {
     const team = await this.prisma.team.findUnique({ where: { id: teamId } })
     return team ? mapTeam(team) : null
@@ -77,6 +104,54 @@ export class PrismaRegistrationRepository implements RegistrationRepository {
       tournamentName: registration.tournament.title,
       submittedAt: registration.createdAt.toISOString(),
       organizerNote: registration.decisionNote,
+    }))
+  }
+
+  async findTournamentForReview(
+    tournamentId: string,
+  ): Promise<RegistrationReviewTournament | null> {
+    const tournament = await this.prisma.tournament.findUnique({
+      where: { id: tournamentId },
+      select: {
+        id: true,
+        title: true,
+        organizerId: true,
+        status: true,
+        capacity: true,
+      },
+    })
+    return tournament ? mapReviewTournament(tournament) : null
+  }
+
+  async listByTournament(
+    tournamentId: string,
+  ): Promise<TournamentRegistrationReviewItem[]> {
+    const registrations = await this.prisma.registration.findMany({
+      where: { tournamentId },
+      include: {
+        team: {
+          include: {
+            members: {
+              where: { isActive: true },
+              select: { role: true },
+            },
+          },
+        },
+      },
+      orderBy: { createdAt: "asc" },
+    })
+
+    return registrations.map((registration) => ({
+      ...mapRegistration(registration),
+      teamName: registration.team.name,
+      province: registration.team.province,
+      playerCount: registration.team.members.filter(
+        (member) => member.role === "PLAYER",
+      ).length,
+      coachCount: registration.team.members.filter(
+        (member) => member.role === "COACH",
+      ).length,
+      submittedAt: registration.createdAt.toISOString(),
     }))
   }
 }
@@ -173,6 +248,179 @@ class PrismaRegistrationOperations implements RegistrationRepositoryTransaction 
     })
     return mapRegistration(registration)
   }
+
+  async findReviewContext(id: string): Promise<RegistrationReviewContext | null> {
+    const registration = await this.prisma.registration.findUnique({
+      where: { id },
+      include: {
+        tournament: {
+          select: {
+            id: true,
+            title: true,
+            organizerId: true,
+            status: true,
+            capacity: true,
+          },
+        },
+      },
+    })
+    return registration
+      ? {
+          registration: mapRegistration(registration),
+          tournament: mapReviewTournament(registration.tournament),
+        }
+      : null
+  }
+
+  async approveWithCapacity(
+    input: ApproveRegistrationInput,
+  ): Promise<TournamentRegistration> {
+    const lockedTournament = await this.prisma.$queryRaw<
+      Array<{ capacity: number }>
+    >(
+      Prisma.sql`
+        SELECT "capacity"
+        FROM "Tournament"
+        WHERE "id" = ${input.before.tournamentId}
+        FOR UPDATE
+      `,
+    )
+    const capacity = lockedTournament[0]?.capacity
+    if (capacity === undefined) throw new Error("NOT_FOUND")
+
+    const approvedCount = await this.prisma.registration.count({
+      where: {
+        tournamentId: input.before.tournamentId,
+        status: "APPROVED",
+      },
+    })
+    if (approvedCount >= capacity) {
+      throw new Error("TOURNAMENT_CAPACITY_REACHED")
+    }
+
+    return this.updateDecision({
+      before: input.before,
+      version: input.version,
+      actorId: input.actorId,
+      at: input.at,
+      adminOverride: input.adminOverride,
+      sourceStatus: "PENDING",
+      status: "APPROVED",
+      note: input.note,
+      action: "registration.approved",
+      timestampField: "decidedAt",
+    })
+  }
+
+  rejectWithVersion(
+    input: RejectRegistrationInput,
+  ): Promise<TournamentRegistration> {
+    return this.updateDecision({
+      before: input.before,
+      version: input.version,
+      actorId: input.actorId,
+      at: input.at,
+      adminOverride: input.adminOverride,
+      sourceStatus: "PENDING",
+      status: "REJECTED",
+      note: input.note,
+      action: "registration.rejected",
+      timestampField: "decidedAt",
+    })
+  }
+
+  withdrawWithVersion(
+    input: WithdrawRegistrationMutationInput,
+  ): Promise<TournamentRegistration> {
+    return this.updateDecision({
+      before: input.before,
+      version: input.version,
+      actorId: input.actorId,
+      at: input.at,
+      adminOverride: input.adminOverride,
+      sourceStatus: "APPROVED",
+      status: "WITHDRAWN",
+      note: input.reason,
+      action: "registration.withdrawn",
+      timestampField: "withdrawnAt",
+    })
+  }
+
+  private async updateDecision(input: {
+    before: TournamentRegistration
+    version: number
+    actorId: string
+    at: string
+    adminOverride: boolean
+    sourceStatus: "PENDING" | "APPROVED"
+    status: "APPROVED" | "REJECTED" | "WITHDRAWN"
+    note: string
+    action:
+      | "registration.approved"
+      | "registration.rejected"
+      | "registration.withdrawn"
+    timestampField: "decidedAt" | "withdrawnAt"
+  }): Promise<TournamentRegistration> {
+    const timestamp = new Date(input.at)
+    const updated = await this.prisma.registration.updateMany({
+      where: {
+        id: input.before.id,
+        ...(input.status === "APPROVED"
+          ? { tournamentId: input.before.tournamentId }
+          : {}),
+        status: input.sourceStatus,
+        version: input.version,
+      },
+      data: {
+        status: input.status,
+        decisionNote: input.note || null,
+        [input.timestampField]: timestamp,
+        version: { increment: 1 },
+      },
+    })
+    if (updated.count !== 1) throw new Error("CONFLICT")
+
+    const registration = await this.prisma.registration.findUnique({
+      where: { id: input.before.id },
+    })
+    if (!registration) throw new Error("NOT_FOUND")
+    const after = mapRegistration(registration)
+
+    await this.appendDecisionAudit({
+      actorId: input.actorId,
+      action: input.action,
+      before: input.before,
+      after,
+      adminOverride: input.adminOverride,
+    })
+
+    return after
+  }
+
+  private async appendDecisionAudit(input: {
+    actorId: string
+    action: string
+    before: TournamentRegistration
+    after: TournamentRegistration
+    adminOverride: boolean
+  }) {
+    const auditData = {
+      actorId: input.actorId,
+      tournamentId: input.before.tournamentId,
+      entityType: "Registration",
+      entityId: input.before.id,
+      beforeJson: toJsonValue(input.before),
+      afterJson: toJsonValue(input.after),
+    }
+    await this.prisma.auditLog.create({
+      data: { ...auditData, action: input.action },
+    })
+    if (input.adminOverride) {
+      await this.prisma.auditLog.create({
+        data: { ...auditData, action: "registration.admin_override" },
+      })
+    }
+  }
 }
 
 function mapTeam(team: Team): TeamSummary {
@@ -202,6 +450,22 @@ function mapRegistration(registration: Registration): TournamentRegistration {
     version: registration.version,
     createdAt: registration.createdAt.toISOString(),
     updatedAt: registration.updatedAt.toISOString(),
+  }
+}
+
+function mapReviewTournament(tournament: {
+  id: string
+  title: string
+  organizerId: string
+  status: RegistrationReviewTournament["status"]
+  capacity: number
+}): RegistrationReviewTournament {
+  return {
+    id: tournament.id,
+    title: tournament.title,
+    organizerId: tournament.organizerId,
+    status: tournament.status,
+    capacity: tournament.capacity,
   }
 }
 

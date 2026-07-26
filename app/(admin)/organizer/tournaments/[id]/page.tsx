@@ -1,4 +1,6 @@
 import { notFound, redirect } from "next/navigation"
+import Link from "next/link"
+import { ClipboardCheck } from "lucide-react"
 
 import { TournamentEditor } from "@/components/admin/tournament-editor"
 import { authorize } from "@/features/identity/application/authorize"
@@ -41,16 +43,35 @@ export default async function EditTournamentPage({
   }))
 
   return (
-    <TournamentEditor
-      initialTournament={{
-        ...tournament,
-        startsAt: toLocalDateTime(tournament.startsAt),
-        endsAt: toLocalDateTime(tournament.endsAt),
-        registrationDeadline: toLocalDateTime(
-          tournament.registrationDeadline,
-        ),
-        mediaAssets,
-      }}
-    />
+    <div className="space-y-8">
+      <section className="border-y border-border px-4 py-5 sm:px-6">
+        <div className="mx-auto flex w-full max-w-5xl flex-wrap items-center justify-between gap-4">
+          <div>
+            <p className="text-sm font-semibold">ทีมสมัครแข่งขัน</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              ตรวจสอบรายชื่อทีมและจัดการผลการสมัคร
+            </p>
+          </div>
+          <Link
+            className="inline-flex h-9 items-center gap-2 rounded-lg bg-primary px-3 text-sm font-medium text-primary-foreground hover:bg-primary/80"
+            href={`/organizer/tournaments/${id}/registrations`}
+          >
+            <ClipboardCheck aria-hidden="true" size={16} />
+            ตรวจสอบการสมัคร
+          </Link>
+        </div>
+      </section>
+      <TournamentEditor
+        initialTournament={{
+          ...tournament,
+          startsAt: toLocalDateTime(tournament.startsAt),
+          endsAt: toLocalDateTime(tournament.endsAt),
+          registrationDeadline: toLocalDateTime(
+            tournament.registrationDeadline,
+          ),
+          mediaAssets,
+        }}
+      />
+    </div>
   )
 }

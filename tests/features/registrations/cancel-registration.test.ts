@@ -38,8 +38,14 @@ function createRepository(ownerId = owner.id): RegistrationRepository {
       createdAt: "2026-10-01T00:00:00.000Z",
       updatedAt: "2026-10-02T00:00:00.000Z",
     })),
+    findReviewContext: vi.fn(),
+    approveWithCapacity: vi.fn(),
+    rejectWithVersion: vi.fn(),
+    withdrawWithVersion: vi.fn(),
     findTeam: vi.fn(async () => ({ id: "team-1", name: "Ballers", province: "Bangkok", ownerId })),
     listByTeam: vi.fn(async () => []),
+    findTournamentForReview: vi.fn(),
+    listByTournament: vi.fn(async () => []),
     inTransaction: vi.fn(async (operation) => operation(repository)),
   }
   return repository
