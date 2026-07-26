@@ -107,6 +107,7 @@ class DevelopmentTournamentOperationsRepository
   async reviewWithVersion(input: {
     tournamentId: string
     version: number
+    sourceStatus: TournamentOperation["status"]
     status: TournamentOperation["status"]
     reviewerId: string
     decision: TournamentReviewInput["decision"]
@@ -119,7 +120,12 @@ class DevelopmentTournamentOperationsRepository
     if (index < 0) throw new Error("NOT_FOUND")
 
     const current = state.tournaments[index]
-    if (current.version !== input.version) throw new Error("CONFLICT")
+    if (
+      current.version !== input.version ||
+      current.status !== input.sourceStatus
+    ) {
+      throw new Error("CONFLICT")
+    }
 
     const updated: TournamentOperation = {
       ...current,

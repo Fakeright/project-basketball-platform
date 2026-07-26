@@ -8,11 +8,13 @@ export async function reviewTournament(repository: TournamentOperationsRepositor
   const tournament = await repository.findById(id)
   if (!tournament) throw new Error("NOT_FOUND")
   authorize(actor, "tournament.review", { organizerId: tournament.organizerId })
+  if (input.version !== tournament.version) throw new Error("CONFLICT")
   if (input.decision !== "APPROVED" && !input.note.trim()) throw new Error("REVIEW_NOTE_REQUIRED")
   const status = applyReviewDecision(tournament, input.decision)
   return repository.reviewWithVersion({
     tournamentId: id,
-    version: input.version,
+    version: tournament.version,
+    sourceStatus: tournament.status,
     status,
     reviewerId: actor.id,
     decision: input.decision,

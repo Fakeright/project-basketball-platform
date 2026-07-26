@@ -24,7 +24,22 @@ describe("reviewTournament", () => {
 
     expect(approved.status).toBe("APPROVED")
     expect(reviewWithVersion).toHaveBeenCalledOnce()
+    expect(reviewWithVersion).toHaveBeenCalledWith(
+      expect.objectContaining({ sourceStatus: "SUBMITTED" }),
+    )
     expect(appendReview).not.toHaveBeenCalled()
+  })
+
+  it("rejects a future client version before transitioning", async () => {
+    const repository = new InMemoryTournamentOperationsRepository()
+    const tournament = await createTournament(repository, input, organizer)
+    await repository.updateWithVersion(tournament.id, 0, { status: "SUBMITTED" })
+    const reviewWithVersion = vi.spyOn(repository, "reviewWithVersion")
+
+    await expect(
+      reviewTournament(repository, tournament.id, { decision: "APPROVED", note: "ผ่าน", version: 2 }, admin),
+    ).rejects.toThrow("CONFLICT")
+    expect(reviewWithVersion).not.toHaveBeenCalled()
   })
 
   it("rejects a stale review version", async () => {

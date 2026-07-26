@@ -42,11 +42,21 @@ export class InMemoryTournamentOperationsRepository implements TournamentOperati
   async reviewWithVersion(input: {
     tournamentId: string
     version: number
+    sourceStatus: TournamentOperation["status"]
     status: TournamentOperation["status"]
     reviewerId: string
     decision: TournamentReviewInput["decision"]
     note: string
   }) {
+    const current = this.tournaments.get(input.tournamentId)
+    if (!current) throw new Error("NOT_FOUND")
+    if (
+      current.version !== input.version ||
+      current.status !== input.sourceStatus
+    ) {
+      throw new Error("CONFLICT")
+    }
+
     const updated = await this.updateWithVersion(
       input.tournamentId,
       input.version,

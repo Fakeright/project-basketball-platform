@@ -107,6 +107,7 @@ describe("PrismaTournamentOperationsRepository", () => {
     const reviewed = await repository.reviewWithVersion({
       tournamentId: "tournament-1",
       version: 2,
+      sourceStatus: "SUBMITTED",
       status: "APPROVED",
       reviewerId: "admin-1",
       decision: "APPROVED",
@@ -115,7 +116,7 @@ describe("PrismaTournamentOperationsRepository", () => {
 
     expect(prisma.$transaction).toHaveBeenCalledOnce()
     expect(prisma.tournament.updateMany).toHaveBeenCalledWith({
-      where: { id: "tournament-1", version: 2 },
+      where: { id: "tournament-1", version: 2, status: "SUBMITTED" },
       data: { status: "APPROVED", version: { increment: 1 } },
     })
     expect(prisma.tournamentReview.create).toHaveBeenCalledWith({

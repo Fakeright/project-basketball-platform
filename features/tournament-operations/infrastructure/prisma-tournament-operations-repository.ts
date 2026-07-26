@@ -94,6 +94,7 @@ export class PrismaTournamentOperationsRepository
         where: {
           id: input.tournamentId,
           version: input.version,
+          status: input.sourceStatus,
         },
         data: {
           status: input.status,

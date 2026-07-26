@@ -13,6 +13,7 @@ export interface TournamentOperationsRepository {
 export interface TournamentReviewTransition {
   tournamentId: string
   version: number
+  sourceStatus: TournamentOperationStatus
   status: TournamentOperationStatus
   reviewerId: string
   decision: TournamentReviewInput["decision"]
