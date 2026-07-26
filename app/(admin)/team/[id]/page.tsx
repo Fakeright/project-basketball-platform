@@ -8,6 +8,8 @@ import { createNextCookieCurrentActorProvider } from "@/features/identity/infras
 import { getOwnedTeamWorkspace } from "@/features/team-management/application/get-owned-team-workspace"
 import { listTeamMemberCandidates } from "@/features/team-management/application/list-team-member-candidates"
 import { getTeamRepository } from "@/features/team-management/infrastructure/get-team-repository"
+import { listOwnedTeamRegistrations } from "@/features/registrations/application/list-owned-team-registrations"
+import { getRegistrationRepository } from "@/features/registrations/infrastructure/get-registration-repository"
 
 export default async function TeamDetailPage({
   params,
@@ -18,7 +20,7 @@ export default async function TeamDetailPage({
   if (!actor) notFound()
 
   const { id } = await params
-  const [workspace, candidates] = await loadTeamDetail(id, actor)
+  const [workspace, candidates, registrations] = await loadTeamDetail(id, actor)
 
   return (
     <section>
@@ -36,7 +38,7 @@ export default async function TeamDetailPage({
           members={workspace.members}
           teamId={workspace.team.id}
         />
-        <TeamRegistrationList registrations={[]} />
+        <TeamRegistrationList registrations={registrations} />
       </div>
     </section>
   )
@@ -51,6 +53,7 @@ async function loadTeamDetail(
     return await Promise.all([
       getOwnedTeamWorkspace(id, actor, { teams: repository }),
       listTeamMemberCandidates(id, actor, { teams: repository }),
+      listOwnedTeamRegistrations(id, actor, { registrations: getRegistrationRepository() }),
     ])
   } catch (error) {
     if (error instanceof Error && ["NOT_FOUND", "FORBIDDEN"].includes(error.message)) {
