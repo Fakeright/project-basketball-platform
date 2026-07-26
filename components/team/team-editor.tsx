@@ -14,8 +14,10 @@ const fieldClassName =
 
 export function TeamEditor({
   initialTeam,
+  adminOverride = false,
 }: {
   initialTeam: EditableTeam | null
+  adminOverride?: boolean
 }) {
   const [message, setMessage] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
@@ -53,6 +55,11 @@ export function TeamEditor({
 
   return (
     <form className="space-y-6" onSubmit={handleSubmit}>
+      {adminOverride ? (
+        <p className="border-l-4 border-court px-3 py-2 text-sm">
+          ผู้ดูแลระบบกำลังจัดการทีมนี้ในโหมด Admin Override
+        </p>
+      ) : null}
       <div className="grid gap-5 md:grid-cols-2">
         <label className="space-y-2 text-sm">
           <span>ชื่อทีม</span>

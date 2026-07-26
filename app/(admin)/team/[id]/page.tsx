@@ -27,7 +27,10 @@ export default async function TeamDetailPage({
         <h1 className="mt-2 text-2xl font-semibold">{workspace.team.name}</h1>
       </header>
       <div className="pt-8">
-        <TeamEditor initialTeam={workspace.team} />
+        <TeamEditor
+          adminOverride={actor.role === "PLATFORM_ADMIN"}
+          initialTeam={workspace.team}
+        />
         <RosterManager
           candidates={candidates}
           members={workspace.members}
