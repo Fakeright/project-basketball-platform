@@ -166,8 +166,9 @@ export async function handleWithdrawRegistration(
 async function parseJson(request: Request): Promise<unknown> {
   try {
     return await request.json()
-  } catch {
-    return undefined
+  } catch (error) {
+    if (error instanceof SyntaxError) return undefined
+    throw error
   }
 }
 

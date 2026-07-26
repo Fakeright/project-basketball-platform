@@ -57,6 +57,85 @@ describe("organizer registration route handlers", () => {
     expect(withdraw).not.toHaveBeenCalled()
   })
 
+  it("maps malformed JSON from a real Request to 422 without diagnostics", async () => {
+    const decide = vi.fn()
+    const createCorrelationId = vi.fn(() => "unused-correlation-id")
+    const logger = { error: vi.fn() }
+    const malformedRequest = new Request(
+      "http://localhost/api/organizer/registrations",
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: '{"decision":',
+      },
+    )
+
+    const response = await handleDecideRegistration(
+      "tournament-1",
+      "registration-1",
+      malformedRequest,
+      {
+        actorProvider: { getCurrentActor: vi.fn(async () => organizer) },
+        decide,
+        createCorrelationId,
+        logger,
+      },
+    )
+
+    expect(response.status).toBe(422)
+    await expect(response.json()).resolves.toEqual({
+      message: "ข้อมูลการสมัครไม่ถูกต้อง",
+    })
+    expect(decide).not.toHaveBeenCalled()
+    expect(createCorrelationId).not.toHaveBeenCalled()
+    expect(logger.error).not.toHaveBeenCalled()
+  })
+
+  it("maps non-syntax request body failures to safe diagnostics", async () => {
+    const decide = vi.fn()
+    const createCorrelationId = vi.fn(() => "transport-correlation")
+    const logger = { error: vi.fn() }
+    const transportRequest = request({
+      decision: "REJECT",
+      note: "private request payload",
+      version: 0,
+    })
+    vi.spyOn(transportRequest, "json").mockRejectedValue(
+      new TypeError("private transport detail"),
+    )
+
+    const response = await handleDecideRegistration(
+      "tournament-1",
+      "registration-1",
+      transportRequest,
+      {
+        actorProvider: { getCurrentActor: vi.fn(async () => organizer) },
+        decide,
+        createCorrelationId,
+        logger,
+      },
+    )
+    const responseBody = await response.json()
+
+    expect(response.status).toBe(500)
+    expect(responseBody).toEqual({
+      message: "ไม่สามารถจัดการการสมัครได้",
+      correlationId: "transport-correlation",
+    })
+    expect(decide).not.toHaveBeenCalled()
+    expect(logger.error).toHaveBeenCalledWith({
+      operation: "registration.decide",
+      correlationId: "transport-correlation",
+      errorType: "Error",
+    })
+    const publicDiagnostics = JSON.stringify({
+      responseBody,
+      logs: logger.error.mock.calls,
+    })
+    expect(publicDiagnostics).not.toContain("private transport detail")
+    expect(publicDiagnostics).not.toContain("private request payload")
+  })
+
   it("maps a full tournament approval to 409", async () => {
     const createCorrelationId = vi.fn(() => "unused-correlation-id")
     const logger = { error: vi.fn() }
