@@ -45,8 +45,8 @@ export function RegistrationReviewList({
   const [registrations, setRegistrations] = useState(initialRegistrations)
   const [reasons, setReasons] = useState<Record<string, string>>({})
   const [confirmation, setConfirmation] = useState<Confirmation | null>(null)
-  const [pendingId, setPendingId] = useState<string | null>(null)
-  const [feedback, setFeedback] = useState<string | null>(null)
+  const [pendingIds, setPendingIds] = useState<Set<string>>(() => new Set())
+  const [feedbackById, setFeedbackById] = useState<Record<string, string>>({})
 
   const statusCounts = Object.keys(statusLabels).map((status) => {
     const typedStatus = status as RegistrationStatus
@@ -69,7 +69,10 @@ export function RegistrationReviewList({
 
     const reason = reasons[registration.id]?.trim() ?? ""
     if (!reason) {
-      setFeedback("กรุณาระบุเหตุผลก่อนยืนยัน")
+      setFeedbackById((current) => ({
+        ...current,
+        [registration.id]: "กรุณาระบุเหตุผลก่อนยืนยัน",
+      }))
       return
     }
     setConfirmation({ kind, registration, reason })
@@ -80,8 +83,15 @@ export function RegistrationReviewList({
     if (!action) return
 
     setConfirmation(null)
-    setPendingId(action.registration.id)
-    setFeedback(null)
+    setPendingIds((current) => {
+      const next = new Set(current)
+      next.add(action.registration.id)
+      return next
+    })
+    setFeedbackById((current) => ({
+      ...current,
+      [action.registration.id]: "",
+    }))
     try {
       const isWithdrawal = action.kind === "WITHDRAW"
       const response = await fetch(
@@ -119,13 +129,24 @@ export function RegistrationReviewList({
         ),
       )
       setReasons((current) => ({ ...current, [action.registration.id]: "" }))
-      setFeedback("อัปเดตสถานะการสมัครแล้ว")
+      setFeedbackById((current) => ({
+        ...current,
+        [action.registration.id]: "อัปเดตสถานะการสมัครแล้ว",
+      }))
     } catch (error) {
-      setFeedback(
-        error instanceof Error ? error.message : "ไม่สามารถอัปเดตการสมัครได้",
-      )
+      setFeedbackById((current) => ({
+        ...current,
+        [action.registration.id]:
+          error instanceof Error
+            ? error.message
+            : "ไม่สามารถอัปเดตการสมัครได้",
+      }))
     } finally {
-      setPendingId(null)
+      setPendingIds((current) => {
+        const next = new Set(current)
+        next.delete(action.registration.id)
+        return next
+      })
     }
   }
 
@@ -184,7 +205,7 @@ export function RegistrationReviewList({
                   <div className="grid gap-3">
                     <Button
                       aria-label={`อนุมัติ ${registration.teamName}`}
-                      disabled={pendingId === registration.id}
+                      disabled={pendingIds.has(registration.id)}
                       onClick={() =>
                         requestConfirmation("APPROVE", registration)
                       }
@@ -214,7 +235,7 @@ export function RegistrationReviewList({
                     </div>
                     <Button
                       aria-label={`ปฏิเสธ ${registration.teamName}`}
-                      disabled={pendingId === registration.id}
+                      disabled={pendingIds.has(registration.id)}
                       onClick={() =>
                         requestConfirmation("REJECT", registration)
                       }
@@ -248,7 +269,7 @@ export function RegistrationReviewList({
                     </div>
                     <Button
                       aria-label={`ถอนทีม ${registration.teamName}`}
-                      disabled={pendingId === registration.id}
+                      disabled={pendingIds.has(registration.id)}
                       onClick={() =>
                         requestConfirmation("WITHDRAW", registration)
                       }
@@ -261,6 +282,12 @@ export function RegistrationReviewList({
                   </div>
                 ) : null}
               </div>
+              <p
+                aria-live="polite"
+                className="min-h-5 text-sm text-muted-foreground lg:col-span-3"
+              >
+                {feedbackById[registration.id] ?? ""}
+              </p>
             </li>
           ))}
         </ul>
@@ -271,9 +298,6 @@ export function RegistrationReviewList({
         onClose={() => setConfirmation(null)}
         onConfirm={submitConfirmation}
       />
-      <p aria-live="polite" className="mt-3 min-h-5 text-sm text-muted-foreground">
-        {feedback}
-      </p>
     </section>
   )
 }

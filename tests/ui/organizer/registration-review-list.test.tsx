@@ -1,4 +1,4 @@
-import { cleanup, render, screen, within } from "@testing-library/react"
+import { act, cleanup, render, screen, waitFor, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
@@ -27,6 +27,23 @@ const approved = {
   submittedAt: "2 ต.ค. 2569",
   status: "APPROVED" as const,
   version: 1,
+}
+
+const secondPending = {
+  ...pending,
+  id: "registration-3",
+  teamId: "team-3",
+  teamName: "Phuket Waves",
+  province: "Phuket",
+  submittedAt: "3 ต.ค. 2569",
+}
+
+function deferred<T>() {
+  let resolve!: (value: T) => void
+  const promise = new Promise<T>((fulfill) => {
+    resolve = fulfill
+  })
+  return { promise, resolve }
 }
 
 afterEach(() => {
@@ -175,4 +192,82 @@ describe("RegistrationReviewList", () => {
       }),
     )
   })
+
+  it("keeps concurrent row actions and feedback independent when responses resolve out of order", async () => {
+    const firstResponse = deferred<Response>()
+    const secondResponse = deferred<Response>()
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockReturnValueOnce(firstResponse.promise)
+        .mockReturnValueOnce(secondResponse.promise),
+    )
+    const user = userEvent.setup()
+
+    render(
+      <RegistrationReviewList
+        registrations={[pending, secondPending]}
+        tournamentId="tournament-1"
+      />,
+    )
+
+    const firstRow = screen.getByText("Bangkok Ballers").closest("li")
+    const secondRow = screen.getByText("Phuket Waves").closest("li")
+    if (!firstRow || !secondRow) throw new Error("Expected registration rows")
+    const firstApprove = within(firstRow).getByRole("button", {
+      name: "อนุมัติ Bangkok Ballers",
+    })
+    const secondApprove = within(secondRow).getByRole("button", {
+      name: "อนุมัติ Phuket Waves",
+    })
+
+    await submitApproval(user, firstApprove)
+    await submitApproval(user, secondApprove)
+
+    expect(firstApprove).toHaveProperty("disabled", true)
+    expect(secondApprove).toHaveProperty("disabled", true)
+
+    await act(async () => {
+      secondResponse.resolve(
+        Response.json({ message: "Phuket decision failed" }, { status: 409 }),
+      )
+    })
+
+    await waitFor(() => {
+      expect(firstApprove).toHaveProperty("disabled", true)
+      expect(secondApprove).toHaveProperty("disabled", false)
+      expect(within(secondRow).getByText("Phuket decision failed")).toBeTruthy()
+    })
+    expect(within(firstRow).queryByText("Phuket decision failed")).toBeNull()
+
+    await act(async () => {
+      firstResponse.resolve(
+        Response.json({
+          registration: { ...pending, status: "APPROVED", version: 1 },
+        }),
+      )
+    })
+
+    await waitFor(() => {
+      expect(
+        within(firstRow).getByText("อัปเดตสถานะการสมัครแล้ว"),
+      ).toBeTruthy()
+      expect(within(secondRow).getByText("Phuket decision failed")).toBeTruthy()
+    })
+    expect(firstRow.querySelector('[aria-live="polite"]')).not.toBeNull()
+    expect(secondRow.querySelector('[aria-live="polite"]')).not.toBeNull()
+  })
 })
+
+async function submitApproval(
+  user: ReturnType<typeof userEvent.setup>,
+  button: HTMLElement,
+) {
+  await user.click(button)
+  await user.click(
+    within(
+      screen.getByRole("dialog", { name: "ยืนยันการอนุมัติ" }),
+    ).getByRole("button", { name: "ยืนยันอนุมัติ" }),
+  )
+}

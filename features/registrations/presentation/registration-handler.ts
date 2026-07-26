@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto"
+
 import { z } from "zod"
 
 import type { Actor, CurrentActorProvider } from "@/features/identity/domain/actor"
@@ -19,22 +21,41 @@ const withdrawalSchema = z.object({
   version: z.number().int().nonnegative(),
 })
 
-interface ApplyHandlerDependencies {
+type RegistrationOperation =
+  | "registration.apply"
+  | "registration.cancel"
+  | "registration.decide"
+  | "registration.withdraw"
+
+interface UnexpectedRegistrationFailure {
+  operation: RegistrationOperation
+  correlationId: string
+  errorType: "Error" | "NonError"
+}
+
+interface RegistrationHandlerDiagnostics {
+  createCorrelationId?: () => string
+  logger?: {
+    error: (event: UnexpectedRegistrationFailure) => void
+  }
+}
+
+interface ApplyHandlerDependencies extends RegistrationHandlerDiagnostics {
   actorProvider: CurrentActorProvider
   apply: (input: ApplyToTournamentInput, actor: Actor) => Promise<TournamentRegistration>
 }
 
-interface CancelHandlerDependencies {
+interface CancelHandlerDependencies extends RegistrationHandlerDiagnostics {
   actorProvider: CurrentActorProvider
   cancel: (input: CancelRegistrationInput, actor: Actor) => Promise<TournamentRegistration>
 }
 
-interface DecisionHandlerDependencies {
+interface DecisionHandlerDependencies extends RegistrationHandlerDiagnostics {
   actorProvider: CurrentActorProvider
   decide: (input: DecideRegistrationInput, actor: Actor) => Promise<TournamentRegistration>
 }
 
-interface WithdrawalHandlerDependencies {
+interface WithdrawalHandlerDependencies extends RegistrationHandlerDiagnostics {
   actorProvider: CurrentActorProvider
   withdraw: (input: WithdrawRegistrationInput, actor: Actor) => Promise<TournamentRegistration>
 }
@@ -54,7 +75,7 @@ export async function handleApplyToTournament(
     const registration = await dependencies.apply({ tournamentId, ...parsed.data }, actor)
     return Response.json({ registration }, { status: 201 })
   } catch (error) {
-    return registrationFailureResponse(error)
+    return registrationFailureResponse(error, "registration.apply", dependencies)
   }
 }
 
@@ -73,7 +94,7 @@ export async function handleCancelRegistration(
     await dependencies.cancel({ registrationId, ...parsed.data }, actor)
     return new Response(null, { status: 204 })
   } catch (error) {
-    return registrationFailureResponse(error)
+    return registrationFailureResponse(error, "registration.cancel", dependencies)
   }
 }
 
@@ -96,7 +117,7 @@ export async function handleDecideRegistration(
     )
     return Response.json({ registration })
   } catch (error) {
-    return registrationFailureResponse(error)
+    return registrationFailureResponse(error, "registration.decide", dependencies)
   }
 }
 
@@ -119,7 +140,7 @@ export async function handleWithdrawRegistration(
     )
     return Response.json({ registration })
   } catch (error) {
-    return registrationFailureResponse(error)
+    return registrationFailureResponse(error, "registration.withdraw", dependencies)
   }
 }
 
@@ -139,7 +160,11 @@ function validationResponse() {
   return Response.json({ message: "ข้อมูลการสมัครไม่ถูกต้อง" }, { status: 422 })
 }
 
-function registrationFailureResponse(error: unknown) {
+function registrationFailureResponse(
+  error: unknown,
+  operation: RegistrationOperation,
+  diagnostics: RegistrationHandlerDiagnostics,
+) {
   const code = error instanceof Error ? error.message : "UNKNOWN"
   const responses: Record<string, { status: number; message: string }> = {
     REGISTRATION_DECISION_UNAVAILABLE: {
@@ -161,6 +186,34 @@ function registrationFailureResponse(error: unknown) {
     ROSTER_INCOMPLETE: { status: 422, message: "รายชื่อผู้เล่นในทีมยังไม่ครบ" },
     ROSTER_COACH_LIMIT_EXCEEDED: { status: 422, message: "ทีมมีโค้ชเกินจำนวนที่กำหนด" },
   }
-  const response = responses[code] ?? { status: 500, message: "ไม่สามารถจัดการการสมัครได้" }
+  const response = responses[code]
+  if (!response) {
+    return unexpectedRegistrationFailureResponse(error, operation, diagnostics)
+  }
   return Response.json({ message: response.message }, { status: response.status })
+}
+
+function unexpectedRegistrationFailureResponse(
+  error: unknown,
+  operation: RegistrationOperation,
+  diagnostics: RegistrationHandlerDiagnostics,
+) {
+  const correlationId = (diagnostics.createCorrelationId ?? randomUUID)()
+  const event: UnexpectedRegistrationFailure = {
+    operation,
+    correlationId,
+    errorType: error instanceof Error ? "Error" : "NonError",
+  }
+  const logger = diagnostics.logger ?? defaultRegistrationLogger
+  logger.error(event)
+  return Response.json(
+    { message: "ไม่สามารถจัดการการสมัครได้", correlationId },
+    { status: 500 },
+  )
+}
+
+const defaultRegistrationLogger = {
+  error(event: UnexpectedRegistrationFailure) {
+    console.error(event)
+  },
 }
