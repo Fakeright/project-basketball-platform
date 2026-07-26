@@ -68,6 +68,20 @@ export class PrismaTeamRepository implements TeamRepository {
       : null
   }
 
+  async listUsersByRoles(roles: readonly Role[]) {
+    const users = await this.prisma.user.findMany({
+      where: { role: { in: [...roles] } },
+      select: { id: true, displayName: true, role: true },
+      orderBy: { displayName: "asc" },
+    })
+
+    return users.map((user) => ({
+      id: user.id,
+      displayName: user.displayName,
+      role: user.role as Role,
+    }))
+  }
+
   async listActiveMembers(teamId: string) {
     const members = await this.prisma.teamMember.findMany({
       where: { teamId, isActive: true },

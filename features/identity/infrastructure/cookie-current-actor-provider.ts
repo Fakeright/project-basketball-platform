@@ -13,14 +13,19 @@ const developmentActors: Readonly<Record<string, Actor>> = {
     id: "organizer-2",
     role: "TOURNAMENT_ORGANIZER",
   },
+  "team-manager-1": {
+    id: "team-manager-1",
+    role: "TEAM_MANAGER",
+  },
 }
 
 export const developmentActorIds = Object.keys(developmentActors)
 
 export function getDevelopmentSessionDestination(actorId: string) {
-  return developmentActors[actorId]?.role === "TOURNAMENT_ORGANIZER"
-    ? "/organizer"
-    : "/admin"
+  const role = developmentActors[actorId]?.role
+  if (role === "TEAM_MANAGER") return "/team"
+  if (role === "TOURNAMENT_ORGANIZER") return "/organizer"
+  return "/admin"
 }
 
 export class CookieCurrentActorProvider implements CurrentActorProvider {

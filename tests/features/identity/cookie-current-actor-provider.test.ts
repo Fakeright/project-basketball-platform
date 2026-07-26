@@ -29,6 +29,10 @@ describe("CookieCurrentActorProvider", () => {
 })
 
 describe("getDevelopmentSessionDestination", () => {
+  it("sends team managers to the team workspace", () => {
+    expect(getDevelopmentSessionDestination("team-manager-1")).toBe("/team")
+  })
+
   it("sends organizers to their workspace", () => {
     expect(getDevelopmentSessionDestination("organizer-1")).toBe("/organizer")
   })

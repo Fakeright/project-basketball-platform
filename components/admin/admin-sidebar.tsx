@@ -7,6 +7,8 @@ const navigationClassName =
 
 export function AdminSidebar({ actor }: { actor: Actor }) {
   const isPlatformAdmin = actor.role === "PLATFORM_ADMIN"
+  const isTeamManager = actor.role === "TEAM_MANAGER"
+  const isOrganizer = actor.role === "TOURNAMENT_ORGANIZER"
 
   return (
     <aside className="border-b border-border pb-4 lg:w-56 lg:border-b-0 lg:border-r lg:pb-0 lg:pr-6">
@@ -27,9 +29,16 @@ export function AdminSidebar({ actor }: { actor: Actor }) {
             </Link>
           </>
         ) : null}
-        <Link className={navigationClassName} href="/organizer">
+        {isTeamManager || isPlatformAdmin ? (
+          <Link className={navigationClassName} href="/team">
+            ทีมของฉัน
+          </Link>
+        ) : null}
+        {isOrganizer || isPlatformAdmin ? (
+          <Link className={navigationClassName} href="/organizer">
           รายการของฉัน
-        </Link>
+          </Link>
+        ) : null}
       </nav>
     </aside>
   )

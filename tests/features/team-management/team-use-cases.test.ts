@@ -3,7 +3,9 @@ import { describe, expect, it, vi } from "vitest"
 import { addTeamMember } from "@/features/team-management/application/add-team-member"
 import { createTeam } from "@/features/team-management/application/create-team"
 import { deactivateTeamMember } from "@/features/team-management/application/deactivate-team-member"
+import { getOwnedTeamWorkspace } from "@/features/team-management/application/get-owned-team-workspace"
 import { listOwnedTeams } from "@/features/team-management/application/list-owned-teams"
+import { listTeamMemberCandidates } from "@/features/team-management/application/list-team-member-candidates"
 import type { TeamRepository } from "@/features/team-management/application/ports/team-repository"
 import { updateTeam } from "@/features/team-management/application/update-team"
 
@@ -32,6 +34,10 @@ function createRepository(
       displayName: "Player One",
       role: "PLAYER",
     })),
+    listUsersByRoles: vi.fn(async () => [
+      { id: "player-1", displayName: "Player One", role: "PLAYER" },
+      { id: "coach-1", displayName: "Coach One", role: "COACH" },
+    ]),
     listActiveMembers: vi.fn(async () => []),
     addMember: vi.fn(async (input) => ({
       id: "membership-1",
@@ -168,6 +174,49 @@ describe("team use cases", () => {
 
     expect(teams).toEqual([team])
     expect(repository.listByOwner).toHaveBeenCalledWith(teamManager.id)
+  })
+
+  it("loads only an owned team's active roster for the workspace", async () => {
+    const repository = createRepository({
+      listActiveMembers: vi.fn(async () => [
+        {
+          id: "membership-1",
+          userId: "player-1",
+          role: "PLAYER",
+          isActive: true,
+          deactivatedAt: null,
+        },
+      ]),
+    })
+
+    await expect(
+      getOwnedTeamWorkspace(team.id, teamManager, { teams: repository }),
+    ).resolves.toEqual({
+      team,
+      members: [
+        {
+          id: "membership-1",
+          userId: "player-1",
+          role: "PLAYER",
+          isActive: true,
+          deactivatedAt: null,
+        },
+      ],
+    })
+  })
+
+  it("lists only player and coach candidates for an owned roster", async () => {
+    const repository = createRepository()
+
+    const candidates = await listTeamMemberCandidates(team.id, teamManager, {
+      teams: repository,
+    })
+
+    expect(candidates).toEqual([
+      { id: "player-1", displayName: "Player One", role: "PLAYER" },
+      { id: "coach-1", displayName: "Coach One", role: "COACH" },
+    ])
+    expect(repository.listUsersByRoles).toHaveBeenCalledWith(["PLAYER", "COACH"])
   })
 
   it("performs each team mutation in a repository transaction", async () => {

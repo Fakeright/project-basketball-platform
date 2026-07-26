@@ -30,6 +30,15 @@ export default function LoginPage() {
                 เข้าใช้งานเป็น Organizer
               </button>
             </form>
+            <form action="/api/dev/session" method="post">
+              <input name="actorId" type="hidden" value="team-manager-1" />
+              <button
+                className="min-h-11 w-full border border-border px-4 text-sm font-medium hover:border-foreground"
+                type="submit"
+              >
+                เข้าใช้งานเป็น Team Manager
+              </button>
+            </form>
           </div>
         </div>
       ) : (

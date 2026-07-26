@@ -38,5 +38,12 @@ export interface TeamRepository extends TeamMutationRepository {
     displayName: string
     role: Role
   } | null>
+  listUsersByRoles(roles: readonly Role[]): Promise<
+    Array<{
+      id: string
+      displayName: string
+      role: Role
+    }>
+  >
   listActiveMembers(teamId: string): Promise<TeamRosterMember[]>
 }
