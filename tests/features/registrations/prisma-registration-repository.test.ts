@@ -117,6 +117,9 @@ describe("PrismaRegistrationRepository transactions", () => {
     ).rejects.toThrow("TOURNAMENT_CAPACITY_REACHED")
 
     expect(lockTournament).toHaveBeenCalledOnce()
+    const [lockQuery] = lockTournament.mock.calls[0]
+    expect(lockQuery.text).toMatch(/\bFOR\s+UPDATE\b/i)
+    expect(lockQuery.values).toEqual(["tournament-1"])
     expect(count).toHaveBeenCalledWith({
       where: { tournamentId: "tournament-1", status: "APPROVED" },
     })

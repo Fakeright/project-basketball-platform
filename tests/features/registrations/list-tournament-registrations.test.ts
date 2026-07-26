@@ -38,12 +38,12 @@ describe("listTournamentRegistrations", () => {
     expect(repository.listByTournament).toHaveBeenCalledWith("tournament-1")
   })
 
-  it("prevents another organizer from viewing the registration queue", async () => {
+  it("hides another organizer's existing tournament registration queue", async () => {
     await expect(
       listTournamentRegistrations("tournament-1", anotherOrganizer, {
         registrations: createRepository(),
       }),
-    ).rejects.toThrow("FORBIDDEN")
+    ).rejects.toThrow("NOT_FOUND")
   })
 
   it("allows platform admin governance across tournaments", async () => {

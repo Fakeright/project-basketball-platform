@@ -20,6 +20,12 @@ export async function listTournamentRegistrations(
   const tournament =
     await dependencies.registrations.findTournamentForReview(tournamentId)
   if (!tournament) throw new Error("NOT_FOUND")
+  if (
+    actor.role !== "PLATFORM_ADMIN" &&
+    tournament.organizerId !== actor.id
+  ) {
+    throw new Error("NOT_FOUND")
+  }
 
   authorize(actor, "registration.decide", {
     organizerId: tournament.organizerId,
