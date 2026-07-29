@@ -68,4 +68,33 @@ describe("team route handlers", () => {
 
     expect(response.status).toBe(422)
   })
+
+  it("maps a body transport failure to a safe correlated 500", async () => {
+    const logger = { error: vi.fn() }
+    const request = {
+      json: vi.fn(async () => {
+        throw new Error("private request detail")
+      }),
+    } as unknown as Request
+
+    const response = await handleCreateTeam(request, {
+      actorProvider: {
+        getCurrentActor: vi.fn(async () => teamManager),
+      },
+      create: vi.fn(),
+      createCorrelationId: () => "team-correlation",
+      logger,
+    })
+
+    expect(response.status).toBe(500)
+    await expect(response.json()).resolves.toEqual({
+      message: "ไม่สามารถดำเนินการได้ในขณะนี้",
+      correlationId: "team-correlation",
+    })
+    expect(logger.error).toHaveBeenCalledWith({
+      operation: "team.create",
+      correlationId: "team-correlation",
+      errorType: "Error",
+    })
+  })
 })

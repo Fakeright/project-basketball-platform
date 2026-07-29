@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest"
+import { describe, expect, it, vi } from "vitest"
 
 import { handleTournamentLifecycleRequest } from "@/features/admin/presentation/tournament-lifecycle-handler"
 import type { CurrentActorProvider } from "@/features/identity/domain/actor"
@@ -115,5 +115,42 @@ describe("tournament lifecycle handler", () => {
     )
 
     expect(response.status).toBe(409)
+  })
+
+  it("returns a safe correlated 500 for an unexpected repository failure", async () => {
+    const { repository, approved } = await approvedRepository()
+    vi.spyOn(repository, "findById").mockRejectedValueOnce(
+      new Error("private lifecycle detail"),
+    )
+    const logger = { error: vi.fn() }
+
+    const response = await handleTournamentLifecycleRequest(
+      new Request("http://localhost/api/publish", {
+        method: "POST",
+        body: JSON.stringify({ version: approved.version }),
+      }),
+      approved.id,
+      "PUBLISH",
+      {
+        actorProvider: actorProvider({
+          id: "organizer-1",
+          role: "TOURNAMENT_ORGANIZER",
+        }),
+        repository,
+        now: () => new Date("2026-11-01T00:00:00.000Z"),
+        createCorrelationId: () => "lifecycle-correlation",
+        logger,
+      },
+    )
+
+    expect(response.status).toBe(500)
+    await expect(response.json()).resolves.toMatchObject({
+      correlationId: "lifecycle-correlation",
+    })
+    expect(logger.error).toHaveBeenCalledWith({
+      operation: "tournament.lifecycle",
+      correlationId: "lifecycle-correlation",
+      errorType: "Error",
+    })
   })
 })

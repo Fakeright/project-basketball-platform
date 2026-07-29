@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest"
+import { describe, expect, it, vi } from "vitest"
 
 import { handleReviewRequest } from "@/features/admin/presentation/review-tournament-handler"
 import type { CurrentActorProvider } from "@/features/identity/domain/actor"
@@ -77,5 +77,42 @@ describe("POST tournament review", () => {
     })
 
     expect(response.status).toBe(422)
+  })
+
+  it("returns a safe correlated 500 for an unexpected repository failure", async () => {
+    const { repository, tournamentId } = await submittedRepository()
+    vi.spyOn(repository, "findById").mockRejectedValueOnce(
+      new Error("private database detail"),
+    )
+    const logger = { error: vi.fn() }
+    const request = new Request("http://localhost/api/review", {
+      method: "POST",
+      body: JSON.stringify({
+        decision: "APPROVED",
+        note: "",
+        version: 1,
+      }),
+    })
+
+    const response = await handleReviewRequest(request, tournamentId, {
+      actorProvider: actorProvider({
+        id: "admin-1",
+        role: "PLATFORM_ADMIN",
+      }),
+      repository,
+      createCorrelationId: () => "review-correlation",
+      logger,
+    })
+
+    expect(response.status).toBe(500)
+    await expect(response.json()).resolves.toEqual({
+      message: "ไม่สามารถดำเนินการได้ในขณะนี้",
+      correlationId: "review-correlation",
+    })
+    expect(logger.error).toHaveBeenCalledWith({
+      operation: "tournament.review",
+      correlationId: "review-correlation",
+      errorType: "Error",
+    })
   })
 })

@@ -88,7 +88,10 @@ const posterInput = {
     fileName: "poster.webp",
     contentType: "image/webp",
     byteSize: 4_000,
-    data: new Uint8Array([1, 2, 3]),
+    data: new Uint8Array([
+      0x52, 0x49, 0x46, 0x46, 0x00, 0x00, 0x00, 0x00, 0x57, 0x45, 0x42,
+      0x50,
+    ]),
   },
 }
 
@@ -160,5 +163,24 @@ describe("uploadTournamentMedia", () => {
     expect(
       JSON.stringify(dependencies.cleanupLogger.error.mock.calls),
     ).not.toContain("secret storage detail")
+  })
+
+  it("rejects spoofed MIME bytes before uploading to storage", async () => {
+    const dependencies = createDependencies()
+
+    await expect(
+      uploadTournamentMedia(
+        {
+          ...posterInput,
+          file: {
+            ...posterInput.file,
+            data: new Uint8Array([0x47, 0x49, 0x46, 0x38]),
+          },
+        },
+        organizer,
+        dependencies,
+      ),
+    ).rejects.toThrow("MEDIA_FILE_CONTENT_INVALID")
+    expect(dependencies.storage.upload).not.toHaveBeenCalled()
   })
 })

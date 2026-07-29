@@ -1,6 +1,11 @@
 import { z } from "zod"
 
 import type { CurrentActorProvider } from "@/features/identity/domain/actor"
+import {
+  parseJsonRequest,
+  type SafeHttpDiagnostics,
+  unexpectedFailureResponse,
+} from "@/features/shared/presentation/safe-http"
 import { reviewTournament } from "@/features/tournament-operations/application/review-tournament"
 import type { TournamentOperationsRepository } from "@/features/tournament-operations/infrastructure/tournament-operations-repository"
 
@@ -20,7 +25,7 @@ const reviewSchema = z
     }
   })
 
-export interface ReviewDependencies {
+export interface ReviewDependencies extends SafeHttpDiagnostics {
   actorProvider: CurrentActorProvider
   repository: TournamentOperationsRepository
 }
@@ -30,21 +35,28 @@ export async function handleReviewRequest(
   tournamentId: string,
   dependencies: ReviewDependencies,
 ) {
-  const actor = await dependencies.actorProvider.getCurrentActor()
-  if (!actor) {
-    return Response.json({ error: "กรุณาเข้าสู่ระบบ" }, { status: 401 })
-  }
-
-  const payload = await request.json().catch(() => null)
-  const parsed = reviewSchema.safeParse(payload)
-  if (!parsed.success) {
-    return Response.json(
-      { error: "ข้อมูลการตรวจสอบไม่ถูกต้อง", issues: parsed.error.issues },
-      { status: 422 },
-    )
-  }
-
   try {
+    const actor = await dependencies.actorProvider.getCurrentActor()
+    if (!actor) {
+      return Response.json({ error: "กรุณาเข้าสู่ระบบ" }, { status: 401 })
+    }
+
+    const payload = await parseJsonRequest(request)
+    if (!payload.ok) {
+      return Response.json(
+        { error: "ข้อมูลการตรวจสอบไม่ถูกต้อง" },
+        { status: 422 },
+      )
+    }
+
+    const parsed = reviewSchema.safeParse(payload.value)
+    if (!parsed.success) {
+      return Response.json(
+        { error: "ข้อมูลการตรวจสอบไม่ถูกต้อง", issues: parsed.error.issues },
+        { status: 422 },
+      )
+    }
+
     const tournament = await reviewTournament(
       dependencies.repository,
       tournamentId,
@@ -61,14 +73,16 @@ export async function handleReviewRequest(
       REVIEW_NOTE_REQUIRED: 422,
       INVALID_REVIEW_STATUS: 422,
     }
-    const status = statusByError[message] ?? 500
+    const status = statusByError[message]
+    if (!status) {
+      return unexpectedFailureResponse(
+        error,
+        "tournament.review",
+        dependencies,
+      )
+    }
     return Response.json(
-      {
-        error:
-          status === 500
-            ? "ไม่สามารถดำเนินการได้ในขณะนี้"
-            : "ไม่สามารถตรวจสอบรายการนี้ได้",
-      },
+      { error: "ไม่สามารถตรวจสอบรายการนี้ได้" },
       { status },
     )
   }

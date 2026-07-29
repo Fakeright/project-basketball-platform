@@ -1,8 +1,10 @@
 import type { Actor } from "@/features/identity/domain/actor"
-import { authorize } from "@/features/identity/application/authorize"
 import type { TournamentOperationsRepository } from "@/features/tournament-operations/infrastructure/tournament-operations-repository"
 import type { MediaAssetKind, TournamentMediaAsset } from "@/features/tournament-media/domain/media-asset"
-import { validateMediaFile } from "@/features/tournament-media/domain/media-policy"
+import {
+  validateMediaFile,
+  validateMediaFileContent,
+} from "@/features/tournament-media/domain/media-policy"
 
 import type { ObjectStorage } from "./ports/object-storage"
 import type { TournamentMediaRepository } from "./ports/tournament-media-repository"
@@ -10,6 +12,7 @@ import {
   reportMediaCleanupFailure,
   type MediaCleanupLogger,
 } from "./media-cleanup"
+import { authorizeTournamentMediaMutation } from "./authorize-tournament-media"
 
 export interface UploadTournamentMediaInput {
   tournamentId: string
@@ -36,9 +39,15 @@ export async function uploadTournamentMedia(
   dependencies: UploadTournamentMediaDependencies,
 ): Promise<TournamentMediaAsset> {
   validateMediaFile({ kind: input.kind, ...input.file })
-  const tournament = await dependencies.tournaments.findById(input.tournamentId)
-  if (!tournament) throw new Error("NOT_FOUND")
-  authorize(actor, "tournament.update", { organizerId: tournament.organizerId })
+  validateMediaFileContent({
+    contentType: input.file.contentType,
+    data: input.file.data,
+  })
+  const tournament = await authorizeTournamentMediaMutation(
+    input.tournamentId,
+    actor,
+    dependencies,
+  )
 
   const assetId = dependencies.createId()
   const bucket = input.kind === "POSTER" ? "tournament-posters" : "tournament-documents"

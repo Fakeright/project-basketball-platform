@@ -1,16 +1,24 @@
 import type { Actor, CurrentActorProvider } from "@/features/identity/domain/actor"
-import type { TournamentMediaAsset } from "@/features/tournament-media/domain/media-asset"
+import {
+  unexpectedFailureResponse,
+  type SafeHttpDiagnostics,
+} from "@/features/shared/presentation/safe-http"
 import type { UploadTournamentMediaInput } from "@/features/tournament-media/application/upload-tournament-media"
+import type { TournamentMediaAsset } from "@/features/tournament-media/domain/media-asset"
 
-interface MediaHandlerDependencies {
+const defaultMaximumRequestBytes = 10_500_000
+
+interface MediaHandlerDependencies extends SafeHttpDiagnostics {
   actorProvider: CurrentActorProvider
+  authorize: (tournamentId: string, actor: Actor) => Promise<void>
   upload: (
     input: UploadTournamentMediaInput,
     actor: Actor,
   ) => Promise<TournamentMediaAsset>
+  maxRequestBytes?: number
 }
 
-interface DeleteMediaHandlerDependencies {
+interface DeleteMediaHandlerDependencies extends SafeHttpDiagnostics {
   actorProvider: CurrentActorProvider
   remove: (
     input: { tournamentId: string; assetId: string },
@@ -23,36 +31,83 @@ export async function handleTournamentMediaUpload(
   tournamentId: string,
   dependencies: MediaHandlerDependencies,
 ) {
-  const actor = await dependencies.actorProvider.getCurrentActor()
-  if (!actor) return Response.json({ message: "กรุณาเข้าสู่ระบบ" }, { status: 401 })
-
-  const formData = await request.formData()
-  const kind = formData.get("kind")
-  const file = formData.get("file")
-  if (
-    (kind !== "POSTER" && kind !== "DOCUMENT") ||
-    !isUploadFile(file)
-  ) {
-    return Response.json({ message: "กรุณาเลือกไฟล์ที่ต้องการอัปโหลด" }, { status: 422 })
-  }
-
   try {
-    const asset = await dependencies.upload(
-      {
-        tournamentId,
-        kind,
-        file: {
-          fileName: file.name,
-          contentType: file.type,
-          byteSize: file.size,
-          data: new Uint8Array(await file.arrayBuffer()),
-        },
-      },
-      actor,
+    const actor = await dependencies.actorProvider.getCurrentActor()
+    if (!actor) {
+      return Response.json({ message: "กรุณาเข้าสู่ระบบ" }, { status: 401 })
+    }
+
+    try {
+      await dependencies.authorize(tournamentId, actor)
+    } catch (error) {
+      return (
+        mediaKnownFailureResponse(error) ??
+        unexpectedFailureResponse(error, "media.upload", dependencies)
+      )
+    }
+
+    const body = await readRequestBodyWithLimit(
+      request,
+      dependencies.maxRequestBytes ?? defaultMaximumRequestBytes,
     )
-    return Response.json({ asset }, { status: 201 })
+    if (!body) return invalidMediaFormResponse()
+
+    let formData: FormData
+    try {
+      const bufferedRequest = new Request(
+        request.url || "http://localhost/api/media",
+        {
+          method: request.method || "POST",
+          headers: request.headers,
+          body,
+        },
+      )
+      formData = await bufferedRequest.formData()
+    } catch {
+      return invalidMediaFormResponse()
+    }
+
+    const kind = formData.get("kind")
+    const file = formData.get("file")
+    if (
+      (kind !== "POSTER" && kind !== "DOCUMENT") ||
+      !isUploadFile(file)
+    ) {
+      return invalidMediaFormResponse()
+    }
+
+    try {
+      const asset = await dependencies.upload(
+        {
+          tournamentId,
+          kind,
+          file: {
+            fileName: file.name,
+            contentType: file.type,
+            byteSize: file.size,
+            data: new Uint8Array(await file.arrayBuffer()),
+          },
+        },
+        actor,
+      )
+      return Response.json({ asset }, { status: 201 })
+    } catch (error) {
+      return (
+        mediaKnownFailureResponse(error) ??
+        unexpectedFailureResponse(error, "media.upload", dependencies)
+      )
+    }
   } catch (error) {
-    return mediaFailureResponse(error)
+    if (
+      error instanceof MediaRequestBoundaryError &&
+      error.code === "MEDIA_REQUEST_TOO_LARGE"
+    ) {
+      return Response.json(
+        { message: "ไฟล์มีขนาดใหญ่เกินกว่าที่กำหนด" },
+        { status: 413 },
+      )
+    }
+    return unexpectedFailureResponse(error, "media.upload", dependencies)
   }
 }
 
@@ -61,15 +116,62 @@ export async function handleTournamentMediaDelete(
   assetId: string,
   dependencies: DeleteMediaHandlerDependencies,
 ) {
-  const actor = await dependencies.actorProvider.getCurrentActor()
-  if (!actor) return Response.json({ message: "กรุณาเข้าสู่ระบบ" }, { status: 401 })
-
   try {
-    await dependencies.remove({ tournamentId, assetId }, actor)
-    return new Response(null, { status: 204 })
+    const actor = await dependencies.actorProvider.getCurrentActor()
+    if (!actor) {
+      return Response.json({ message: "กรุณาเข้าสู่ระบบ" }, { status: 401 })
+    }
+
+    try {
+      await dependencies.remove({ tournamentId, assetId }, actor)
+      return new Response(null, { status: 204 })
+    } catch (error) {
+      return (
+        mediaKnownFailureResponse(error) ??
+        unexpectedFailureResponse(error, "media.delete", dependencies)
+      )
+    }
   } catch (error) {
-    return mediaFailureResponse(error)
+    return unexpectedFailureResponse(error, "media.delete", dependencies)
   }
+}
+
+export async function readRequestBodyWithLimit(
+  request: Request,
+  maximumBytes: number,
+): Promise<ArrayBuffer | null> {
+  const contentLength = request.headers.get("content-length")
+  if (contentLength) {
+    const declaredBytes = Number(contentLength)
+    if (Number.isFinite(declaredBytes) && declaredBytes > maximumBytes) {
+      throw new MediaRequestBoundaryError("MEDIA_REQUEST_TOO_LARGE")
+    }
+  }
+  if (!request.body) return null
+
+  const reader = request.body.getReader()
+  const chunks: Uint8Array[] = []
+  let totalBytes = 0
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) break
+    totalBytes += value.byteLength
+    if (totalBytes > maximumBytes) {
+      try {
+        await reader.cancel()
+      } catch {}
+      throw new MediaRequestBoundaryError("MEDIA_REQUEST_TOO_LARGE")
+    }
+    chunks.push(value)
+  }
+
+  const body = new Uint8Array(totalBytes)
+  let offset = 0
+  for (const chunk of chunks) {
+    body.set(chunk, offset)
+    offset += chunk.byteLength
+  }
+  return body.buffer
 }
 
 function isUploadFile(value: FormDataEntryValue | null): value is File {
@@ -83,20 +185,52 @@ function isUploadFile(value: FormDataEntryValue | null): value is File {
   )
 }
 
-function mediaFailureResponse(error: unknown) {
+function invalidMediaFormResponse() {
+  return Response.json(
+    { message: "กรุณาเลือกไฟล์ที่ต้องการอัปโหลด" },
+    { status: 422 },
+  )
+}
+
+function mediaKnownFailureResponse(error: unknown) {
   const code = error instanceof Error ? error.message : "UNKNOWN"
   const responses: Record<string, { status: number; message: string }> = {
     FORBIDDEN: { status: 403, message: "คุณไม่มีสิทธิ์จัดการสื่อของรายการนี้" },
     NOT_FOUND: { status: 404, message: "ไม่พบรายการแข่งขัน" },
     MEDIA_ASSET_NOT_FOUND: { status: 404, message: "ไม่พบไฟล์ที่ต้องการ" },
-    MEDIA_FILE_TOO_LARGE: { status: 413, message: "ขนาดไฟล์เกินกว่าที่กำหนด" },
-    MEDIA_FILE_TYPE_INVALID: { status: 415, message: "ชนิดไฟล์ไม่ได้รับอนุญาต" },
-    STORAGE_UPLOAD_FAILED: { status: 422, message: "ไม่สามารถอัปโหลดไฟล์ได้" },
-    STORAGE_REMOVE_FAILED: { status: 422, message: "ไม่สามารถลบไฟล์ได้" },
+    MEDIA_POSTER_CONFLICT: {
+      status: 409,
+      message: "โปสเตอร์ถูกเปลี่ยนจากอีกหน้าต่าง กรุณาลองใหม่",
+    },
+    MEDIA_FILE_TOO_LARGE: {
+      status: 413,
+      message: "ไฟล์มีขนาดใหญ่เกินกว่าที่กำหนด",
+    },
+    MEDIA_FILE_TYPE_INVALID: {
+      status: 415,
+      message: "ชนิดไฟล์ไม่ได้รับอนุญาต",
+    },
+    MEDIA_FILE_CONTENT_INVALID: {
+      status: 422,
+      message: "เนื้อหาไฟล์ไม่ตรงกับชนิดไฟล์",
+    },
+    STORAGE_UPLOAD_FAILED: {
+      status: 422,
+      message: "ไม่สามารถอัปโหลดไฟล์ได้",
+    },
+    STORAGE_MOVE_FAILED: {
+      status: 422,
+      message: "ไม่สามารถจัดเตรียมไฟล์เพื่อลบได้",
+    },
   }
-  const response = responses[code] ?? {
-    status: 500,
-    message: "เกิดข้อผิดพลาดในการจัดการไฟล์",
+  const response = responses[code]
+  return response
+    ? Response.json({ message: response.message }, { status: response.status })
+    : null
+}
+
+class MediaRequestBoundaryError extends Error {
+  constructor(readonly code: "MEDIA_REQUEST_TOO_LARGE") {
+    super(code)
   }
-  return Response.json({ message: response.message }, { status: response.status })
 }

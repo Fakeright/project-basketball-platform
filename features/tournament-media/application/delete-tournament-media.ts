@@ -1,5 +1,4 @@
 import type { Actor } from "@/features/identity/domain/actor"
-import { authorize } from "@/features/identity/application/authorize"
 import type { TournamentOperationsRepository } from "@/features/tournament-operations/infrastructure/tournament-operations-repository"
 
 import type { ObjectStorage } from "./ports/object-storage"
@@ -8,6 +7,7 @@ import {
   reportMediaCleanupFailure,
   type MediaCleanupLogger,
 } from "./media-cleanup"
+import { authorizeTournamentMediaMutation } from "./authorize-tournament-media"
 
 interface DeleteTournamentMediaDependencies {
   storage: Pick<ObjectStorage, "move" | "remove">
@@ -21,9 +21,11 @@ export async function deleteTournamentMedia(
   actor: Actor,
   dependencies: DeleteTournamentMediaDependencies,
 ): Promise<void> {
-  const tournament = await dependencies.tournaments.findById(input.tournamentId)
-  if (!tournament) throw new Error("NOT_FOUND")
-  authorize(actor, "tournament.update", { organizerId: tournament.organizerId })
+  const tournament = await authorizeTournamentMediaMutation(
+    input.tournamentId,
+    actor,
+    dependencies,
+  )
 
   const asset = await dependencies.media.findActiveAsset(
     input.tournamentId,

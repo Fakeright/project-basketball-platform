@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto"
 
 import { handleTournamentMediaUpload } from "@/features/admin/presentation/tournament-media-handler"
 import { createNextCookieCurrentActorProvider } from "@/features/identity/infrastructure/next-cookie-current-actor-provider"
+import { authorizeTournamentMediaMutation } from "@/features/tournament-media/application/authorize-tournament-media"
 import { uploadTournamentMedia } from "@/features/tournament-media/application/upload-tournament-media"
 import { getTournamentMediaRepository } from "@/features/tournament-media/infrastructure/get-tournament-media-repository"
 import { SupabaseObjectStorage } from "@/features/tournament-media/infrastructure/supabase-object-storage"
@@ -18,6 +19,11 @@ export async function POST(
 
   return handleTournamentMediaUpload(request, id, {
     actorProvider: createNextCookieCurrentActorProvider(),
+    authorize: async (tournamentId, actor) => {
+      await authorizeTournamentMediaMutation(tournamentId, actor, {
+        tournaments,
+      })
+    },
     upload: (input, actor) =>
       uploadTournamentMedia(input, actor, {
         storage,

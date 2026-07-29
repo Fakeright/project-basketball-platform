@@ -2,6 +2,11 @@ import { z } from "zod"
 
 import type { CurrentActorProvider } from "@/features/identity/domain/actor"
 import {
+  parseJsonRequest,
+  type SafeHttpDiagnostics,
+  unexpectedFailureResponse,
+} from "@/features/shared/presentation/safe-http"
+import {
   closeTournamentRegistration,
   publishTournament,
 } from "@/features/tournament-operations/application/transition-tournament-lifecycle"
@@ -21,63 +26,80 @@ export async function handleTournamentLifecycleRequest(
     actorProvider: CurrentActorProvider
     repository: TournamentOperationsRepository
     now: () => Date
-  },
+  } & SafeHttpDiagnostics,
 ) {
-  const actor = await dependencies.actorProvider.getCurrentActor()
-  if (!actor) {
-    return Response.json({ message: "กรุณาเข้าสู่ระบบ" }, { status: 401 })
-  }
-
-  const payload = await request.json().catch(() => null)
-  const parsed = lifecycleSchema.safeParse(payload)
-  if (!parsed.success) {
-    return Response.json(
-      { message: "ข้อมูลสถานะรายการไม่ถูกต้อง" },
-      { status: 422 },
-    )
-  }
-
   try {
-    const tournament =
-      action === "PUBLISH"
-        ? await publishTournament(
-            dependencies.repository,
-            { tournamentId, version: parsed.data.version },
-            actor,
-            { now: dependencies.now },
-          )
-        : await closeTournamentRegistration(
-            dependencies.repository,
-            { tournamentId, version: parsed.data.version },
-            actor,
-          )
-    return Response.json({ tournament })
-  } catch (error) {
-    const code = error instanceof Error ? error.message : "UNKNOWN"
-    if (code === "FORBIDDEN") {
+    const actor = await dependencies.actorProvider.getCurrentActor()
+    if (!actor) {
+      return Response.json({ message: "กรุณาเข้าสู่ระบบ" }, { status: 401 })
+    }
+
+    const payload = await parseJsonRequest(request)
+    if (!payload.ok) {
       return Response.json(
-        { message: "ไม่พบรายการแข่งขัน" },
-        { status: actor.role === "TOURNAMENT_ORGANIZER" ? 404 : 403 },
+        { message: "ข้อมูลสถานะรายการไม่ถูกต้อง" },
+        { status: 422 },
       )
     }
-    const statusByCode: Record<string, number> = {
-      NOT_FOUND: 404,
-      CONFLICT: 409,
-      INVALID_PUBLISH_STATUS: 409,
-      INVALID_CLOSE_REGISTRATION_STATUS: 409,
-      REGISTRATION_WINDOW_CLOSED: 422,
-      TOURNAMENT_ALREADY_STARTED: 422,
-      TOURNAMENT_INCOMPLETE: 422,
+
+    const parsed = lifecycleSchema.safeParse(payload.value)
+    if (!parsed.success) {
+      return Response.json(
+        { message: "ข้อมูลสถานะรายการไม่ถูกต้อง" },
+        { status: 422 },
+      )
     }
-    const status = statusByCode[code] ?? 500
-    return Response.json(
-      {
-        message:
-          status === 500
-            ? "ไม่สามารถดำเนินการได้ในขณะนี้"
-            : lifecycleErrorMessage(code),
-      },
-      { status },
+
+    try {
+      const tournament =
+        action === "PUBLISH"
+          ? await publishTournament(
+              dependencies.repository,
+              { tournamentId, version: parsed.data.version },
+              actor,
+              { now: dependencies.now },
+            )
+          : await closeTournamentRegistration(
+              dependencies.repository,
+              { tournamentId, version: parsed.data.version },
+              actor,
+            )
+      return Response.json({ tournament })
+    } catch (error) {
+      const code = error instanceof Error ? error.message : "UNKNOWN"
+      if (code === "FORBIDDEN") {
+        return Response.json(
+          { message: "ไม่พบรายการแข่งขัน" },
+          { status: actor.role === "TOURNAMENT_ORGANIZER" ? 404 : 403 },
+        )
+      }
+      const statusByCode: Record<string, number> = {
+        NOT_FOUND: 404,
+        CONFLICT: 409,
+        INVALID_PUBLISH_STATUS: 409,
+        INVALID_CLOSE_REGISTRATION_STATUS: 409,
+        REGISTRATION_WINDOW_CLOSED: 422,
+        TOURNAMENT_ALREADY_STARTED: 422,
+        TOURNAMENT_INCOMPLETE: 422,
+      }
+      const status = statusByCode[code]
+      if (!status) {
+        return unexpectedFailureResponse(
+          error,
+          "tournament.lifecycle",
+          dependencies,
+        )
+      }
+      return Response.json(
+        { message: lifecycleErrorMessage(code) },
+        { status },
+      )
+    }
+  } catch (error) {
+    return unexpectedFailureResponse(
+      error,
+      "tournament.lifecycle",
+      dependencies,
     )
   }
 }
