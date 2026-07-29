@@ -41,13 +41,22 @@ export function resolveIdentitySessionMode(
   environment: "development" | "test" | "production",
   hasSupabaseConfiguration: boolean,
 ) {
-  if (hasSupabaseConfiguration) return "SUPABASE" as const
-  if (environment === "development") {
+  if (
+    isDevelopmentCookieSessionMode(environment, hasSupabaseConfiguration)
+  ) {
     return "DEVELOPMENT_COOKIE" as const
   }
+  if (hasSupabaseConfiguration) return "SUPABASE" as const
   throw new AuthDependencyUnavailableError(
     "SUPABASE_PUBLIC_CONFIGURATION_MISSING",
   )
+}
+
+export function isDevelopmentCookieSessionMode(
+  environment: "development" | "test" | "production" = process.env.NODE_ENV,
+  hasSupabaseConfiguration: boolean = hasSupabasePublicConfiguration(),
+) {
+  return environment === "development" && !hasSupabaseConfiguration
 }
 
 function hasSupabasePublicConfiguration() {

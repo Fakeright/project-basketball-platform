@@ -2,6 +2,7 @@ import Link from "next/link"
 
 import { AuthFormLayout } from "@/components/auth/auth-form-layout"
 import { LoginForm } from "@/components/auth/login-form"
+import { isDevelopmentCookieSessionMode } from "@/features/identity/infrastructure/next-cookie-current-actor-provider"
 
 type LoginPageProps = {
   searchParams: Promise<{
@@ -40,7 +41,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
         </p>
       ) : null}
       <LoginForm nextPath={nextPath} />
-      {process.env.NODE_ENV !== "production" ? (
+      {isDevelopmentCookieSessionMode() ? (
         <details className="mt-8 border-t border-dashed border-border pt-4 text-sm">
           <summary className="cursor-pointer font-medium">
             เครื่องมือ session สำหรับ Local Development

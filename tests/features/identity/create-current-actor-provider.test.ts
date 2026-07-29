@@ -4,6 +4,7 @@ import type { UserProfileRepository } from "@/features/identity/application/port
 import { createCurrentActorProvider } from "@/features/identity/infrastructure/create-current-actor-provider"
 import {
   createSupabaseAuthenticatedUserReader,
+  isDevelopmentCookieSessionMode,
   resolveIdentitySessionMode,
 } from "@/features/identity/infrastructure/next-cookie-current-actor-provider"
 import { AuthDependencyUnavailableError } from "@/features/identity/presentation/auth-handler"
@@ -36,6 +37,13 @@ describe("createCurrentActorProvider", () => {
     expect(() => resolveIdentitySessionMode("test", false)).toThrow(
       "SUPABASE_PUBLIC_CONFIGURATION_MISSING",
     )
+  })
+
+  it("enables development cookie controls only in development without Supabase", () => {
+    expect(isDevelopmentCookieSessionMode("development", false)).toBe(true)
+    expect(isDevelopmentCookieSessionMode("development", true)).toBe(false)
+    expect(isDevelopmentCookieSessionMode("test", false)).toBe(false)
+    expect(isDevelopmentCookieSessionMode("production", false)).toBe(false)
   })
 
   it("maps current-session provider outage to typed dependency unavailability", async () => {

@@ -20,6 +20,7 @@ vi.mock(
     createNextCookieCurrentActorProvider: () => ({
       getCurrentActor: async () => null,
     }),
+    isDevelopmentCookieSessionMode: () => false,
   }),
 )
 

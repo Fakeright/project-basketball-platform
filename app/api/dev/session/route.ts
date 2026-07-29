@@ -4,9 +4,10 @@ import {
   developmentActorIds,
   getDevelopmentSessionDestination,
 } from "@/features/identity/infrastructure/cookie-current-actor-provider"
+import { isDevelopmentCookieSessionMode } from "@/features/identity/infrastructure/next-cookie-current-actor-provider"
 
 export async function POST(request: Request) {
-  if (process.env.NODE_ENV === "production") {
+  if (!isDevelopmentCookieSessionMode()) {
     return new Response(null, { status: 404 })
   }
 

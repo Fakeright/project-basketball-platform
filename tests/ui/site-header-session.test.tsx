@@ -24,8 +24,10 @@ describe("SiteHeader account session", () => {
   it("shows login and registration commands for an anonymous visitor", () => {
     render(<SiteHeader actor={null} />)
 
-    expect(screen.getByRole("link", { name: "เข้าสู่ระบบ" })).toBeTruthy()
-    expect(screen.getByRole("link", { name: "สมัครสมาชิก" })).toBeTruthy()
+    expect(screen.getAllByRole("link", { name: "เข้าสู่ระบบ" }).length).toBeGreaterThan(0)
+    expect(screen.getAllByRole("link", { name: "สมัครสมาชิก" }).length).toBeGreaterThan(0)
+    expect(screen.queryByText(/กำลังใช้งาน:/)).toBeNull()
+    expect(screen.queryByRole("link", { name: "จัดการทีม" })).toBeNull()
   })
 
   it("shows the current Team Manager identity, role, destination and logout", async () => {

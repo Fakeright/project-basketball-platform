@@ -1,12 +1,12 @@
 import { SiteHeader } from "@/components/site-header"
-import { createNextCookieCurrentActorProvider } from "@/features/identity/infrastructure/next-cookie-current-actor-provider"
+import { getCurrentActor } from "@/features/identity/infrastructure/get-current-actor"
 
 export default async function PublicLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
-  const actor = await createNextCookieCurrentActorProvider().getCurrentActor()
+  const actor = await getCurrentActor()
 
   return (
     <div className="flex min-h-dvh flex-col">
