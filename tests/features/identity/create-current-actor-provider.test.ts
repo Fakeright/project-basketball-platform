@@ -103,7 +103,7 @@ describe("createCurrentActorProvider", () => {
     })
   })
 
-  it("falls back to the explicit actor cookie in development when no session exists", async () => {
+  it("does not fall back to a development cookie when Supabase mode is active", async () => {
     const provider = createCurrentActorProvider({
       environment: "development",
       authenticatedUserReader: {
@@ -115,10 +115,7 @@ describe("createCurrentActorProvider", () => {
       readDevelopmentActorCookie: async () => "team-manager-1",
     })
 
-    await expect(provider.getCurrentActor()).resolves.toMatchObject({
-      id: "team-manager-1",
-      role: "TEAM_MANAGER",
-    })
+    await expect(provider.getCurrentActor()).resolves.toBeNull()
   })
 
   it("uses the explicit development cookie only in local development", async () => {

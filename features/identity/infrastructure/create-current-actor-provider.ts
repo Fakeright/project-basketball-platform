@@ -21,24 +21,10 @@ export function createCurrentActorProvider(
     if (!options.userProfileRepository) {
       throw new Error("USER_PROFILE_REPOSITORY_REQUIRED")
     }
-    const supabaseProvider = new SupabaseCurrentActorProvider(
+    return new SupabaseCurrentActorProvider(
       options.authenticatedUserReader,
       options.userProfileRepository,
     )
-    if (options.environment !== "development") return supabaseProvider
-
-    const developmentProvider = new CookieCurrentActorProvider(
-      options.readDevelopmentActorCookie,
-      true,
-    )
-    return {
-      async getCurrentActor() {
-        return (
-          (await supabaseProvider.getCurrentActor()) ??
-          developmentProvider.getCurrentActor()
-        )
-      },
-    }
   }
 
   return new CookieCurrentActorProvider(
