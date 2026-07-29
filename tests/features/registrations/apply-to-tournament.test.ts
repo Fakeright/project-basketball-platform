@@ -2,9 +2,10 @@ import { describe, expect, it, vi } from "vitest"
 
 import { applyToTournament } from "@/features/registrations/application/apply-to-tournament"
 import type { RegistrationRepository } from "@/features/registrations/application/ports/registration-repository"
+import { createTestActor } from "@/tests/fixtures/actor"
 
-const teamManager = { id: "manager-1", role: "TEAM_MANAGER" } as const
-const platformAdmin = { id: "admin-1", role: "PLATFORM_ADMIN" } as const
+const teamManager = createTestActor("manager-1", "TEAM_MANAGER")
+const platformAdmin = createTestActor("admin-1", "PLATFORM_ADMIN")
 const team = {
   id: "team-1",
   name: "Bangkok Ballers",

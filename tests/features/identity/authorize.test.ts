@@ -7,11 +7,15 @@ import type { Permission } from "@/features/identity/domain/permission";
 const organizer: Actor = {
   id: "org-1",
   role: "TOURNAMENT_ORGANIZER",
+  email: "organizer@example.com",
+  displayName: "Organizer",
 };
 
 const admin: Actor = {
   id: "admin-1",
   role: "PLATFORM_ADMIN",
+  email: "admin@example.com",
+  displayName: "Admin",
 };
 
 const allPermissions: Permission[] = [
@@ -88,7 +92,12 @@ describe("authorize", () => {
     (role) => {
       expect(() =>
         authorize(
-          { id: `${role.toLowerCase()}-1`, role },
+          {
+            id: `${role.toLowerCase()}-1`,
+            role,
+            email: `${role.toLowerCase()}@example.com`,
+            displayName: role,
+          },
           "tournament.update",
           { organizerId: organizer.id },
         ),

@@ -2,13 +2,11 @@ import { describe, expect, it, vi } from "vitest"
 
 import { listTournamentRegistrations } from "@/features/registrations/application/list-tournament-registrations"
 import type { RegistrationRepository } from "@/features/registrations/application/ports/registration-repository"
+import { createTestActor } from "@/tests/fixtures/actor"
 
-const organizer = { id: "organizer-1", role: "TOURNAMENT_ORGANIZER" } as const
-const anotherOrganizer = {
-  id: "organizer-2",
-  role: "TOURNAMENT_ORGANIZER",
-} as const
-const platformAdmin = { id: "admin-1", role: "PLATFORM_ADMIN" } as const
+const organizer = createTestActor("organizer-1", "TOURNAMENT_ORGANIZER")
+const anotherOrganizer = createTestActor("organizer-2", "TOURNAMENT_ORGANIZER")
+const platformAdmin = createTestActor("admin-1", "PLATFORM_ADMIN")
 
 function createRepository(): RegistrationRepository {
   return {

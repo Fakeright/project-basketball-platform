@@ -6,11 +6,9 @@ import {
 } from "@/features/admin/presentation/tournament-media-handler"
 import { deleteTournamentMedia } from "@/features/tournament-media/application/delete-tournament-media"
 import { ObjectStorageError } from "@/features/tournament-media/application/ports/object-storage"
+import { createTestActor } from "@/tests/fixtures/actor"
 
-const organizer = {
-  id: "organizer-1",
-  role: "TOURNAMENT_ORGANIZER",
-} as const
+const organizer = createTestActor("organizer-1", "TOURNAMENT_ORGANIZER")
 
 function dependencies() {
   return {

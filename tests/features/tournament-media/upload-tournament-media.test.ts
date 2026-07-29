@@ -5,8 +5,9 @@ import type { ObjectStorage } from "@/features/tournament-media/application/port
 import type { TournamentMediaRepository } from "@/features/tournament-media/application/ports/tournament-media-repository"
 import type { TournamentMediaAsset } from "@/features/tournament-media/domain/media-asset"
 import type { TournamentOperation } from "@/features/tournament-operations/domain/tournament-operation"
+import { createTestActor } from "@/tests/fixtures/actor"
 
-const organizer = { id: "organizer-1", role: "TOURNAMENT_ORGANIZER" } as const
+const organizer = createTestActor("organizer-1", "TOURNAMENT_ORGANIZER")
 
 const tournament: TournamentOperation = {
   id: "tournament-1",

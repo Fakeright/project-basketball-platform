@@ -3,10 +3,10 @@ import { describe, expect, it } from "vitest"
 import { createTournament, submitTournament } from "@/features/tournament-operations/application/create-tournament"
 import { reviewTournament } from "@/features/tournament-operations/application/review-tournament"
 import { InMemoryTournamentOperationsRepository } from "@/features/tournament-operations/infrastructure/in-memory-tournament-operations-repository"
-import type { Actor } from "@/features/identity/domain/actor"
+import { createTestActor } from "@/tests/fixtures/actor"
 
-const organizer: Actor = { id: "organizer-1", role: "TOURNAMENT_ORGANIZER" }
-const admin: Actor = { id: "admin-1", role: "PLATFORM_ADMIN" }
+const organizer = createTestActor("organizer-1", "TOURNAMENT_ORGANIZER")
+const admin = createTestActor("admin-1", "PLATFORM_ADMIN")
 
 const validInput = {
   title: "Bangkok Admin Cup",

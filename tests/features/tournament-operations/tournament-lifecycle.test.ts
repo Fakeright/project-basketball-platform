@@ -1,18 +1,15 @@
 import { describe, expect, it, vi } from "vitest"
 
-import type { Actor } from "@/features/identity/domain/actor"
 import {
   closeTournamentRegistration,
   publishTournament,
 } from "@/features/tournament-operations/application/transition-tournament-lifecycle"
 import type { TournamentOperation } from "@/features/tournament-operations/domain/tournament-operation"
 import type { TournamentOperationsRepository } from "@/features/tournament-operations/infrastructure/tournament-operations-repository"
+import { createTestActor } from "@/tests/fixtures/actor"
 
-const organizer: Actor = {
-  id: "organizer-1",
-  role: "TOURNAMENT_ORGANIZER",
-}
-const admin: Actor = { id: "admin-1", role: "PLATFORM_ADMIN" }
+const organizer = createTestActor("organizer-1", "TOURNAMENT_ORGANIZER")
+const admin = createTestActor("admin-1", "PLATFORM_ADMIN")
 
 const approvedTournament: TournamentOperation = {
   id: "tournament-1",

@@ -3,6 +3,13 @@ import { describe, expect, it, vi } from "vitest"
 import { handleTournamentLifecycleRequest } from "@/features/admin/presentation/tournament-lifecycle-handler"
 import type { CurrentActorProvider } from "@/features/identity/domain/actor"
 import { InMemoryTournamentOperationsRepository } from "@/features/tournament-operations/infrastructure/in-memory-tournament-operations-repository"
+import { createTestActor } from "@/tests/fixtures/actor"
+
+const organizer = createTestActor("organizer-1", "TOURNAMENT_ORGANIZER")
+const anotherOrganizer = createTestActor(
+  "organizer-2",
+  "TOURNAMENT_ORGANIZER",
+)
 
 const validTournament = {
   title: "Lifecycle Cup",
@@ -55,10 +62,7 @@ describe("tournament lifecycle handler", () => {
       approved.id,
       "PUBLISH",
       {
-        actorProvider: actorProvider({
-          id: "organizer-1",
-          role: "TOURNAMENT_ORGANIZER",
-        }),
+        actorProvider: actorProvider(organizer),
         repository,
         now: () => new Date("2026-11-01T00:00:00.000Z"),
       },
@@ -82,10 +86,7 @@ describe("tournament lifecycle handler", () => {
       approved.id,
       "PUBLISH",
       {
-        actorProvider: actorProvider({
-          id: "organizer-2",
-          role: "TOURNAMENT_ORGANIZER",
-        }),
+        actorProvider: actorProvider(anotherOrganizer),
         repository,
         now: () => new Date("2026-11-01T00:00:00.000Z"),
       },
@@ -105,10 +106,7 @@ describe("tournament lifecycle handler", () => {
       approved.id,
       "PUBLISH",
       {
-        actorProvider: actorProvider({
-          id: "organizer-1",
-          role: "TOURNAMENT_ORGANIZER",
-        }),
+        actorProvider: actorProvider(organizer),
         repository,
         now: () => new Date("2026-11-01T00:00:00.000Z"),
       },
@@ -132,10 +130,7 @@ describe("tournament lifecycle handler", () => {
       approved.id,
       "PUBLISH",
       {
-        actorProvider: actorProvider({
-          id: "organizer-1",
-          role: "TOURNAMENT_ORGANIZER",
-        }),
+        actorProvider: actorProvider(organizer),
         repository,
         now: () => new Date("2026-11-01T00:00:00.000Z"),
         createCorrelationId: () => "lifecycle-correlation",

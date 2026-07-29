@@ -6,8 +6,9 @@ import {
   handleDecideRegistration,
   handleWithdrawRegistration,
 } from "@/features/registrations/presentation/registration-handler"
+import { createTestActor } from "@/tests/fixtures/actor"
 
-const organizer = { id: "organizer-1", role: "TOURNAMENT_ORGANIZER" } as const
+const organizer = createTestActor("organizer-1", "TOURNAMENT_ORGANIZER")
 
 interface TestDiagnostics {
   createCorrelationId: () => string

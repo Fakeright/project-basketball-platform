@@ -1,9 +1,9 @@
 import { describe, expect, it, vi } from "vitest"
 
-import type { Actor } from "@/features/identity/domain/actor"
 import type { TeamRepository } from "@/features/team-management/application/ports/team-repository"
 import type { Tournament } from "@/features/tournaments/domain/tournament"
 import { getTournamentRegistrationOptions } from "@/features/tournaments/application/get-tournament-registration-options"
+import { createTestActor } from "@/tests/fixtures/actor"
 
 const openTournament = {
   id: "tournament-1",
@@ -36,7 +36,7 @@ function teamRepository(): TeamRepository {
 describe("getTournamentRegistrationOptions", () => {
   it("returns owned teams only for a team manager viewing an open tournament", async () => {
     const teams = teamRepository()
-    const actor: Actor = { id: "team-manager-1", role: "TEAM_MANAGER" }
+    const actor = createTestActor("team-manager-1", "TEAM_MANAGER")
 
     const options = await getTournamentRegistrationOptions(
       openTournament,
@@ -53,11 +53,11 @@ describe("getTournamentRegistrationOptions", () => {
   it.each([
     { actor: null, status: "OPEN" as const },
     {
-      actor: { id: "admin-1", role: "PLATFORM_ADMIN" } as Actor,
+      actor: createTestActor("admin-1", "PLATFORM_ADMIN"),
       status: "OPEN" as const,
     },
     {
-      actor: { id: "team-manager-1", role: "TEAM_MANAGER" } as Actor,
+      actor: createTestActor("team-manager-1", "TEAM_MANAGER"),
       status: "CLOSED" as const,
     },
   ])(

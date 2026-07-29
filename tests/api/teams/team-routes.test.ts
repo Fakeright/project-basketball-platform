@@ -5,9 +5,10 @@ import {
   handleCreateTeam,
   handleUpdateTeam,
 } from "@/features/team-management/presentation/team-handler"
+import { createTestActor } from "@/tests/fixtures/actor"
 
 const anonymous = { getCurrentActor: vi.fn(async () => null) }
-const teamManager = { id: "manager-1", role: "TEAM_MANAGER" } as const
+const teamManager = createTestActor("manager-1", "TEAM_MANAGER")
 
 function jsonRequest(body: unknown): Request {
   return new Request("http://localhost/api/teams", {

@@ -2,10 +2,11 @@ import { describe, expect, it, vi } from "vitest"
 
 import { cancelRegistration } from "@/features/registrations/application/cancel-registration"
 import type { RegistrationRepository } from "@/features/registrations/application/ports/registration-repository"
+import { createTestActor } from "@/tests/fixtures/actor"
 
-const owner = { id: "manager-1", role: "TEAM_MANAGER" } as const
-const anotherManager = { id: "manager-2", role: "TEAM_MANAGER" } as const
-const platformAdmin = { id: "admin-1", role: "PLATFORM_ADMIN" } as const
+const owner = createTestActor("manager-1", "TEAM_MANAGER")
+const anotherManager = createTestActor("manager-2", "TEAM_MANAGER")
+const platformAdmin = createTestActor("admin-1", "PLATFORM_ADMIN")
 
 function createRepository(ownerId = owner.id): RegistrationRepository {
   const repository: RegistrationRepository = {

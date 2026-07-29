@@ -15,6 +15,8 @@ describe("CookieCurrentActorProvider", () => {
     await expect(provider.getCurrentActor()).resolves.toEqual({
       id: "admin-1",
       role: "PLATFORM_ADMIN",
+      email: "admin@courtside.local",
+      displayName: "Platform Admin",
     })
   })
 

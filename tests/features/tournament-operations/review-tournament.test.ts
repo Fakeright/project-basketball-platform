@@ -3,9 +3,10 @@ import { describe, expect, it, vi } from "vitest"
 import { createTournament } from "@/features/tournament-operations/application/create-tournament"
 import { reviewTournament } from "@/features/tournament-operations/application/review-tournament"
 import { InMemoryTournamentOperationsRepository } from "@/features/tournament-operations/infrastructure/in-memory-tournament-operations-repository"
+import { createTestActor } from "@/tests/fixtures/actor"
 
-const organizer = { id: "organizer-1", role: "TOURNAMENT_ORGANIZER" as const }
-const admin = { id: "admin-1", role: "PLATFORM_ADMIN" as const }
+const organizer = createTestActor("organizer-1", "TOURNAMENT_ORGANIZER")
+const admin = createTestActor("admin-1", "PLATFORM_ADMIN")
 const input = {
   title: "Review Cup", description: "description", rules: "rules", province: "Bangkok", venue: "Arena",
   format: "FIVE_V_FIVE" as const, ageGroup: "Open", startsAt: "2026-11-15T09:00:00+07:00",

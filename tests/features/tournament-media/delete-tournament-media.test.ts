@@ -3,6 +3,9 @@ import { describe, expect, it, vi } from "vitest"
 import { deleteTournamentMedia } from "@/features/tournament-media/application/delete-tournament-media"
 import { ObjectStorageError } from "@/features/tournament-media/application/ports/object-storage"
 import type { TournamentMediaAsset } from "@/features/tournament-media/domain/media-asset"
+import { createTestActor } from "@/tests/fixtures/actor"
+
+const organizer = createTestActor("organizer-1", "TOURNAMENT_ORGANIZER")
 
 const asset: TournamentMediaAsset = {
   id: "asset-1",
@@ -41,7 +44,7 @@ describe("deleteTournamentMedia", () => {
 
     await deleteTournamentMedia(
       { tournamentId: "tournament-1", assetId: "asset-1" },
-      { id: "organizer-1", role: "TOURNAMENT_ORGANIZER" },
+      organizer,
       dependencies,
     )
 
@@ -72,7 +75,7 @@ describe("deleteTournamentMedia", () => {
     await expect(
       deleteTournamentMedia(
         { tournamentId: "tournament-1", assetId: "asset-1" },
-        { id: "organizer-1", role: "TOURNAMENT_ORGANIZER" },
+        organizer,
         dependencies,
       ),
     ).rejects.toThrow("AUDIT_FAILED")
@@ -95,7 +98,7 @@ describe("deleteTournamentMedia", () => {
     await expect(
       deleteTournamentMedia(
         { tournamentId: "tournament-1", assetId: "asset-1" },
-        { id: "organizer-1", role: "TOURNAMENT_ORGANIZER" },
+        organizer,
         dependencies,
       ),
     ).resolves.toBeUndefined()
@@ -115,7 +118,7 @@ describe("deleteTournamentMedia", () => {
     await expect(
       deleteTournamentMedia(
         { tournamentId: "tournament-1", assetId: "asset-1" },
-        { id: "organizer-1", role: "TOURNAMENT_ORGANIZER" },
+        organizer,
         dependencies,
       ),
     ).resolves.toBeUndefined()
@@ -138,7 +141,7 @@ describe("deleteTournamentMedia", () => {
     await expect(
       deleteTournamentMedia(
         { tournamentId: "tournament-1", assetId: "asset-1" },
-        { id: "organizer-1", role: "TOURNAMENT_ORGANIZER" },
+        organizer,
         dependencies,
       ),
     ).rejects.toMatchObject({

@@ -8,9 +8,10 @@ import { listOwnedTeams } from "@/features/team-management/application/list-owne
 import { listTeamMemberCandidates } from "@/features/team-management/application/list-team-member-candidates"
 import type { TeamRepository } from "@/features/team-management/application/ports/team-repository"
 import { updateTeam } from "@/features/team-management/application/update-team"
+import { createTestActor } from "@/tests/fixtures/actor"
 
-const teamManager = { id: "manager-1", role: "TEAM_MANAGER" } as const
-const platformAdmin = { id: "admin-1", role: "PLATFORM_ADMIN" } as const
+const teamManager = createTestActor("manager-1", "TEAM_MANAGER")
+const platformAdmin = createTestActor("admin-1", "PLATFORM_ADMIN")
 
 const team = {
   id: "team-1",

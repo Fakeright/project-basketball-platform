@@ -3,13 +3,11 @@ import { describe, expect, it, vi } from "vitest"
 import { decideRegistration } from "@/features/registrations/application/decide-registration"
 import type { RegistrationRepository } from "@/features/registrations/application/ports/registration-repository"
 import type { TournamentRegistration } from "@/features/registrations/domain/registration"
+import { createTestActor } from "@/tests/fixtures/actor"
 
-const organizer = { id: "organizer-1", role: "TOURNAMENT_ORGANIZER" } as const
-const anotherOrganizer = {
-  id: "organizer-2",
-  role: "TOURNAMENT_ORGANIZER",
-} as const
-const platformAdmin = { id: "admin-1", role: "PLATFORM_ADMIN" } as const
+const organizer = createTestActor("organizer-1", "TOURNAMENT_ORGANIZER")
+const anotherOrganizer = createTestActor("organizer-2", "TOURNAMENT_ORGANIZER")
+const platformAdmin = createTestActor("admin-1", "PLATFORM_ADMIN")
 
 const pendingRegistration: TournamentRegistration = {
   id: "registration-1",

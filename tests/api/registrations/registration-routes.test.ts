@@ -4,8 +4,9 @@ import {
   handleApplyToTournament,
   handleCancelRegistration,
 } from "@/features/registrations/presentation/registration-handler"
+import { createTestActor } from "@/tests/fixtures/actor"
 
-const teamManager = { id: "manager-1", role: "TEAM_MANAGER" } as const
+const teamManager = createTestActor("manager-1", "TEAM_MANAGER")
 
 function request(method: string, body: unknown) {
   return new Request("http://localhost/api/registrations", {

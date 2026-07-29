@@ -4,18 +4,29 @@ import type {
 } from "@/features/identity/domain/actor"
 
 const developmentActors: Readonly<Record<string, Actor>> = {
-  "admin-1": { id: "admin-1", role: "PLATFORM_ADMIN" },
+  "admin-1": {
+    id: "admin-1",
+    role: "PLATFORM_ADMIN",
+    email: "admin@courtside.local",
+    displayName: "Platform Admin",
+  },
   "organizer-1": {
     id: "organizer-1",
     role: "TOURNAMENT_ORGANIZER",
+    email: "organizer-1@courtside.local",
+    displayName: "Organizer One",
   },
   "organizer-2": {
     id: "organizer-2",
     role: "TOURNAMENT_ORGANIZER",
+    email: "organizer-2@courtside.local",
+    displayName: "Organizer Two",
   },
   "team-manager-1": {
     id: "team-manager-1",
     role: "TEAM_MANAGER",
+    email: "team-manager-1@courtside.local",
+    displayName: "Team Manager",
   },
 }
 

@@ -3,6 +3,10 @@ import { describe, expect, it, vi } from "vitest"
 import { handleReviewRequest } from "@/features/admin/presentation/review-tournament-handler"
 import type { CurrentActorProvider } from "@/features/identity/domain/actor"
 import { InMemoryTournamentOperationsRepository } from "@/features/tournament-operations/infrastructure/in-memory-tournament-operations-repository"
+import { createTestActor } from "@/tests/fixtures/actor"
+
+const organizer = createTestActor("organizer-1", "TOURNAMENT_ORGANIZER")
+const admin = createTestActor("admin-1", "PLATFORM_ADMIN")
 
 const validTournament = {
   title: "Review Cup",
@@ -47,10 +51,7 @@ describe("POST tournament review", () => {
     })
 
     const response = await handleReviewRequest(request, tournamentId, {
-      actorProvider: actorProvider({
-        id: "organizer-1",
-        role: "TOURNAMENT_ORGANIZER",
-      }),
+      actorProvider: actorProvider(organizer),
       repository,
     })
 
@@ -69,10 +70,7 @@ describe("POST tournament review", () => {
     })
 
     const response = await handleReviewRequest(request, tournamentId, {
-      actorProvider: actorProvider({
-        id: "admin-1",
-        role: "PLATFORM_ADMIN",
-      }),
+      actorProvider: actorProvider(admin),
       repository,
     })
 
@@ -95,10 +93,7 @@ describe("POST tournament review", () => {
     })
 
     const response = await handleReviewRequest(request, tournamentId, {
-      actorProvider: actorProvider({
-        id: "admin-1",
-        role: "PLATFORM_ADMIN",
-      }),
+      actorProvider: actorProvider(admin),
       repository,
       createCorrelationId: () => "review-correlation",
       logger,

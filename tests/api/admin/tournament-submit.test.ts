@@ -4,6 +4,9 @@ import { saveTournamentHandler } from "@/features/admin/presentation/save-tourna
 import { submitTournamentHandler } from "@/features/admin/presentation/submit-tournament-handler"
 import type { TournamentOperationsRepository } from "@/features/tournament-operations/infrastructure/tournament-operations-repository"
 import { InMemoryTournamentOperationsRepository } from "@/features/tournament-operations/infrastructure/in-memory-tournament-operations-repository"
+import { createTestActor } from "@/tests/fixtures/actor"
+
+const organizer = createTestActor("organizer-1", "TOURNAMENT_ORGANIZER")
 
 const validTournament = {
   title: "Chiang Rai Cup",
@@ -28,7 +31,7 @@ describe("submitTournamentHandler", () => {
     })
 
     const response = await submitTournamentHandler({
-      actor: { id: "organizer-1", role: "TOURNAMENT_ORGANIZER" },
+      actor: organizer,
       id: tournament.id,
       repository,
     })
@@ -47,7 +50,7 @@ describe("submitTournamentHandler", () => {
     })
 
     const response = await submitTournamentHandler({
-      actor: { id: "organizer-1", role: "TOURNAMENT_ORGANIZER" },
+      actor: organizer,
       id: tournament.id,
       repository,
     })
@@ -59,7 +62,7 @@ describe("submitTournamentHandler", () => {
 describe("saveTournamentHandler", () => {
   it("returns 422 when required draft data is missing", async () => {
     const response = await saveTournamentHandler({
-      actor: { id: "organizer-1", role: "TOURNAMENT_ORGANIZER" },
+      actor: organizer,
       request: new Request("http://localhost/api/admin/tournaments", {
         method: "POST",
         body: JSON.stringify({ title: "Incomplete Cup" }),
@@ -81,7 +84,7 @@ describe("saveTournamentHandler", () => {
     })
 
     const response = await saveTournamentHandler({
-      actor: { id: "organizer-1", role: "TOURNAMENT_ORGANIZER" },
+      actor: organizer,
       id: tournament.id,
       request: new Request(
         `http://localhost/api/admin/tournaments/${tournament.id}`,
@@ -108,7 +111,7 @@ describe("saveTournamentHandler", () => {
     } as unknown as Request
 
     const response = await saveTournamentHandler({
-      actor: { id: "organizer-1", role: "TOURNAMENT_ORGANIZER" },
+      actor: organizer,
       request,
       repository: new InMemoryTournamentOperationsRepository(),
       createCorrelationId: () => "save-correlation",
@@ -141,7 +144,7 @@ describe("unexpected submit failure", () => {
     } as unknown as TournamentOperationsRepository
 
     const response = await submitTournamentHandler({
-      actor: { id: "organizer-1", role: "TOURNAMENT_ORGANIZER" },
+      actor: organizer,
       id: "tournament-1",
       repository,
       createCorrelationId: () => "submit-correlation",
