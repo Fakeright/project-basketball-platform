@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Add Supabase email/password authentication with Prisma-backed roles, visible session status, Team Manager tournament discovery, and Home approved-team data.
+**Goal:** Add Supabase email/password authentication with Prisma-backed roles, visible session status, and Team Manager tournament discovery.
 
-**Architecture:** Supabase Auth owns credentials and server-managed session cookies; Prisma owns the linked user profile and authoritative role. Server Components and Route Handlers resolve a `CurrentActorProvider` from Supabase session plus Prisma profile, while application use cases retain existing permission and ownership checks. Public tournament reads gain a dedicated approved-team Home projection.
+**Architecture:** Supabase Auth owns credentials and server-managed session cookies; Prisma owns the linked user profile and authoritative role. Server Components and Route Handlers resolve a `CurrentActorProvider` from Supabase session plus Prisma profile, while application use cases retain existing permission and ownership checks.
 
 **Tech Stack:** Next.js 16.2.11 App Router, React 19, TypeScript, `@supabase/ssr`, `@supabase/supabase-js`, Prisma 7, Supabase PostgreSQL, Zod, Vitest, React Testing Library, Tailwind CSS 4.
 
@@ -33,8 +33,6 @@
 - `features/identity/infrastructure/*`: Prisma profile repository and Supabase-backed actor provider.
 - `components/auth/*`: focused client forms for each auth command.
 - `components/account-session-control.tsx`: role indicator and account/logout controls.
-- `features/tournaments/application/list-home-approved-teams.ts`: Home projection use case.
-- `features/tournaments/infrastructure/prisma-tournament-repository.ts`: efficient approved-team projection.
 
 ### Task 1: Auth Profile Schema And Supabase Actor Provider
 
@@ -323,90 +321,15 @@ Use Browser QA with a Team Manager Supabase account: search/filter `/tournaments
 
 Run: `git add app/'(admin)'/team app/'(public)'/tournaments components/team components/tournaments tests/ui/team tests/ui/tournaments && git commit -m "feat(team): complete tournament discovery journey"`
 
-### Task 5: Home Approved-Team Projection And Final Verification
+### Product Decision: Home Approved-Team Projection Cancelled
 
-**Files:**
-- Create: `features/tournaments/application/list-home-approved-teams.ts`
-- Create: `features/tournaments/domain/home-approved-team.ts`
-- Modify: `features/tournaments/infrastructure/tournament-repository.ts`
-- Modify: `features/tournaments/infrastructure/prisma-tournament-repository.ts`
-- Modify: `features/tournaments/infrastructure/mock-tournament-repository.ts`
-- Create: `components/home-approved-team-list.tsx`
-- Modify: `app/(public)/page.tsx`
-- Test: `tests/features/tournaments/list-home-approved-teams.test.ts`
-- Test: `tests/features/tournaments/prisma-tournament-repository.test.ts`
-- Test: `tests/ui/home-approved-team-list.test.tsx`
-
-**Interfaces:**
-- Produces `HomeApprovedTournament` records for public, visible tournaments only.
-- Home consumes `listHomeApprovedTeams(repository, { limit: 12 })`.
-
-- [ ] **Step 1: Write failing projection tests**
-
-```ts
-it("returns only approved teams belonging to visible tournaments", async () => {
-  await expect(listHomeApprovedTeams(repository, { limit: 12 })).resolves.toEqual([
-    expect.objectContaining({ tournamentStatus: "OPEN", teams: [expect.objectContaining({ name: "Bangkok Ballers" })] }),
-  ])
-})
-
-it("excludes pending, rejected, and draft tournament registrations", async () => {
-  await expect(repository.listHomeApprovedTeams({ limit: 12 })).resolves.not.toContainEqual(
-    expect.objectContaining({ registrationStatus: "PENDING" }),
-  )
-})
-```
-
-- [ ] **Step 2: Run tests to verify failure**
-
-Run: `npm run test -- tests/features/tournaments/list-home-approved-teams.test.ts tests/features/tournaments/prisma-tournament-repository.test.ts tests/ui/home-approved-team-list.test.tsx`
-
-Expected: FAIL because the Home projection contract and component do not exist.
-
-- [ ] **Step 3: Implement a bounded public read model**
-
-Define:
-
-```ts
-export type HomeApprovedTournament = {
-  id: string
-  slug: string
-  title: string
-  province: string
-  format: "FIVE_V_FIVE" | "THREE_V_THREE"
-  status: "OPEN" | "CLOSED" | "ONGOING" | "COMPLETED"
-  teams: Array<{ id: string; name: string; province: string }>
-}
-```
-
-The Prisma query filters public tournament statuses and `Registration.status = APPROVED`, orders tournaments and teams deterministically, and applies a bounded limit. Render a full-width Home section with compact rows, links to tournament detail, and a Thai empty state. Do not use a nested card layout or mock data when `DATABASE_URL` is configured.
-
-- [ ] **Step 4: Run focused and complete verification**
-
-Run: `npm run test -- tests/features/tournaments/list-home-approved-teams.test.ts tests/features/tournaments/prisma-tournament-repository.test.ts tests/ui/home-approved-team-list.test.tsx`
-
-Run: `npm run test`
-
-Run: `npm run lint`
-
-Run: `npm run build`
-
-Run: `npx prisma validate`
-
-Run: `npx prisma migrate status`
-
-Run: `git diff --check`
-
-Use Browser QA at 375px, 768px, and 1440px for anonymous Home, authenticated Home, Team Manager tournament discovery/application, and the role indicator. Verify Home never exposes non-approved or non-public teams.
-
-- [ ] **Step 5: Commit**
-
-Run: `git add features/tournaments components/home-approved-team-list.tsx app/'(public)'/page.tsx tests/features/tournaments tests/ui/home-approved-team-list.test.tsx && git commit -m "feat(home): show approved tournament teams"`
+The Home approved-team section was removed from this phase by the user's
+decision on 2026-07-29. Home continues to show open tournaments only.
 
 ## Plan Self-Review
 
-- **Spec coverage:** Task 1 provides the Supabase-to-Prisma identity/role boundary. Task 2 provides every server authentication command and recovery flow. Task 3 provides all requested user-facing auth views and role indication. Task 4 completes Team Manager discovery and application behavior. Task 5 exposes approved teams on Home from public persisted data.
+- **Spec coverage:** Task 1 provides the Supabase-to-Prisma identity/role boundary. Task 2 provides every server authentication command and recovery flow. Task 3 provides all requested user-facing auth views and role indication. Task 4 completes Team Manager discovery and application behavior.
 - **Scope:** Email verification and organizer approval are explicitly omitted. Bracket, schedule generation, results, payments, notifications, and profile editing remain outside this plan.
-- **Type consistency:** `Actor`, `SelfAssignableRole`, `UserProfileRepository`, auth command payloads, and `HomeApprovedTournament` are defined before later consumers.
+- **Type consistency:** `Actor`, `SelfAssignableRole`, `UserProfileRepository`, and auth command payloads are defined before later consumers.
 - **Safety:** Role authority remains server-side; Admin is not self-assignable; recovery errors are private; provisioning has compensation; credentials do not enter Prisma.
 - **Placeholder scan:** No TODO, TBD, unspecified handler, or deferred implementation step remains.

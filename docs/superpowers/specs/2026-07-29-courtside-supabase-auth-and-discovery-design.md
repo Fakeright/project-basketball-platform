@@ -22,8 +22,6 @@ This slice includes:
 - A visible session and role indicator in the shared navigation.
 - Team Manager tournament discovery and application entry points using the
   existing public Prisma projection and registration use case.
-- A Home section that lists teams with `APPROVED` registrations for visible
-  tournaments.
 - Responsive, loading, validation, expired-link, unauthorized, and unexpected
   error states for the affected flows.
 
@@ -106,14 +104,6 @@ for status, capacity, deadline, roster eligibility, ownership, and duplicate
 attempts. Anonymous visitors can browse but are directed to Login before a
 protected action.
 
-## Home Approved Teams
-
-Home loads a small public read model from Prisma that contains approved teams
-for visible tournaments. The section groups teams by tournament and shows team
-name, province, format, and tournament status. It excludes pending, rejected,
-cancelled, withdrawn, draft, and private tournament records. It renders a
-meaningful empty state when no approved teams exist.
-
 ## Error Handling And Security
 
 - Auth payloads are validated at Route Handler boundaries.
@@ -132,8 +122,7 @@ meaningful empty state when no approved teams exist.
 
 Tests cover auth request validation, allowed-role enforcement, session-to-actor
 mapping, provisioning idempotency, logout, recovery/reset boundaries, header
-role visibility, protected Team Manager discovery/application, and Home
-approved-team projection.
+role visibility, and protected Team Manager discovery/application.
 
 Verification includes focused tests, the full Vitest suite, lint, production
 build, Prisma validation, migration status, `git diff --check`, and responsive
