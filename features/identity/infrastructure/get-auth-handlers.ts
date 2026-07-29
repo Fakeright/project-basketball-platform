@@ -67,6 +67,7 @@ export function createAuthCommandService(supabase: SupabaseClient) {
       return {
         user: { id: data.user.id, email: data.user.email },
         isNewUser: (data.user.identities?.length ?? 0) > 0,
+        requiresEmailConfirmation: data.session === null,
       }
     },
     async signInWithPassword(input: { email: string; password: string }) {
@@ -138,10 +139,41 @@ async function callProvider<T>(execute: () => Promise<T>) {
   }
 }
 
-function mapAuthError(error: { status?: number }) {
+function mapAuthError(error: {
+  status?: number
+  code?: string
+  error_code?: string
+}) {
   return typeof error.status === "number" &&
     error.status >= 400 &&
     error.status < 500
-    ? new AuthCommandRejectedError()
+    ? new AuthCommandRejectedError(
+        mapAuthRejectionReason(error.code ?? error.error_code),
+      )
     : new AuthDependencyUnavailableError()
+}
+
+function mapAuthRejectionReason(
+  code: string | undefined,
+): AuthCommandRejectedError["reason"] {
+  if (
+    code === "email_address_invalid" ||
+    code === "email_address_not_authorized"
+  ) {
+    return "EMAIL_INVALID"
+  }
+  if (code === "weak_password") return "PASSWORD_WEAK"
+  if (
+    code === "over_request_rate_limit" ||
+    code === "over_email_send_rate_limit"
+  ) {
+    return "RATE_LIMITED"
+  }
+  if (
+    code === "signup_disabled" ||
+    code === "email_provider_disabled"
+  ) {
+    return "SIGNUP_UNAVAILABLE"
+  }
+  return "GENERIC"
 }

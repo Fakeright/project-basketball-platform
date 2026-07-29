@@ -69,7 +69,11 @@ export interface AuthCommandService {
   signUp(input: {
     email: string
     password: string
-  }): Promise<{ user: AuthUser; isNewUser: boolean }>
+  }): Promise<{
+    user: AuthUser
+    isNewUser: boolean
+    requiresEmailConfirmation?: boolean
+  }>
   signInWithPassword(input: {
     email: string
     password: string
@@ -123,7 +127,7 @@ async function register(
     })
   } catch (error) {
     if (error instanceof AuthCommandRejectedError) {
-      return registrationAcceptedResponse()
+      return registrationRejectedResponse(error.reason)
     }
     return unexpectedAuthResponse(
       error,
@@ -178,7 +182,9 @@ async function register(
       "ไม่สามารถสมัครสมาชิกได้ในขณะนี้",
     )
   }
-  return registrationAcceptedResponse()
+  return registrationCompletedResponse(
+    Boolean(registration.requiresEmailConfirmation),
+  )
 }
 
 async function login(
@@ -402,6 +408,51 @@ function registrationAcceptedResponse() {
       redirectTo: "/login",
     },
     { status: 201 },
+  )
+}
+
+function registrationCompletedResponse(
+  requiresEmailConfirmation: boolean,
+) {
+  return Response.json(
+    {
+      message: requiresEmailConfirmation
+        ? "สมัครสมาชิกแล้ว กรุณาตรวจสอบอีเมลเพื่อยืนยันบัญชีก่อนเข้าสู่ระบบ"
+        : "สมัครสมาชิกสำเร็จ กรุณาเข้าสู่ระบบ",
+      redirectTo: "/login",
+    },
+    { status: 201 },
+  )
+}
+
+function registrationRejectedResponse(
+  reason: AuthCommandRejectedError["reason"],
+) {
+  if (reason === "GENERIC") return registrationAcceptedResponse()
+
+  const responses = {
+    EMAIL_INVALID: {
+      message: "อีเมลนี้ไม่สามารถใช้สมัครสมาชิกได้ กรุณาตรวจสอบอีกครั้ง",
+      status: 422,
+    },
+    PASSWORD_WEAK: {
+      message:
+        "รหัสผ่านยังไม่ปลอดภัยเพียงพอ กรุณาเพิ่มตัวอักษร ตัวเลข หรือสัญลักษณ์",
+      status: 422,
+    },
+    RATE_LIMITED: {
+      message: "ส่งคำขอสมัครสมาชิกบ่อยเกินไป กรุณารอสักครู่แล้วลองใหม่",
+      status: 429,
+    },
+    SIGNUP_UNAVAILABLE: {
+      message: "ระบบสมัครสมาชิกยังไม่พร้อมใช้งาน กรุณาลองใหม่ภายหลัง",
+      status: 503,
+    },
+  } as const
+  const response = responses[reason]
+  return Response.json(
+    { message: response.message },
+    { status: response.status },
   )
 }
 

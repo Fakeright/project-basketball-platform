@@ -68,4 +68,37 @@ describe("RegisterForm", () => {
     expect(await screen.findByText("รหัสผ่านทั้งสองช่องไม่ตรงกัน")).toBeTruthy()
     expect(fetchMock).not.toHaveBeenCalled()
   })
+
+  it("shows that email confirmation is required before login", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          message:
+            "สมัครสมาชิกแล้ว กรุณาตรวจสอบอีเมลเพื่อยืนยันบัญชีก่อนเข้าสู่ระบบ",
+          redirectTo: "/login",
+        }),
+        { status: 201 },
+      ),
+    )
+    vi.stubGlobal("fetch", fetchMock)
+    const user = userEvent.setup()
+
+    render(<RegisterForm />)
+    await user.type(screen.getByLabelText("ชื่อที่ใช้แสดง"), "May")
+    await user.type(screen.getByLabelText("อีเมล"), "may@example.com")
+    await user.type(screen.getByLabelText("รหัสผ่าน"), "password123")
+    await user.type(
+      screen.getByLabelText("ยืนยันรหัสผ่าน"),
+      "password123",
+    )
+    await user.click(
+      screen.getByRole("button", { name: "สมัครสมาชิก" }),
+    )
+
+    expect(
+      await screen.findByText(
+        "สมัครสมาชิกแล้ว กรุณาตรวจสอบอีเมลเพื่อยืนยันบัญชีก่อนเข้าสู่ระบบ",
+      ),
+    ).toBeTruthy()
+  })
 })

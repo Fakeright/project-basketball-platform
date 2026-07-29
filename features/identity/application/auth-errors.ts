@@ -1,5 +1,12 @@
+export type AuthRejectionReason =
+  | "GENERIC"
+  | "EMAIL_INVALID"
+  | "PASSWORD_WEAK"
+  | "RATE_LIMITED"
+  | "SIGNUP_UNAVAILABLE"
+
 export class AuthCommandRejectedError extends Error {
-  constructor() {
+  constructor(readonly reason: AuthRejectionReason = "GENERIC") {
     super("AUTH_COMMAND_REJECTED")
     this.name = "AuthCommandRejectedError"
   }

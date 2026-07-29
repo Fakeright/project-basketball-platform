@@ -53,7 +53,7 @@ const registration = {
 }
 
 describe("auth route behavior", () => {
-  it("registers an allowed role, signs out, and returns the generic login response", async () => {
+  it("registers an allowed role, signs out, and returns a success response", async () => {
     const dependencies = createDependencies()
     vi.mocked(dependencies.auth.signUp).mockResolvedValue({
       user: { id: "auth-user-1", email: registration.email },
@@ -82,7 +82,7 @@ describe("auth route behavior", () => {
       role: "TEAM_MANAGER",
     })
     expect(await response.json()).toEqual({
-      message: "หากสมัครได้สำเร็จ กรุณาเข้าสู่ระบบ",
+      message: "สมัครสมาชิกสำเร็จ กรุณาเข้าสู่ระบบ",
       redirectTo: "/login",
     })
     expect(dependencies.auth.signOut).toHaveBeenCalledOnce()

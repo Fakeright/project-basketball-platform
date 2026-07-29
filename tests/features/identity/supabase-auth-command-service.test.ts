@@ -43,6 +43,57 @@ describe("Supabase auth command service", () => {
     ).rejects.toBeInstanceOf(AuthCommandRejectedError)
   })
 
+  it("preserves an invalid-email rejection reason from Supabase", async () => {
+    const service = createAuthCommandService(
+      createSupabase({
+        signUp: vi.fn(async () => ({
+          data: { user: null, session: null },
+          error: { status: 400, code: "email_address_invalid" },
+        })),
+      }),
+    )
+
+    await expect(
+      service.signUp({
+        email: "invalid@example.com",
+        password: "secure-pass",
+      }),
+    ).rejects.toEqual(
+      expect.objectContaining({
+        name: "AuthCommandRejectedError",
+        reason: "EMAIL_INVALID",
+      }),
+    )
+  })
+
+  it("reports when a new registration requires email confirmation", async () => {
+    const service = createAuthCommandService(
+      createSupabase({
+        signUp: vi.fn(async () => ({
+          data: {
+            user: {
+              id: "auth-user-1",
+              email: "manager@example.com",
+              identities: [{ id: "identity-1" }],
+            },
+            session: null,
+          },
+          error: null,
+        })),
+      }),
+    )
+
+    await expect(
+      service.signUp({
+        email: "manager@example.com",
+        password: "secure-pass",
+      }),
+    ).resolves.toMatchObject({
+      isNewUser: true,
+      requiresEmailConfirmation: true,
+    })
+  })
+
   it("maps provider 5xx and network failures to dependency unavailability", async () => {
     const provider5xx = createAuthCommandService(
       createSupabase({

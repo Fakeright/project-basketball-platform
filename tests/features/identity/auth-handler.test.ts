@@ -88,6 +88,52 @@ describe("auth handlers", () => {
     })
   })
 
+  it("returns an actionable response when Supabase rejects the email address", async () => {
+    const dependencies = createDependencies()
+    vi.mocked(dependencies.auth.signUp).mockRejectedValue(
+      new AuthCommandRejectedError("EMAIL_INVALID"),
+    )
+    const handlers = createAuthHandlers(dependencies)
+
+    const response = await handlers.register(
+      jsonRequest("/api/auth/register", validRegistration),
+    )
+
+    expect(response.status).toBe(422)
+    expect(await response.json()).toEqual({
+      message: "อีเมลนี้ไม่สามารถใช้สมัครสมาชิกได้ กรุณาตรวจสอบอีกครั้ง",
+    })
+  })
+
+  it("asks a new user to confirm email before signing in", async () => {
+    const dependencies = createDependencies()
+    vi.mocked(dependencies.auth.signUp).mockResolvedValue({
+      user: { id: "auth-user-1", email: validRegistration.email },
+      isNewUser: true,
+      requiresEmailConfirmation: true,
+    })
+    vi.mocked(dependencies.profileRepository.findBySupabaseUserId)
+      .mockResolvedValue(null)
+    vi.mocked(dependencies.profileRepository.create).mockResolvedValue({
+      id: "user-1",
+      supabaseUserId: "auth-user-1",
+      email: validRegistration.email,
+      displayName: validRegistration.displayName,
+      role: "TEAM_MANAGER",
+    })
+
+    const response = await createAuthHandlers(dependencies).register(
+      jsonRequest("/api/auth/register", validRegistration),
+    )
+
+    expect(response.status).toBe(201)
+    expect(await response.json()).toEqual({
+      message:
+        "สมัครสมาชิกแล้ว กรุณาตรวจสอบอีเมลเพื่อยืนยันบัญชีก่อนเข้าสู่ระบบ",
+      redirectTo: "/login",
+    })
+  })
+
   it("returns a generic login error when the provider rejects credentials", async () => {
     const dependencies = createDependencies()
     vi.mocked(dependencies.auth.signInWithPassword).mockRejectedValue(
