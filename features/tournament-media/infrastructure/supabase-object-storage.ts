@@ -9,11 +9,7 @@ import {
 
 export class SupabaseObjectStorage implements ObjectStorage {
   constructor(
-    private readonly client = createClient(
-      requiredEnvironment("NEXT_PUBLIC_SUPABASE_URL"),
-      requiredEnvironment("SUPABASE_SERVICE_ROLE_KEY"),
-      { auth: { persistSession: false } },
-    ),
+    private readonly client = createSupabaseStorageClient(),
   ) {}
 
   async upload(input: {
@@ -104,8 +100,22 @@ function storageFailure(error: unknown, allowNotFound = false) {
   )
 }
 
+function createSupabaseStorageClient() {
+  const url = requiredEnvironment("NEXT_PUBLIC_SUPABASE_URL")
+  const serviceRoleKey = requiredEnvironment("SUPABASE_SERVICE_ROLE_KEY")
+
+  try {
+    new URL(url)
+    return createClient(url, serviceRoleKey, {
+      auth: { persistSession: false },
+    })
+  } catch {
+    throw new ObjectStorageError("UNAVAILABLE")
+  }
+}
+
 function requiredEnvironment(name: string): string {
   const value = process.env[name]
-  if (!value) throw new Error(`MISSING_${name}`)
+  if (!value) throw new ObjectStorageError("UNAVAILABLE")
   return value
 }

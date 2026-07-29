@@ -55,7 +55,12 @@ export async function withSafeRouteBoundary(
   try {
     return await execute()
   } catch (error) {
-    return unexpectedFailureResponse(error, operation, diagnostics)
+    return unexpectedFailureResponse(
+      error,
+      operation,
+      diagnostics,
+      safeFailureStatus(error),
+    )
   }
 }
 
@@ -73,6 +78,17 @@ function safeErrorType(error: unknown) {
   return /^[A-Za-z][A-Za-z0-9_.-]{0,63}$/.test(error.name)
     ? error.name
     : "Error"
+}
+
+function safeFailureStatus(error: unknown) {
+  if (typeof error !== "object" || error === null) return 500
+  try {
+    return "safeHttpStatus" in error && error.safeHttpStatus === 503
+      ? 503
+      : 500
+  } catch {
+    return 500
+  }
 }
 
 const defaultSafeHttpLogger: NonNullable<SafeHttpDiagnostics["logger"]> = {

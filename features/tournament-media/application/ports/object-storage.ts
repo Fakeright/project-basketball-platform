@@ -2,9 +2,11 @@ export type ObjectStorageFailureCode = "NOT_FOUND" | "UNAVAILABLE"
 
 export class ObjectStorageError extends Error {
   readonly name = "ObjectStorageError"
+  readonly safeHttpStatus: 503 | undefined
 
   constructor(readonly code: ObjectStorageFailureCode) {
     super(code)
+    this.safeHttpStatus = code === "UNAVAILABLE" ? 503 : undefined
   }
 }
 

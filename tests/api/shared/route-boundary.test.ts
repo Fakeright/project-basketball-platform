@@ -48,6 +48,7 @@ vi.mock("@/lib/server/prisma", () => ({
 import { POST as createTournamentRoute } from "@/app/api/admin/tournaments/route"
 import { POST as uploadTournamentMediaRoute } from "@/app/api/admin/tournaments/[id]/media/route"
 import { POST as createTeamRoute } from "@/app/api/teams/route"
+import { ObjectStorageError } from "@/features/tournament-media/application/ports/object-storage"
 
 const actor = {
   id: "admin-1",
@@ -124,7 +125,7 @@ describe("actual mutation route boundaries", () => {
       .spyOn(console, "error")
       .mockImplementation(() => undefined)
     mocks.createStorage.mockImplementationOnce(() => {
-      throw namedError("StorageConfigError", "private service key detail")
+      throw new ObjectStorageError("UNAVAILABLE")
     })
 
     const response = await uploadTournamentMediaRoute(
@@ -141,8 +142,9 @@ describe("actual mutation route boundaries", () => {
       response,
       diagnosticLogger,
       "tournament.media.upload",
-      "StorageConfigError",
-      "private service key detail",
+      "ObjectStorageError",
+      "UNAVAILABLE",
+      503,
     )
   })
 })
@@ -157,8 +159,9 @@ async function expectSafeRouteFailure(
   operation: string,
   errorType: string,
   privateDetail: string,
+  status = 500,
 ) {
-  expect(response.status).toBe(500)
+  expect(response.status).toBe(status)
   const body = (await response.json()) as {
     message: string
     correlationId: string
