@@ -1,5 +1,6 @@
 import Link from "next/link"
 
+import { TeamWorkspaceHeader } from "@/components/team/team-workspace-header"
 import { createNextCookieCurrentActorProvider } from "@/features/identity/infrastructure/next-cookie-current-actor-provider"
 import { getOwnedTeamWorkspace } from "@/features/team-management/application/get-owned-team-workspace"
 import { listOwnedTeams } from "@/features/team-management/application/list-owned-teams"
@@ -18,19 +19,7 @@ export default async function TeamPage() {
 
   return (
     <section>
-      <header className="flex flex-col gap-4 border-b border-border pb-5 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <p className="text-xs font-semibold text-court">TEAM WORKSPACE</p>
-          <h1 className="mt-2 text-2xl font-semibold">ทีมของฉัน</h1>
-          <p className="mt-2 text-sm text-muted-foreground">จัดการข้อมูลทีมและรายชื่อสมาชิก</p>
-        </div>
-        <Link
-          className="inline-flex min-h-11 items-center justify-center border border-foreground px-5 text-sm font-medium"
-          href="/team/new"
-        >
-          สร้างทีม
-        </Link>
-      </header>
+      <TeamWorkspaceHeader actorRole={actor.role} />
 
       {workspaces.length === 0 ? (
         <p className="py-8 text-sm text-muted-foreground">ยังไม่มีทีมที่ดูแล</p>

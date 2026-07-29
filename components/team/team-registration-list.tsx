@@ -1,15 +1,17 @@
 "use client"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { Dialog as DialogPrimitive } from "@base-ui/react/dialog"
 
 import { Button } from "@/components/ui/button"
+import type { RegistrationStatus } from "@/features/registrations/domain/registration"
 
 export interface TeamRegistrationListItem {
   id: string
   tournamentName: string
   submittedAt: string
-  status: string
+  status: RegistrationStatus
   organizerNote: string | null
   version: number
 }
@@ -19,6 +21,38 @@ export function TeamRegistrationList({
 }: {
   registrations: TeamRegistrationListItem[]
 }) {
+  const router = useRouter()
+  const serverSignature = registrations
+    .map(({ id, status, version }) => `${id}:${status}:${version}`)
+    .join("|")
+  const [optimisticCancellations, setOptimisticCancellations] = useState(() => ({
+    serverSignature,
+    ids: new Set<string>(),
+  }))
+  const reconciledCancellationIds =
+    optimisticCancellations.serverSignature === serverSignature
+      ? optimisticCancellations.ids
+      : new Set(
+          [...optimisticCancellations.ids].filter((id) =>
+            registrations.some(
+              (registration) =>
+                registration.id === id && registration.status === "PENDING",
+            ),
+          ),
+        )
+
+  if (optimisticCancellations.serverSignature !== serverSignature) {
+    setOptimisticCancellations({
+      serverSignature,
+      ids: reconciledCancellationIds,
+    })
+  }
+
+  const visibleRegistrations = registrations.map((registration) =>
+    reconciledCancellationIds.has(registration.id)
+      ? { ...registration, status: "CANCELLED" as const }
+      : registration,
+  )
   const [pendingId, setPendingId] = useState<string | null>(null)
   const [feedback, setFeedback] = useState<string | null>(null)
   const [registrationToCancel, setRegistrationToCancel] =
@@ -41,7 +75,12 @@ export function TeamRegistrationList({
         const payload = await response.json().catch(() => null)
         throw new Error(payload?.message ?? "ไม่สามารถยกเลิกการสมัครได้")
       }
+      setOptimisticCancellations((current) => ({
+        ...current,
+        ids: new Set(current.ids).add(registration.id),
+      }))
       setFeedback("ยกเลิกการสมัครแล้ว")
+      router.refresh()
     } catch (error) {
       setFeedback(error instanceof Error ? error.message : "ไม่สามารถยกเลิกการสมัครได้")
     } finally {
@@ -53,15 +92,15 @@ export function TeamRegistrationList({
     <section className="border-t border-border pt-8">
       <p className="text-xs font-semibold text-court">REGISTRATIONS</p>
       <h2 className="mt-2 text-xl font-semibold">รายการสมัครแข่งขัน</h2>
-      {registrations.length === 0 ? (
+      {visibleRegistrations.length === 0 ? (
         <p className="mt-5 text-sm text-muted-foreground">ยังไม่มีรายการสมัครแข่งขัน</p>
       ) : (
         <ul className="mt-5 divide-y divide-border border-y border-border">
-          {registrations.map((registration) => (
+          {visibleRegistrations.map((registration) => (
             <li className="grid gap-2 py-4 text-sm sm:grid-cols-[minmax(0,1.5fr)_1fr_1fr_minmax(0,1.25fr)_auto]" key={registration.id}>
               <span className="font-medium">{registration.tournamentName}</span>
               <span>{registration.submittedAt}</span>
-              <span>{registration.status}</span>
+              <span>{statusLabels[registration.status]}</span>
               <span>{registration.organizerNote ?? "-"}</span>
               {registration.status === "PENDING" ? (
                 <button
@@ -113,4 +152,12 @@ export function TeamRegistrationList({
       </p>
     </section>
   )
+}
+
+const statusLabels: Record<RegistrationStatus, string> = {
+  PENDING: "รอพิจารณา",
+  APPROVED: "อนุมัติ",
+  REJECTED: "ปฏิเสธ",
+  CANCELLED: "ยกเลิก",
+  WITHDRAWN: "ถอนทีม",
 }

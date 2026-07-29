@@ -4,10 +4,15 @@ import { notFound } from "next/navigation"
 import { TournamentRegistrationAction } from "@/components/tournaments/tournament-registration-action"
 import { TournamentDocumentList } from "@/components/tournaments/tournament-document-list"
 import { TournamentPoster } from "@/components/tournaments/tournament-poster"
+import type { Actor } from "@/features/identity/domain/actor"
 import { createNextCookieCurrentActorProvider } from "@/features/identity/infrastructure/next-cookie-current-actor-provider"
+import { getRegistrationRepository } from "@/features/registrations/infrastructure/get-registration-repository"
 import { getTeamRepository } from "@/features/team-management/infrastructure/get-team-repository"
 import { getTournamentBySlug } from "@/features/tournaments/application/get-tournament-by-slug"
-import { getTournamentRegistrationOptions } from "@/features/tournaments/application/get-tournament-registration-options"
+import {
+  getTournamentRegistrationAvailability,
+  type TournamentRegistrationAvailability,
+} from "@/features/tournaments/application/get-tournament-registration-options"
 import { getTournamentRepository } from "@/features/tournaments/infrastructure/get-tournament-repository"
 import {
   formatThaiCalendarDate,
@@ -33,13 +38,11 @@ export default async function TournamentDetailPage({
     notFound()
   }
 
-  const registrationTeams = process.env.DATABASE_URL
-    ? await getTournamentRegistrationOptions(
-        tournament,
-        await createNextCookieCurrentActorProvider().getCurrentActor(),
-        { teams: getTeamRepository() },
-      )
-    : []
+  const actor = await createNextCookieCurrentActorProvider().getCurrentActor()
+  const registrationAvailability = await loadRegistrationAvailability(
+    tournament,
+    actor,
+  )
 
   return (
     <div className="py-8 sm:py-12">
@@ -95,10 +98,11 @@ export default async function TournamentDetailPage({
         </div>
       </header>
 
-      {registrationTeams.length > 0 ? (
+      {registrationAvailability.state !== "HIDDEN" ? (
         <div className="mt-8">
           <TournamentRegistrationAction
-            teams={registrationTeams}
+            availability={registrationAvailability.state}
+            teams={registrationAvailability.teams}
             tournamentId={tournament.id}
           />
         </div>
@@ -139,4 +143,28 @@ export default async function TournamentDetailPage({
       </div>
     </div>
   )
+}
+
+async function loadRegistrationAvailability(
+  tournament: Parameters<typeof getTournamentRegistrationAvailability>[0],
+  actor: Actor | null,
+): Promise<{
+  state: TournamentRegistrationAvailability
+  teams: Array<{ id: string; name: string }>
+}> {
+  if (actor?.role !== "TEAM_MANAGER") {
+    return { state: "HIDDEN", teams: [] }
+  }
+  if (!process.env.DATABASE_URL) {
+    return { state: "ERROR", teams: [] }
+  }
+
+  try {
+    return await getTournamentRegistrationAvailability(tournament, actor, {
+      teams: getTeamRepository(),
+      registrations: getRegistrationRepository(),
+    })
+  } catch {
+    return { state: "ERROR", teams: [] }
+  }
 }

@@ -4,6 +4,14 @@ import { afterEach, describe, expect, it, vi } from "vitest"
 
 import { TournamentRegistrationAction } from "@/components/tournaments/tournament-registration-action"
 
+const router = {
+  refresh: vi.fn(),
+}
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => router,
+}))
+
 const teams = [
   { id: "team-1", name: "Bangkok Ballers" },
   { id: "team-2", name: "Chiang Mai Hoops" },
@@ -20,9 +28,150 @@ function deferred<T>() {
 afterEach(() => {
   cleanup()
   vi.unstubAllGlobals()
+  router.refresh.mockReset()
 })
 
 describe("TournamentRegistrationAction", () => {
+  it("keeps selection valid when refreshed props remove the selected team", async () => {
+    const user = userEvent.setup()
+    const { rerender } = render(
+      <TournamentRegistrationAction
+        teams={teams}
+        tournamentId="tournament-1"
+      />,
+    )
+
+    await user.selectOptions(screen.getByLabelText("ทีมที่สมัคร"), "team-2")
+
+    rerender(
+      <TournamentRegistrationAction
+        teams={[teams[0]]}
+        tournamentId="tournament-1"
+      />,
+    )
+
+    expect(screen.queryByRole("option", { name: "Chiang Mai Hoops" })).toBeNull()
+    expect(screen.getByLabelText("ทีมที่สมัคร")).toHaveProperty(
+      "value",
+      "team-1",
+    )
+  })
+
+  it("reconciles an optimistic submission after refreshed props remove it", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        Response.json(
+          { registration: { id: "registration-1", status: "PENDING" } },
+          { status: 201 },
+        ),
+      ),
+    )
+    const user = userEvent.setup()
+    const { rerender } = render(
+      <TournamentRegistrationAction
+        teams={teams}
+        tournamentId="tournament-1"
+      />,
+    )
+
+    await user.selectOptions(screen.getByLabelText("ทีมที่สมัคร"), "team-2")
+    await user.click(screen.getByRole("button", { name: "สมัครแข่งขัน" }))
+    expect(
+      await screen.findByText("ส่งใบสมัครเรียบร้อยแล้ว รอผู้จัดการแข่งขันพิจารณา"),
+    ).toBeTruthy()
+
+    rerender(
+      <TournamentRegistrationAction
+        teams={[teams[0]]}
+        tournamentId="tournament-1"
+      />,
+    )
+    rerender(
+      <TournamentRegistrationAction
+        teams={teams}
+        tournamentId="tournament-1"
+      />,
+    )
+
+    expect(
+      screen.getByRole("option", { name: "Chiang Mai Hoops" }),
+    ).toBeTruthy()
+  })
+
+  it("resets optimistic state when switching tournaments with identical team IDs", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        Response.json(
+          { registration: { id: "registration-1", status: "PENDING" } },
+          { status: 201 },
+        ),
+      ),
+    )
+    const user = userEvent.setup()
+    const { rerender } = render(
+      <TournamentRegistrationAction
+        teams={teams}
+        tournamentId="tournament-1"
+      />,
+    )
+
+    await user.selectOptions(screen.getByLabelText("ทีมที่สมัคร"), "team-2")
+    await user.click(screen.getByRole("button", { name: "สมัครแข่งขัน" }))
+    expect(
+      await screen.findByText("ส่งใบสมัครเรียบร้อยแล้ว รอผู้จัดการแข่งขันพิจารณา"),
+    ).toBeTruthy()
+
+    rerender(
+      <TournamentRegistrationAction
+        teams={teams}
+        tournamentId="tournament-2"
+      />,
+    )
+
+    expect(
+      screen.getByRole("option", { name: "Chiang Mai Hoops" }),
+    ).toBeTruthy()
+    expect(screen.getByLabelText("ทีมที่สมัคร")).toHaveProperty(
+      "value",
+      "team-1",
+    )
+    expect(screen.getByRole("status").textContent).toBe("")
+  })
+
+  it("states that final eligibility is validated by the server on submit", () => {
+    render(
+      <TournamentRegistrationAction
+        teams={teams}
+        tournamentId="tournament-1"
+      />,
+    )
+
+    expect(
+      screen.getByText(
+        "ระบบจะตรวจสอบกำหนดปิดรับสมัคร จำนวนทีม และรายชื่อสมาชิกอีกครั้งเมื่อส่งใบสมัคร",
+      ),
+    ).toBeTruthy()
+  })
+
+  it.each([
+    ["NO_TEAMS", "ยังไม่มีทีมสำหรับสมัครแข่งขัน"],
+    ["ALREADY_APPLIED", "ทีมของคุณสมัครรายการนี้แล้ว"],
+    ["CLOSED", "รายการนี้ปิดรับสมัครแล้ว"],
+    ["ERROR", "ไม่สามารถโหลดข้อมูลการสมัครได้"],
+  ] as const)("shows the Thai %s registration state", (availability, message) => {
+    render(
+      <TournamentRegistrationAction
+        availability={availability}
+        teams={[]}
+        tournamentId="tournament-1"
+      />,
+    )
+
+    expect(screen.getByText(message)).toBeTruthy()
+  })
+
   it("submits the selected owned team for the current tournament", async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       Response.json(
@@ -56,6 +205,39 @@ describe("TournamentRegistrationAction", () => {
     expect(
       await screen.findByText("ส่งใบสมัครเรียบร้อยแล้ว รอผู้จัดการแข่งขันพิจารณา"),
     ).toBeTruthy()
+    expect(
+      screen.queryByRole("option", { name: "Chiang Mai Hoops" }),
+    ).toBeNull()
+    expect(router.refresh).toHaveBeenCalledOnce()
+  })
+
+  it("prevents a duplicate submit when the submitted team was the only option", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        Response.json(
+          { registration: { id: "registration-1", status: "PENDING" } },
+          { status: 201 },
+        ),
+      ),
+    )
+    const user = userEvent.setup()
+
+    render(
+      <TournamentRegistrationAction
+        teams={[teams[0]]}
+        tournamentId="tournament-1"
+      />,
+    )
+
+    await user.click(
+      screen.getByRole("button", { name: "สมัครแข่งขัน" }),
+    )
+
+    expect(await screen.findByText("ส่งใบสมัครแล้ว")).toBeTruthy()
+    expect(
+      screen.queryByRole("button", { name: "สมัครแข่งขัน" }),
+    ).toBeNull()
   })
 
   it("disables the selector and submit button only while the request is pending", async () => {
