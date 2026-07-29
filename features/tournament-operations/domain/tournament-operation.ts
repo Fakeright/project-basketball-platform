@@ -44,3 +44,11 @@ export interface TournamentReviewInput {
   note: string
   version: number
 }
+
+export type TournamentAuditAction =
+  | "tournament.created"
+  | "tournament.updated"
+  | "tournament.submitted"
+  | "tournament.reviewed"
+  | "tournament.published"
+  | "tournament.registration_closed"

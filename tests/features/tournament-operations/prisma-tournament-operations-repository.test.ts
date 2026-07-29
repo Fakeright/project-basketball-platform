@@ -35,6 +35,9 @@ function createPrismaMock() {
     tournamentReview: {
       create: vi.fn(),
     },
+    auditLog: {
+      create: vi.fn(),
+    },
     $transaction: vi.fn(async (operation: (client: unknown) => unknown) =>
       operation(prisma),
     ),
@@ -59,8 +62,13 @@ describe("PrismaTournamentOperationsRepository", () => {
     const updated = await repository.updateWithVersion("tournament-1", 2, {
       title: "Updated",
       startsAt: "2026-11-20T09:00:00+07:00",
+    }, {
+      actorId: "organizer-1",
+      action: "tournament.updated",
+      adminOverride: false,
     })
 
+    expect(prisma.$transaction).toHaveBeenCalledOnce()
     expect(prisma.tournament.updateMany).toHaveBeenCalledWith({
       where: { id: "tournament-1", version: 2 },
       data: {
@@ -76,19 +84,38 @@ describe("PrismaTournamentOperationsRepository", () => {
         createdAt: "2026-07-26T01:00:00.000Z",
       }),
     )
+    expect(prisma.auditLog.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        actorId: "organizer-1",
+        action: "tournament.updated",
+        beforeJson: expect.anything(),
+        afterJson: expect.anything(),
+      }),
+    })
   })
 
-  it("rejects a stale update without reloading the tournament", async () => {
+  it("rejects a stale update after loading only the audit snapshot", async () => {
     const prisma = createPrismaMock()
+    prisma.tournament.findUnique.mockResolvedValue(tournamentRow)
     prisma.tournament.updateMany.mockResolvedValue({ count: 0 })
     const repository = new PrismaTournamentOperationsRepository(
       prisma as unknown as PrismaClient,
     )
 
     await expect(
-      repository.updateWithVersion("tournament-1", 1, { title: "Stale" }),
+      repository.updateWithVersion(
+        "tournament-1",
+        1,
+        { title: "Stale" },
+        {
+          actorId: "organizer-1",
+          action: "tournament.updated",
+          adminOverride: false,
+        },
+      ),
     ).rejects.toThrow("CONFLICT")
-    expect(prisma.tournament.findUnique).not.toHaveBeenCalled()
+    expect(prisma.tournament.findUnique).toHaveBeenCalledOnce()
+    expect(prisma.auditLog.create).not.toHaveBeenCalled()
   })
 
   it("writes the review and state transition in one transaction", async () => {
@@ -127,7 +154,51 @@ describe("PrismaTournamentOperationsRepository", () => {
         note: "Approved",
       },
     })
+    expect(prisma.auditLog.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        actorId: "admin-1",
+        action: "tournament.reviewed",
+        beforeJson: expect.anything(),
+        afterJson: expect.anything(),
+      }),
+    })
     expect(reviewed.version).toBe(3)
+  })
+
+  it("writes a distinct override audit in the lifecycle transaction", async () => {
+    const prisma = createPrismaMock()
+    prisma.tournament.findUnique
+      .mockResolvedValueOnce({
+        ...tournamentRow,
+        status: "APPROVED",
+      })
+      .mockResolvedValueOnce({
+        ...tournamentRow,
+        status: "PUBLISHED",
+        version: 3,
+      })
+    prisma.tournament.updateMany.mockResolvedValue({ count: 1 })
+    const repository = new PrismaTournamentOperationsRepository(
+      prisma as unknown as PrismaClient,
+    )
+
+    await repository.transitionWithVersion({
+      tournamentId: "tournament-1",
+      version: 2,
+      sourceStatus: "APPROVED",
+      status: "PUBLISHED",
+      actorId: "admin-1",
+      action: "tournament.published",
+      adminOverride: true,
+    })
+
+    expect(prisma.$transaction).toHaveBeenCalledOnce()
+    expect(prisma.auditLog.create).toHaveBeenNthCalledWith(1, {
+      data: expect.objectContaining({ action: "tournament.published" }),
+    })
+    expect(prisma.auditLog.create).toHaveBeenNthCalledWith(2, {
+      data: expect.objectContaining({ action: "tournament.admin_override" }),
+    })
   })
 
   it("lists submitted tournaments in update order for the admin queue", async () => {

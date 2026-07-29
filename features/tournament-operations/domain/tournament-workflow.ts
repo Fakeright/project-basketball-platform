@@ -25,3 +25,27 @@ export function applyReviewDecision(tournament: TournamentOperation, decision: "
   if (tournament.status !== "SUBMITTED") throw new Error("INVALID_REVIEW_STATUS")
   return decision
 }
+
+export function assertCanPublish(
+  tournament: TournamentOperation,
+  now: Date,
+): void {
+  if (tournament.status !== "APPROVED") {
+    throw new Error("INVALID_PUBLISH_STATUS")
+  }
+  validateTournamentInput(tournament)
+  if (Date.parse(tournament.registrationDeadline) <= now.getTime()) {
+    throw new Error("REGISTRATION_WINDOW_CLOSED")
+  }
+  if (Date.parse(tournament.startsAt) <= now.getTime()) {
+    throw new Error("TOURNAMENT_ALREADY_STARTED")
+  }
+}
+
+export function assertCanCloseRegistration(
+  tournament: TournamentOperation,
+): void {
+  if (tournament.status !== "PUBLISHED") {
+    throw new Error("INVALID_CLOSE_REGISTRATION_STATUS")
+  }
+}

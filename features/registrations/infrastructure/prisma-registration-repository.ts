@@ -60,7 +60,12 @@ export class PrismaRegistrationRepository implements RegistrationRepository {
     return this.operations.findActive(tournamentId, teamId)
   }
 
-  createPending(input: { tournamentId: string; teamId: string; actorId: string }) {
+  createPending(input: {
+    tournamentId: string
+    teamId: string
+    actorId: string
+    adminOverride: boolean
+  }) {
     return this.operations.createPending(input)
   }
 
@@ -68,8 +73,20 @@ export class PrismaRegistrationRepository implements RegistrationRepository {
     return this.operations.findById(id)
   }
 
-  cancelWithVersion(id: string, version: number, actorId: string, at: string) {
-    return this.operations.cancelWithVersion(id, version, actorId, at)
+  cancelWithVersion(
+    id: string,
+    version: number,
+    actorId: string,
+    at: string,
+    adminOverride: boolean,
+  ) {
+    return this.operations.cancelWithVersion(
+      id,
+      version,
+      actorId,
+      at,
+      adminOverride,
+    )
   }
 
   findReviewContext(id: string) {
@@ -163,15 +180,45 @@ class PrismaRegistrationOperations implements RegistrationRepositoryTransaction 
     tournamentId: string,
     teamId: string,
   ): Promise<RegistrationApplicationContext | null> {
-    const [team, tournament, roster] = await Promise.all([
+    const lockedTournaments = await this.prisma.$queryRaw<
+      Array<{
+        id: string
+        format: RegistrationApplicationContext["tournament"]["format"]
+        status: RegistrationApplicationContext["tournament"]["status"]
+        registrationDeadline: Date
+        capacity: number
+      }>
+    >(
+      Prisma.sql`
+        SELECT "id", "format", "status", "registrationDeadline", "capacity"
+        FROM "Tournament"
+        WHERE "id" = ${tournamentId}
+        FOR UPDATE
+      `,
+    )
+    const tournament = lockedTournaments[0]
+    if (!tournament) return null
+
+    await this.prisma.$queryRaw(
+      Prisma.sql`
+        SELECT "id"
+        FROM "TeamMember"
+        WHERE "teamId" = ${teamId} AND "isActive" = true
+        FOR UPDATE
+      `,
+    )
+
+    const [team, roster, approvedCount] = await Promise.all([
       this.prisma.team.findUnique({ where: { id: teamId } }),
-      this.prisma.tournament.findUnique({ where: { id: tournamentId } }),
       this.prisma.teamMember.findMany({
         where: { teamId, isActive: true },
         orderBy: { createdAt: "asc" },
       }),
+      this.prisma.registration.count({
+        where: { tournamentId, status: "APPROVED" },
+      }),
     ])
-    if (!team || !tournament) return null
+    if (!team) return null
 
     return {
       team: mapTeam(team),
@@ -181,6 +228,8 @@ class PrismaRegistrationOperations implements RegistrationRepositoryTransaction 
         format: tournament.format,
         status: tournament.status,
         registrationDeadline: tournament.registrationDeadline.toISOString(),
+        capacity: tournament.capacity,
+        approvedCount,
       },
     }
   }
@@ -193,7 +242,12 @@ class PrismaRegistrationOperations implements RegistrationRepositoryTransaction 
     return registration ? mapRegistration(registration) : null
   }
 
-  async createPending(input: { tournamentId: string; teamId: string; actorId: string }) {
+  async createPending(input: {
+    tournamentId: string
+    teamId: string
+    actorId: string
+    adminOverride: boolean
+  }) {
     try {
       const registration = await this.prisma.registration.create({
         data: { tournamentId: input.tournamentId, teamId: input.teamId, status: "PENDING" },
@@ -208,6 +262,18 @@ class PrismaRegistrationOperations implements RegistrationRepositoryTransaction 
           afterJson: toJsonValue(mapRegistration(registration)),
         },
       })
+      if (input.adminOverride) {
+        await this.prisma.auditLog.create({
+          data: {
+            actorId: input.actorId,
+            tournamentId: input.tournamentId,
+            action: "registration.admin_override",
+            entityType: "Registration",
+            entityId: registration.id,
+            afterJson: toJsonValue(mapRegistration(registration)),
+          },
+        })
+      }
       return mapRegistration(registration)
     } catch (error) {
       if (isPrismaUniqueError(error)) throw new Error("REGISTRATION_ALREADY_ACTIVE")
@@ -225,7 +291,13 @@ class PrismaRegistrationOperations implements RegistrationRepositoryTransaction 
       : null
   }
 
-  async cancelWithVersion(id: string, version: number, actorId: string, at: string) {
+  async cancelWithVersion(
+    id: string,
+    version: number,
+    actorId: string,
+    at: string,
+    adminOverride: boolean,
+  ) {
     const cancelledAt = new Date(at)
     const updated = await this.prisma.registration.updateMany({
       where: { id, status: "PENDING", version },
@@ -246,6 +318,19 @@ class PrismaRegistrationOperations implements RegistrationRepositoryTransaction 
         afterJson: toJsonValue(mapRegistration(registration)),
       },
     })
+    if (adminOverride) {
+      await this.prisma.auditLog.create({
+        data: {
+          actorId,
+          tournamentId: registration.tournamentId,
+          action: "registration.admin_override",
+          entityType: "Registration",
+          entityId: registration.id,
+          beforeJson: toJsonValue({ status: "PENDING", version }),
+          afterJson: toJsonValue(mapRegistration(registration)),
+        },
+      })
+    }
     return mapRegistration(registration)
   }
 

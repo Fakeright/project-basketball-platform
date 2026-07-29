@@ -33,6 +33,7 @@ const organizerPermissions = [
   "tournament.read",
   "tournament.update",
   "tournament.submit",
+  "tournament.publish",
   "registration.decide",
   "registration.withdraw",
   "bracket.generate",

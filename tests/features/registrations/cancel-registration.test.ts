@@ -5,6 +5,7 @@ import type { RegistrationRepository } from "@/features/registrations/applicatio
 
 const owner = { id: "manager-1", role: "TEAM_MANAGER" } as const
 const anotherManager = { id: "manager-2", role: "TEAM_MANAGER" } as const
+const platformAdmin = { id: "admin-1", role: "PLATFORM_ADMIN" } as const
 
 function createRepository(ownerId = owner.id): RegistrationRepository {
   const repository: RegistrationRepository = {
@@ -76,6 +77,28 @@ describe("cancelRegistration", () => {
       0,
       owner.id,
       "2026-10-02T00:00:00.000Z",
+      false,
+    )
+  })
+
+  it("marks a platform-admin cancellation as an audited override", async () => {
+    const repository = createRepository()
+
+    await cancelRegistration(
+      { registrationId: "registration-1", version: 0 },
+      platformAdmin,
+      {
+        registrations: repository,
+        now: () => new Date("2026-10-02T00:00:00Z"),
+      },
+    )
+
+    expect(repository.cancelWithVersion).toHaveBeenCalledWith(
+      "registration-1",
+      0,
+      platformAdmin.id,
+      "2026-10-02T00:00:00.000Z",
+      true,
     )
   })
 })

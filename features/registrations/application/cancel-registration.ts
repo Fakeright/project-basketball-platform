@@ -30,6 +30,7 @@ export async function cancelRegistration(
       input.version,
       actor.id,
       dependencies.now().toISOString(),
+      actor.role === "PLATFORM_ADMIN",
     )
   })
 }

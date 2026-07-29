@@ -24,6 +24,8 @@ export interface RegistrationApplicationEligibility {
     format: RosterFormat
     status: RegistrationTournamentStatus
     registrationDeadline: string
+    capacity: number
+    approvedCount: number
   }
   hasActiveRegistration: boolean
   now: Date
@@ -53,6 +55,10 @@ export function assertCanApply(input: RegistrationApplicationEligibility): void 
   const deadline = Date.parse(input.tournament.registrationDeadline)
   if (!Number.isFinite(deadline) || input.now.getTime() > deadline) {
     throw new Error("REGISTRATION_DEADLINE_PASSED")
+  }
+
+  if (input.tournament.approvedCount >= input.tournament.capacity) {
+    throw new Error("TOURNAMENT_CAPACITY_REACHED")
   }
 
   if (input.team.ownerId !== input.actorId) {

@@ -11,6 +11,8 @@ export interface RegistrationApplicationContext {
     format: RosterFormat
     status: RegistrationTournamentStatus
     registrationDeadline: string
+    capacity: number
+    approvedCount: number
   }
 }
 
@@ -79,6 +81,7 @@ export interface RegistrationRepositoryTransaction {
     tournamentId: string
     teamId: string
     actorId: string
+    adminOverride: boolean
   }): Promise<TournamentRegistration>
   findById(id: string): Promise<TournamentRegistrationWithOwnership | null>
   cancelWithVersion(
@@ -86,6 +89,7 @@ export interface RegistrationRepositoryTransaction {
     version: number,
     actorId: string,
     at: string,
+    adminOverride: boolean,
   ): Promise<TournamentRegistration>
   findReviewContext(id: string): Promise<RegistrationReviewContext | null>
   approveWithCapacity(

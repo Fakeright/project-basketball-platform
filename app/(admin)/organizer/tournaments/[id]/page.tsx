@@ -3,6 +3,7 @@ import Link from "next/link"
 import { ClipboardCheck } from "lucide-react"
 
 import { TournamentEditor } from "@/components/admin/tournament-editor"
+import { TournamentLifecycleActions } from "@/components/admin/tournament-lifecycle-actions"
 import { authorize } from "@/features/identity/application/authorize"
 import { createNextCookieCurrentActorProvider } from "@/features/identity/infrastructure/next-cookie-current-actor-provider"
 import { getTournamentOperationsRepository } from "@/features/tournament-operations/infrastructure/get-tournament-operations-repository"
@@ -44,6 +45,11 @@ export default async function EditTournamentPage({
 
   return (
     <div className="space-y-8">
+      <TournamentLifecycleActions
+        status={tournament.status}
+        tournamentId={tournament.id}
+        version={tournament.version}
+      />
       <section className="border-y border-border px-4 py-5 sm:px-6">
         <div className="mx-auto flex w-full max-w-5xl flex-wrap items-center justify-between gap-4">
           <div>

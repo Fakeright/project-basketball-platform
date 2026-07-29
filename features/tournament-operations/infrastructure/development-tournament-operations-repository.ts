@@ -9,7 +9,11 @@ import type {
   TournamentReviewInput,
 } from "@/features/tournament-operations/domain/tournament-operation"
 
-import type { TournamentOperationsRepository } from "./tournament-operations-repository"
+import type {
+  TournamentLifecycleTransition,
+  TournamentMutationAudit,
+  TournamentOperationsRepository,
+} from "./tournament-operations-repository"
 
 interface DevelopmentState {
   tournaments: TournamentOperation[]
@@ -18,6 +22,13 @@ interface DevelopmentState {
     reviewerId: string
     decision: TournamentReviewInput["decision"]
     note: string
+  }>
+  audits: Array<{
+    actorId: string
+    action: string
+    tournamentId: string
+    before: TournamentOperation | null
+    after: TournamentOperation
   }>
 }
 
@@ -38,6 +49,7 @@ class DevelopmentTournamentOperationsRepository
 {
   async create(
     input: TournamentOperationInput & { organizerId: string },
+    audit: TournamentMutationAudit,
   ): Promise<TournamentOperation> {
     const state = await readState()
     const now = new Date().toISOString()
@@ -50,6 +62,7 @@ class DevelopmentTournamentOperationsRepository
       updatedAt: now,
     }
     state.tournaments.push(tournament)
+    appendDevelopmentAudit(state, audit, tournament.id, null, tournament)
     await writeState(state)
     return tournament
   }
@@ -77,6 +90,7 @@ class DevelopmentTournamentOperationsRepository
     id: string,
     version: number,
     changes: Partial<TournamentOperation>,
+    audit: TournamentMutationAudit,
   ) {
     const state = await readState()
     const index = state.tournaments.findIndex(
@@ -94,14 +108,9 @@ class DevelopmentTournamentOperationsRepository
       updatedAt: new Date().toISOString(),
     }
     state.tournaments[index] = updated
+    appendDevelopmentAudit(state, audit, id, current, updated)
     await writeState(state)
     return updated
-  }
-
-  async appendReview(input: DevelopmentState["reviews"][number]) {
-    const state = await readState()
-    state.reviews.push(input)
-    await writeState(state)
   }
 
   async reviewWithVersion(input: {
@@ -135,6 +144,48 @@ class DevelopmentTournamentOperationsRepository
     }
     state.tournaments[index] = updated
     state.reviews.push(input)
+    appendDevelopmentAudit(
+      state,
+      {
+        actorId: input.reviewerId,
+        action: "tournament.reviewed",
+        adminOverride: false,
+      },
+      input.tournamentId,
+      current,
+      updated,
+    )
+    await writeState(state)
+    return updated
+  }
+
+  async transitionWithVersion(input: TournamentLifecycleTransition) {
+    const state = await readState()
+    const index = state.tournaments.findIndex(
+      (tournament) => tournament.id === input.tournamentId,
+    )
+    if (index < 0) throw new Error("NOT_FOUND")
+    const current = state.tournaments[index]
+    if (
+      current.version !== input.version ||
+      current.status !== input.sourceStatus
+    ) {
+      throw new Error("CONFLICT")
+    }
+    const updated: TournamentOperation = {
+      ...current,
+      status: input.status,
+      version: input.version + 1,
+      updatedAt: new Date().toISOString(),
+    }
+    state.tournaments[index] = updated
+    appendDevelopmentAudit(
+      state,
+      input,
+      input.tournamentId,
+      current,
+      updated,
+    )
     await writeState(state)
     return updated
   }
@@ -150,7 +201,11 @@ async function ensureDevelopmentState() {
 }
 
 async function readState(): Promise<DevelopmentState> {
-  return JSON.parse(await readFile(statePath, "utf8")) as DevelopmentState
+  const state = JSON.parse(
+    await readFile(statePath, "utf8"),
+  ) as DevelopmentState
+  state.audits ??= []
+  return state
 }
 
 async function writeState(state: DevelopmentState) {
@@ -186,5 +241,31 @@ function createSeedState(): DevelopmentState {
       updatedAt: now,
     })),
     reviews: [],
+    audits: [],
+  }
+}
+
+function appendDevelopmentAudit(
+  state: DevelopmentState,
+  audit: TournamentMutationAudit,
+  tournamentId: string,
+  before: TournamentOperation | null,
+  after: TournamentOperation,
+) {
+  state.audits.push({
+    actorId: audit.actorId,
+    action: audit.action,
+    tournamentId,
+    before,
+    after,
+  })
+  if (audit.adminOverride) {
+    state.audits.push({
+      actorId: audit.actorId,
+      action: "tournament.admin_override",
+      tournamentId,
+      before,
+      after,
+    })
   }
 }

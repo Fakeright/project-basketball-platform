@@ -18,7 +18,6 @@ describe("reviewTournament", () => {
     const tournament = await createTournament(repository, input, organizer)
     await repository.updateWithVersion(tournament.id, 0, { status: "SUBMITTED" })
     const reviewWithVersion = vi.spyOn(repository, "reviewWithVersion")
-    const appendReview = vi.spyOn(repository, "appendReview")
 
     const approved = await reviewTournament(repository, tournament.id, { decision: "APPROVED", note: "ผ่าน", version: 1 }, admin)
 
@@ -27,7 +26,7 @@ describe("reviewTournament", () => {
     expect(reviewWithVersion).toHaveBeenCalledWith(
       expect.objectContaining({ sourceStatus: "SUBMITTED" }),
     )
-    expect(appendReview).not.toHaveBeenCalled()
+    expect(repository.audits.at(-1)?.action).toBe("tournament.reviewed")
   })
 
   it("rejects a future client version before transitioning", async () => {

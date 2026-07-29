@@ -26,6 +26,8 @@ const context = {
     format: "FIVE_V_FIVE" as const,
     status: "PUBLISHED" as const,
     registrationDeadline: "2026-11-01T00:00:00.000Z",
+    capacity: 8,
+    approvedCount: 7,
   },
 }
 
@@ -101,6 +103,30 @@ describe("applyToTournament", () => {
     ).rejects.toThrow("REGISTRATION_ALREADY_ACTIVE")
   })
 
+  it("rejects a pending application when the approved field is full", async () => {
+    const repository = createRepository({
+      getApplicationContext: vi.fn(async () => ({
+        ...context,
+        tournament: {
+          ...context.tournament,
+          approvedCount: context.tournament.capacity,
+        },
+      })),
+    })
+
+    await expect(
+      applyToTournament(
+        { tournamentId: "tournament-1", teamId: "team-1" },
+        teamManager,
+        {
+          registrations: repository,
+          now: () => new Date("2026-10-01T00:00:00Z"),
+        },
+      ),
+    ).rejects.toThrow("TOURNAMENT_CAPACITY_REACHED")
+    expect(repository.createPending).not.toHaveBeenCalled()
+  })
+
   it("creates the pending attempt within a repository transaction", async () => {
     const repository = createRepository()
 
@@ -115,6 +141,7 @@ describe("applyToTournament", () => {
       tournamentId: "tournament-1",
       teamId: "team-1",
       actorId: teamManager.id,
+      adminOverride: false,
     })
   })
 
@@ -128,5 +155,8 @@ describe("applyToTournament", () => {
         { registrations: repository, now: () => new Date("2026-10-01T00:00:00Z") },
       ),
     ).resolves.toMatchObject({ status: "PENDING" })
+    expect(repository.createPending).toHaveBeenCalledWith(
+      expect.objectContaining({ adminOverride: true }),
+    )
   })
 })

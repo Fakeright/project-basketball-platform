@@ -1,14 +1,33 @@
-import type { TournamentOperation, TournamentOperationInput, TournamentReviewInput } from "@/features/tournament-operations/domain/tournament-operation"
-import type { TournamentOperationsRepository } from "./tournament-operations-repository"
+import type {
+  TournamentOperation,
+  TournamentOperationInput,
+  TournamentReviewInput,
+} from "@/features/tournament-operations/domain/tournament-operation"
+import type {
+  TournamentLifecycleTransition,
+  TournamentMutationAudit,
+  TournamentOperationsRepository,
+} from "./tournament-operations-repository"
 
 export class InMemoryTournamentOperationsRepository implements TournamentOperationsRepository {
   private readonly tournaments = new Map<string, TournamentOperation>()
   readonly reviews: Array<{ tournamentId: string; reviewerId: string; decision: TournamentReviewInput["decision"]; note: string }> = []
+  readonly audits: Array<{
+    actorId: string
+    action: string
+    tournamentId: string
+    before: TournamentOperation | null
+    after: TournamentOperation
+  }> = []
 
-  async create(input: TournamentOperationInput & { organizerId: string }): Promise<TournamentOperation> {
+  async create(
+    input: TournamentOperationInput & { organizerId: string },
+    audit: TournamentMutationAudit = systemAudit("tournament.created"),
+  ): Promise<TournamentOperation> {
     const now = new Date().toISOString()
     const tournament: TournamentOperation = { ...input, id: `tournament-${this.tournaments.size + 1}`, status: "DRAFT", version: 0, createdAt: now, updatedAt: now }
     this.tournaments.set(tournament.id, tournament)
+    this.appendAudit(audit, tournament.id, null, tournament)
     return tournament
   }
 
@@ -26,17 +45,19 @@ export class InMemoryTournamentOperationsRepository implements TournamentOperati
     )
   }
 
-  async updateWithVersion(id: string, version: number, changes: Partial<TournamentOperation>) {
+  async updateWithVersion(
+    id: string,
+    version: number,
+    changes: Partial<TournamentOperation>,
+    audit: TournamentMutationAudit = systemAudit("tournament.updated"),
+  ) {
     const current = this.tournaments.get(id)
     if (!current) throw new Error("NOT_FOUND")
     if (current.version !== version) throw new Error("CONFLICT")
     const updated = { ...current, ...changes, version: version + 1, updatedAt: new Date().toISOString() }
     this.tournaments.set(id, updated)
+    this.appendAudit(audit, id, current, updated)
     return updated
-  }
-
-  async appendReview(input: { tournamentId: string; reviewerId: string; decision: TournamentReviewInput["decision"]; note: string }) {
-    this.reviews.push(input)
   }
 
   async reviewWithVersion(input: {
@@ -57,12 +78,74 @@ export class InMemoryTournamentOperationsRepository implements TournamentOperati
       throw new Error("CONFLICT")
     }
 
-    const updated = await this.updateWithVersion(
-      input.tournamentId,
-      input.version,
-      { status: input.status },
-    )
+    const updated = {
+      ...current,
+      status: input.status,
+      version: input.version + 1,
+      updatedAt: new Date().toISOString(),
+    }
+    this.tournaments.set(input.tournamentId, updated)
     this.reviews.push(input)
+    this.appendAudit(
+      {
+        actorId: input.reviewerId,
+        action: "tournament.reviewed",
+        adminOverride: false,
+      },
+      input.tournamentId,
+      current,
+      updated,
+    )
     return updated
   }
+
+  async transitionWithVersion(input: TournamentLifecycleTransition) {
+    const current = this.tournaments.get(input.tournamentId)
+    if (!current) throw new Error("NOT_FOUND")
+    if (
+      current.version !== input.version ||
+      current.status !== input.sourceStatus
+    ) {
+      throw new Error("CONFLICT")
+    }
+    const updated = {
+      ...current,
+      status: input.status,
+      version: input.version + 1,
+      updatedAt: new Date().toISOString(),
+    }
+    this.tournaments.set(input.tournamentId, updated)
+    this.appendAudit(input, input.tournamentId, current, updated)
+    return updated
+  }
+
+  private appendAudit(
+    audit: TournamentMutationAudit,
+    tournamentId: string,
+    before: TournamentOperation | null,
+    after: TournamentOperation,
+  ) {
+    this.audits.push({
+      actorId: audit.actorId,
+      action: audit.action,
+      tournamentId,
+      before,
+      after,
+    })
+    if (audit.adminOverride) {
+      this.audits.push({
+        actorId: audit.actorId,
+        action: "tournament.admin_override",
+        tournamentId,
+        before,
+        after,
+      })
+    }
+  }
+}
+
+function systemAudit(
+  action: TournamentMutationAudit["action"],
+): TournamentMutationAudit {
+  return { actorId: "system", action, adminOverride: false }
 }

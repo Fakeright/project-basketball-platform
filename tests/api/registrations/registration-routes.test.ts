@@ -42,4 +42,24 @@ describe("registration route handlers", () => {
 
     expect(response.status).toBe(409)
   })
+
+  it("maps a full tournament application to 409", async () => {
+    const response = await handleApplyToTournament(
+      "tournament-1",
+      request("POST", { teamId: "team-1" }),
+      {
+        actorProvider: {
+          getCurrentActor: vi.fn(async () => teamManager),
+        },
+        apply: vi.fn(async () => {
+          throw new Error("TOURNAMENT_CAPACITY_REACHED")
+        }),
+      },
+    )
+
+    expect(response.status).toBe(409)
+    await expect(response.json()).resolves.toEqual({
+      message: "จำนวนทีมที่อนุมัติเต็มความจุการแข่งขันแล้ว",
+    })
+  })
 })

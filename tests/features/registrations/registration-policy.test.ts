@@ -26,6 +26,8 @@ const eligibleApplication = {
     format: "FIVE_V_FIVE" as const,
     status: "PUBLISHED",
     registrationDeadline: "2026-07-26T12:00:00.000Z",
+    capacity: 8,
+    approvedCount: 7,
   },
   hasActiveRegistration: false,
   now: new Date("2026-07-26T11:59:59.999Z"),
@@ -61,6 +63,18 @@ describe("assertCanApply", () => {
         hasActiveRegistration: true,
       }),
     ).toThrow("REGISTRATION_ALREADY_ACTIVE")
+  })
+
+  it("rejects an application when approved teams already fill capacity", () => {
+    expect(() =>
+      assertCanApply({
+        ...eligibleApplication,
+        tournament: {
+          ...eligibleApplication.tournament,
+          approvedCount: eligibleApplication.tournament.capacity,
+        },
+      }),
+    ).toThrow("TOURNAMENT_CAPACITY_REACHED")
   })
 })
 

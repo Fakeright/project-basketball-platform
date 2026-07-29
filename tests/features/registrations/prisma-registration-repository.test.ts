@@ -92,6 +92,96 @@ describe("PrismaRegistrationRepository transactions", () => {
     expect(transaction).toHaveBeenCalledTimes(3)
   })
 
+  it("locks application eligibility and counts approved teams in the same transaction", async () => {
+    const queryRaw = vi
+      .fn()
+      .mockResolvedValueOnce([
+        {
+          id: "tournament-1",
+          format: "FIVE_V_FIVE",
+          status: "PUBLISHED",
+          registrationDeadline: new Date("2026-11-01T00:00:00.000Z"),
+          capacity: 8,
+        },
+      ])
+      .mockResolvedValueOnce([])
+    const team = {
+      id: "team-1",
+      name: "Bangkok Hoops",
+      province: "กรุงเทพมหานคร",
+      ownerId: "manager-1",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    }
+    const count = vi.fn(async () => 7)
+    const { repository } = repositoryWithTransactionClient({
+      $queryRaw: queryRaw,
+      team: { findUnique: vi.fn(async () => team) },
+      teamMember: { findMany: vi.fn(async () => []) },
+      registration: { count },
+    })
+
+    const context = await repository.inTransaction((registrations) =>
+      registrations.getApplicationContext("tournament-1", "team-1"),
+    )
+
+    expect(queryRaw).toHaveBeenCalledTimes(2)
+    expect(queryRaw.mock.calls[0][0].text).toMatch(/\bFOR\s+UPDATE\b/i)
+    expect(queryRaw.mock.calls[1][0].text).toMatch(/\bFOR\s+UPDATE\b/i)
+    expect(count).toHaveBeenCalledWith({
+      where: { tournamentId: "tournament-1", status: "APPROVED" },
+    })
+    expect(context?.tournament).toMatchObject({
+      capacity: 8,
+      approvedCount: 7,
+    })
+  })
+
+  it("writes a distinct admin override audit for application and cancellation", async () => {
+    const created = registrationRow("PENDING", 0)
+    const cancelled = {
+      ...created,
+      status: "CANCELLED" as const,
+      cancelledAt: new Date("2026-10-02T00:00:00.000Z"),
+      version: 1,
+    }
+    const registration = {
+      create: vi.fn(async () => created),
+      updateMany: vi.fn(async () => ({ count: 1 })),
+      findUnique: vi.fn(async () => cancelled),
+    }
+    const createAudit = vi.fn(async () => undefined)
+    const { repository } = repositoryWithTransactionClient({
+      registration,
+      auditLog: { create: createAudit },
+    })
+
+    await repository.inTransaction((registrations) =>
+      registrations.createPending({
+        tournamentId: "tournament-1",
+        teamId: "team-1",
+        actorId: "admin-1",
+        adminOverride: true,
+      }),
+    )
+    await repository.inTransaction((registrations) =>
+      registrations.cancelWithVersion(
+        "registration-1",
+        0,
+        "admin-1",
+        "2026-10-02T00:00:00.000Z",
+        true,
+      ),
+    )
+
+    expect(createAudit.mock.calls.map(([input]) => input.data.action)).toEqual([
+      "registration.created",
+      "registration.admin_override",
+      "registration.cancelled",
+      "registration.admin_override",
+    ])
+  })
+
   it("locks the tournament and rejects approval deterministically at capacity", async () => {
     const lockTournament = vi.fn(async () => [{ capacity: 1 }])
     const count = vi.fn(async () => 1)

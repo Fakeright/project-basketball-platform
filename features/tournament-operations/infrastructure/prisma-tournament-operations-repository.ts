@@ -11,11 +11,16 @@ import type {
 } from "@/features/tournament-operations/domain/tournament-operation"
 
 import type {
+  TournamentLifecycleTransition,
+  TournamentMutationAudit,
   TournamentOperationsRepository,
   TournamentReviewTransition,
 } from "./tournament-operations-repository"
 
-type TournamentTransactionClient = Pick<Prisma.TransactionClient, "tournament">
+type TournamentTransactionClient = Pick<
+  Prisma.TransactionClient,
+  "tournament" | "tournamentReview" | "auditLog"
+>
 
 export class PrismaTournamentOperationsRepository
   implements TournamentOperationsRepository
@@ -27,18 +32,27 @@ export class PrismaTournamentOperationsRepository
 
   async create(
     input: TournamentOperationInput & { organizerId: string },
+    audit: TournamentMutationAudit,
   ): Promise<TournamentOperation> {
-    const tournament = await this.prisma.tournament.create({
-      data: {
-        ...input,
-        slug: `tournament-${this.createId()}`,
-        startsAt: new Date(input.startsAt),
-        endsAt: new Date(input.endsAt),
-        registrationDeadline: new Date(input.registrationDeadline),
-      },
+    return this.prisma.$transaction(async (transaction) => {
+      const tournament = await transaction.tournament.create({
+        data: {
+          ...input,
+          slug: `tournament-${this.createId()}`,
+          startsAt: new Date(input.startsAt),
+          endsAt: new Date(input.endsAt),
+          registrationDeadline: new Date(input.registrationDeadline),
+        },
+      })
+      const mapped = mapTournament(tournament)
+      await appendTournamentAudit(transaction, {
+        ...audit,
+        tournamentId: tournament.id,
+        before: null,
+        after: mapped,
+      })
+      return mapped
     })
-
-    return mapTournament(tournament)
   }
 
   async findById(id: string) {
@@ -71,25 +85,28 @@ export class PrismaTournamentOperationsRepository
     id: string,
     version: number,
     changes: Partial<TournamentOperation>,
+    audit: TournamentMutationAudit,
   ) {
-    return updateAndReloadTournament(
-      this.prisma,
-      id,
-      version,
-      mapTournamentChanges(changes),
+    return this.prisma.$transaction((transaction) =>
+      updateAndReloadTournament(
+        transaction,
+        id,
+        version,
+        mapTournamentChanges(changes),
+        audit,
+      ),
     )
-  }
-
-  async appendReview(
-    input: Parameters<TournamentOperationsRepository["appendReview"]>[0],
-  ) {
-    await this.prisma.tournamentReview.create({ data: input })
   }
 
   async reviewWithVersion(
     input: TournamentReviewTransition,
   ): Promise<TournamentOperation> {
     return this.prisma.$transaction(async (transaction) => {
+      const current = await transaction.tournament.findUnique({
+        where: { id: input.tournamentId },
+      })
+      if (!current) throw new Error("NOT_FOUND")
+
       const update = await transaction.tournament.updateMany({
         where: {
           id: input.tournamentId,
@@ -116,7 +133,55 @@ export class PrismaTournamentOperationsRepository
         where: { id: input.tournamentId },
       })
       if (!tournament) throw new Error("NOT_FOUND")
-      return mapTournament(tournament)
+      const after = mapTournament(tournament)
+      await appendTournamentAudit(transaction, {
+        actorId: input.reviewerId,
+        action: "tournament.reviewed",
+        adminOverride: false,
+        tournamentId: input.tournamentId,
+        before: mapTournament(current),
+        after,
+      })
+      return after
+    })
+  }
+
+  async transitionWithVersion(
+    input: TournamentLifecycleTransition,
+  ): Promise<TournamentOperation> {
+    return this.prisma.$transaction(async (transaction) => {
+      const current = await transaction.tournament.findUnique({
+        where: { id: input.tournamentId },
+      })
+      if (!current) throw new Error("NOT_FOUND")
+
+      const update = await transaction.tournament.updateMany({
+        where: {
+          id: input.tournamentId,
+          version: input.version,
+          status: input.sourceStatus,
+        },
+        data: {
+          status: input.status,
+          version: { increment: 1 },
+        },
+      })
+      if (update.count !== 1) throw new Error("CONFLICT")
+
+      const tournament = await transaction.tournament.findUnique({
+        where: { id: input.tournamentId },
+      })
+      if (!tournament) throw new Error("NOT_FOUND")
+      const after = mapTournament(tournament)
+      await appendTournamentAudit(transaction, {
+        actorId: input.actorId,
+        action: input.action,
+        adminOverride: input.adminOverride,
+        tournamentId: input.tournamentId,
+        before: mapTournament(current),
+        after,
+      })
+      return after
     })
   }
 }
@@ -126,7 +191,11 @@ async function updateAndReloadTournament(
   id: string,
   version: number,
   data: Prisma.TournamentUpdateManyMutationInput,
+  audit: TournamentMutationAudit,
 ) {
+  const current = await client.tournament.findUnique({ where: { id } })
+  if (!current) throw new Error("NOT_FOUND")
+
   const update = await client.tournament.updateMany({
     where: { id, version },
     data: {
@@ -138,7 +207,40 @@ async function updateAndReloadTournament(
 
   const tournament = await client.tournament.findUnique({ where: { id } })
   if (!tournament) throw new Error("NOT_FOUND")
-  return mapTournament(tournament)
+  const after = mapTournament(tournament)
+  await appendTournamentAudit(client, {
+    ...audit,
+    tournamentId: id,
+    before: mapTournament(current),
+    after,
+  })
+  return after
+}
+
+async function appendTournamentAudit(
+  client: Pick<Prisma.TransactionClient, "auditLog">,
+  input: TournamentMutationAudit & {
+    tournamentId: string
+    before: TournamentOperation | null
+    after: TournamentOperation
+  },
+) {
+  const auditData = {
+    actorId: input.actorId,
+    tournamentId: input.tournamentId,
+    entityType: "Tournament",
+    entityId: input.tournamentId,
+    beforeJson: input.before ? toJsonValue(input.before) : undefined,
+    afterJson: toJsonValue(input.after),
+  }
+  await client.auditLog.create({
+    data: { ...auditData, action: input.action },
+  })
+  if (input.adminOverride) {
+    await client.auditLog.create({
+      data: { ...auditData, action: "tournament.admin_override" },
+    })
+  }
 }
 
 function mapTournamentChanges(
@@ -187,4 +289,8 @@ function mapTournament(
     createdAt: tournament.createdAt.toISOString(),
     updatedAt: tournament.updatedAt.toISOString(),
   }
+}
+
+function toJsonValue(value: unknown): Prisma.InputJsonValue {
+  return JSON.parse(JSON.stringify(value)) as Prisma.InputJsonValue
 }

@@ -17,7 +17,11 @@ export async function applyToTournament(
 ): Promise<TournamentRegistration> {
   return dependencies.registrations.inTransaction(async (registrations) => {
     await loadEligibleApplicationContext(input, actor, registrations, dependencies.now())
-    return registrations.createPending({ ...input, actorId: actor.id })
+    return registrations.createPending({
+      ...input,
+      actorId: actor.id,
+      adminOverride: actor.role === "PLATFORM_ADMIN",
+    })
   })
 }
 
