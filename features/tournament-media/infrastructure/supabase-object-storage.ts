@@ -1,8 +1,11 @@
 import "server-only"
 
-import { createClient } from "@supabase/supabase-js"
+import { createClient, StorageApiError } from "@supabase/supabase-js"
 
-import type { ObjectStorage } from "@/features/tournament-media/application/ports/object-storage"
+import {
+  ObjectStorageError,
+  type ObjectStorage,
+} from "@/features/tournament-media/application/ports/object-storage"
 
 export class SupabaseObjectStorage implements ObjectStorage {
   constructor(
@@ -19,18 +22,28 @@ export class SupabaseObjectStorage implements ObjectStorage {
     contentType: string
     data: Uint8Array
   }): Promise<void> {
-    const { error } = await this.client.storage
-      .from(input.bucket)
-      .upload(input.objectPath, input.data, {
-        contentType: input.contentType,
-        upsert: false,
-      })
-    if (error) throw new Error("STORAGE_UPLOAD_FAILED")
+    try {
+      const { error } = await this.client.storage
+        .from(input.bucket)
+        .upload(input.objectPath, input.data, {
+          contentType: input.contentType,
+          upsert: false,
+        })
+      if (error) throw storageFailure(error)
+    } catch (error) {
+      throw normalizeStorageFailure(error)
+    }
   }
 
   async remove(bucket: string, objectPath: string): Promise<void> {
-    const { error } = await this.client.storage.from(bucket).remove([objectPath])
-    if (error) throw new Error("STORAGE_REMOVE_FAILED")
+    try {
+      const { error } = await this.client.storage
+        .from(bucket)
+        .remove([objectPath])
+      if (error) throw storageFailure(error, true)
+    } catch (error) {
+      throw normalizeStorageFailure(error, true)
+    }
   }
 
   async move(
@@ -38,10 +51,14 @@ export class SupabaseObjectStorage implements ObjectStorage {
     fromPath: string,
     toPath: string,
   ): Promise<void> {
-    const { error } = await this.client.storage
-      .from(bucket)
-      .move(fromPath, toPath)
-    if (error) throw new Error("STORAGE_MOVE_FAILED")
+    try {
+      const { error } = await this.client.storage
+        .from(bucket)
+        .move(fromPath, toPath)
+      if (error) throw storageFailure(error, true)
+    } catch (error) {
+      throw normalizeStorageFailure(error, true)
+    }
   }
 
   getPublicUrl(bucket: string, objectPath: string): string {
@@ -53,12 +70,38 @@ export class SupabaseObjectStorage implements ObjectStorage {
     objectPath: string,
     expiresInSeconds: number,
   ): Promise<string> {
-    const { data, error } = await this.client.storage
-      .from(bucket)
-      .createSignedUrl(objectPath, expiresInSeconds)
-    if (error || !data) throw new Error("STORAGE_SIGNED_URL_FAILED")
-    return data.signedUrl
+    try {
+      const { data, error } = await this.client.storage
+        .from(bucket)
+        .createSignedUrl(objectPath, expiresInSeconds)
+      if (error) throw storageFailure(error, true)
+      if (!data) throw new ObjectStorageError("UNAVAILABLE")
+      return data.signedUrl
+    } catch (error) {
+      throw normalizeStorageFailure(error, true)
+    }
   }
+}
+
+function normalizeStorageFailure(error: unknown, allowNotFound = false) {
+  return error instanceof ObjectStorageError
+    ? error
+    : storageFailure(error, allowNotFound)
+}
+
+function storageFailure(error: unknown, allowNotFound = false) {
+  const status =
+    error instanceof StorageApiError
+      ? error.status
+      : typeof error === "object" &&
+          error !== null &&
+          "status" in error &&
+          typeof error.status === "number"
+        ? error.status
+        : undefined
+  return new ObjectStorageError(
+    allowNotFound && status === 404 ? "NOT_FOUND" : "UNAVAILABLE",
+  )
 }
 
 function requiredEnvironment(name: string): string {

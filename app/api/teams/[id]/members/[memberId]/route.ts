@@ -2,17 +2,20 @@ import { deactivateTeamMember } from "@/features/team-management/application/dea
 import { PrismaTeamRepository } from "@/features/team-management/infrastructure/prisma-team-repository"
 import { handleDeactivateTeamMember } from "@/features/team-management/presentation/team-handler"
 import { createNextCookieCurrentActorProvider } from "@/features/identity/infrastructure/next-cookie-current-actor-provider"
+import { withSafeRouteBoundary } from "@/features/shared/presentation/safe-http"
 import { getPrismaClient } from "@/lib/server/prisma"
 
 export async function DELETE(
   _request: Request,
   { params }: { params: Promise<{ id: string; memberId: string }> },
 ) {
-  const { id, memberId } = await params
-  const repository = new PrismaTeamRepository(getPrismaClient())
-  return handleDeactivateTeamMember(id, memberId, {
-    actorProvider: createNextCookieCurrentActorProvider(),
-    deactivateMember: (input, actor) =>
-      deactivateTeamMember(input, actor, { teams: repository }),
+  return withSafeRouteBoundary("team.member.deactivate", async () => {
+    const { id, memberId } = await params
+    const repository = new PrismaTeamRepository(getPrismaClient())
+    return handleDeactivateTeamMember(id, memberId, {
+      actorProvider: createNextCookieCurrentActorProvider(),
+      deactivateMember: (input, actor) =>
+        deactivateTeamMember(input, actor, { teams: repository }),
+    })
   })
 }

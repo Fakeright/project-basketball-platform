@@ -1,3 +1,13 @@
+export type ObjectStorageFailureCode = "NOT_FOUND" | "UNAVAILABLE"
+
+export class ObjectStorageError extends Error {
+  readonly name = "ObjectStorageError"
+
+  constructor(readonly code: ObjectStorageFailureCode) {
+    super(code)
+  }
+}
+
 export interface ObjectStorage {
   upload(input: {
     bucket: string

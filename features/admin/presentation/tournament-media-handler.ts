@@ -4,6 +4,7 @@ import {
   type SafeHttpDiagnostics,
 } from "@/features/shared/presentation/safe-http"
 import type { UploadTournamentMediaInput } from "@/features/tournament-media/application/upload-tournament-media"
+import { ObjectStorageError } from "@/features/tournament-media/application/ports/object-storage"
 import type { TournamentMediaAsset } from "@/features/tournament-media/domain/media-asset"
 
 const defaultMaximumRequestBytes = 10_500_000
@@ -41,7 +42,7 @@ export async function handleTournamentMediaUpload(
       await dependencies.authorize(tournamentId, actor)
     } catch (error) {
       return (
-        mediaKnownFailureResponse(error) ??
+        mediaFailureResponse(error, "media.upload", dependencies) ??
         unexpectedFailureResponse(error, "media.upload", dependencies)
       )
     }
@@ -93,7 +94,7 @@ export async function handleTournamentMediaUpload(
       return Response.json({ asset }, { status: 201 })
     } catch (error) {
       return (
-        mediaKnownFailureResponse(error) ??
+        mediaFailureResponse(error, "media.upload", dependencies) ??
         unexpectedFailureResponse(error, "media.upload", dependencies)
       )
     }
@@ -127,7 +128,7 @@ export async function handleTournamentMediaDelete(
       return new Response(null, { status: 204 })
     } catch (error) {
       return (
-        mediaKnownFailureResponse(error) ??
+        mediaFailureResponse(error, "media.delete", dependencies) ??
         unexpectedFailureResponse(error, "media.delete", dependencies)
       )
     }
@@ -192,7 +193,26 @@ function invalidMediaFormResponse() {
   )
 }
 
-function mediaKnownFailureResponse(error: unknown) {
+function mediaFailureResponse(
+  error: unknown,
+  operation: string,
+  diagnostics: SafeHttpDiagnostics,
+) {
+  if (error instanceof ObjectStorageError) {
+    if (error.code === "UNAVAILABLE") {
+      return unexpectedFailureResponse(
+        error,
+        operation,
+        diagnostics,
+        503,
+      )
+    }
+    return Response.json(
+      { message: "ไม่พบไฟล์ที่ต้องการ" },
+      { status: 404 },
+    )
+  }
+
   const code = error instanceof Error ? error.message : "UNKNOWN"
   const responses: Record<string, { status: number; message: string }> = {
     FORBIDDEN: { status: 403, message: "คุณไม่มีสิทธิ์จัดการสื่อของรายการนี้" },
@@ -213,14 +233,6 @@ function mediaKnownFailureResponse(error: unknown) {
     MEDIA_FILE_CONTENT_INVALID: {
       status: 422,
       message: "เนื้อหาไฟล์ไม่ตรงกับชนิดไฟล์",
-    },
-    STORAGE_UPLOAD_FAILED: {
-      status: 422,
-      message: "ไม่สามารถอัปโหลดไฟล์ได้",
-    },
-    STORAGE_MOVE_FAILED: {
-      status: 422,
-      message: "ไม่สามารถจัดเตรียมไฟล์เพื่อลบได้",
     },
   }
   const response = responses[code]

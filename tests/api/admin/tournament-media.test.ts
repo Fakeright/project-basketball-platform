@@ -1,6 +1,11 @@
 import { describe, expect, it, vi } from "vitest"
 
-import { handleTournamentMediaUpload } from "@/features/admin/presentation/tournament-media-handler"
+import {
+  handleTournamentMediaDelete,
+  handleTournamentMediaUpload,
+} from "@/features/admin/presentation/tournament-media-handler"
+import { deleteTournamentMedia } from "@/features/tournament-media/application/delete-tournament-media"
+import { ObjectStorageError } from "@/features/tournament-media/application/ports/object-storage"
 
 const organizer = {
   id: "organizer-1",
@@ -109,5 +114,84 @@ describe("handleTournamentMediaUpload", () => {
     expect(JSON.stringify(services.logger.error.mock.calls)).not.toContain(
       "secret stream failure",
     )
+  })
+})
+
+describe("handleTournamentMediaDelete", () => {
+  it("returns 204 after retiring metadata for an already missing object", async () => {
+    const retireWithAudit = vi.fn()
+    const response = await handleTournamentMediaDelete(
+      "tournament-1",
+      "asset-1",
+      {
+        actorProvider: {
+          getCurrentActor: vi.fn(async () => organizer),
+        },
+        remove: (input, actor) =>
+          deleteTournamentMedia(input, actor, {
+            storage: {
+              move: vi.fn(async () => {
+                throw new ObjectStorageError("NOT_FOUND")
+              }),
+              remove: vi.fn(),
+            },
+            media: {
+              findActiveAsset: vi.fn(async () => ({
+                id: "asset-1",
+                tournamentId: "tournament-1",
+                kind: "DOCUMENT",
+                bucket: "tournament-documents",
+                objectPath:
+                  "tournaments/tournament-1/documents/asset-1.pdf",
+                fileName: "rules.pdf",
+                contentType: "application/pdf",
+                byteSize: 100,
+                createdById: organizer.id,
+                createdAt: "2026-01-01T00:00:00.000Z",
+                deletedAt: null,
+              })),
+              retireWithAudit,
+            },
+            tournaments: {
+              findById: vi.fn(async () => ({
+                organizerId: organizer.id,
+              })),
+            },
+          }),
+      },
+    )
+
+    expect(response.status).toBe(204)
+    expect(retireWithAudit).toHaveBeenCalledOnce()
+  })
+
+  it("returns a safe correlated 503 when storage is unavailable", async () => {
+    const services = {
+      actorProvider: {
+        getCurrentActor: vi.fn(async () => organizer),
+      },
+      remove: vi.fn(async () => {
+        throw new ObjectStorageError("UNAVAILABLE")
+      }),
+      createCorrelationId: () => "storage-correlation",
+      logger: { error: vi.fn() },
+    }
+
+    const response = await handleTournamentMediaDelete(
+      "tournament-1",
+      "asset-1",
+      services,
+    )
+
+    expect(response.status).toBe(503)
+    await expect(response.json()).resolves.toEqual({
+      message: "ไม่สามารถดำเนินการได้ในขณะนี้",
+      correlationId: "storage-correlation",
+    })
+    expect(services.logger.error).toHaveBeenCalledWith({
+      operation: "media.delete",
+      correlationId: "storage-correlation",
+      errorType: "ObjectStorageError",
+    })
   })
 })

@@ -6,7 +6,10 @@ import {
   validateMediaFileContent,
 } from "@/features/tournament-media/domain/media-policy"
 
-import type { ObjectStorage } from "./ports/object-storage"
+import {
+  ObjectStorageError,
+  type ObjectStorage,
+} from "./ports/object-storage"
 import type { TournamentMediaRepository } from "./ports/tournament-media-repository"
 import {
   reportMediaCleanupFailure,
@@ -83,12 +86,14 @@ export async function uploadTournamentMedia(
     try {
       await dependencies.storage.remove(bucket, objectPath)
     } catch (cleanupError) {
-      reportMediaCleanupFailure(
-        "media.upload.compensate",
-        assetId,
-        cleanupError,
-        dependencies.cleanupLogger,
-      )
+      if (!isMissingObject(cleanupError)) {
+        reportMediaCleanupFailure(
+          "media.upload.compensate",
+          assetId,
+          cleanupError,
+          dependencies.cleanupLogger,
+        )
+      }
     }
     throw error
   }
@@ -100,16 +105,25 @@ export async function uploadTournamentMedia(
         result.retiredAsset.objectPath,
       )
     } catch (cleanupError) {
-      reportMediaCleanupFailure(
-        "media.upload.retired_object",
-        result.retiredAsset.id,
-        cleanupError,
-        dependencies.cleanupLogger,
-      )
+      if (!isMissingObject(cleanupError)) {
+        reportMediaCleanupFailure(
+          "media.upload.retired_object",
+          result.retiredAsset.id,
+          cleanupError,
+          dependencies.cleanupLogger,
+        )
+      }
     }
   }
 
   return result.asset
+}
+
+function isMissingObject(error: unknown) {
+  return (
+    error instanceof ObjectStorageError &&
+    error.code === "NOT_FOUND"
+  )
 }
 
 function buildObjectPath(

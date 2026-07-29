@@ -23,7 +23,7 @@ export default async function AdminReviewDetailPage({
   })
 
   return (
-    <main className="mx-auto w-full max-w-5xl px-4 py-8 sm:px-6">
+    <div className="mx-auto w-full max-w-5xl px-4 py-8 sm:px-6">
       <Link
         className="text-sm underline underline-offset-4"
         href="/admin/reviews"
@@ -77,7 +77,7 @@ export default async function AdminReviewDetailPage({
           version: tournament.version,
         }}
       />
-    </main>
+    </div>
   )
 }
 

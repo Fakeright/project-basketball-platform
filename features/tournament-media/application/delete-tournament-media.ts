@@ -1,7 +1,10 @@
 import type { Actor } from "@/features/identity/domain/actor"
 import type { TournamentOperationsRepository } from "@/features/tournament-operations/infrastructure/tournament-operations-repository"
 
-import type { ObjectStorage } from "./ports/object-storage"
+import {
+  ObjectStorageError,
+  type ObjectStorage,
+} from "./ports/object-storage"
 import type { TournamentMediaRepository } from "./ports/tournament-media-repository"
 import {
   reportMediaCleanupFailure,
@@ -37,21 +40,33 @@ export async function deleteTournamentMedia(
     input.tournamentId,
     asset.id,
   )
-  await dependencies.storage.move(
-    asset.bucket,
-    asset.objectPath,
-    stagedObjectPath,
-  )
+  const retirement = {
+    actorId: actor.id,
+    tournamentId: input.tournamentId,
+    assetId: asset.id,
+    adminOverride:
+      actor.role === "PLATFORM_ADMIN" &&
+      actor.id !== tournament.organizerId,
+  }
+  try {
+    await dependencies.storage.move(
+      asset.bucket,
+      asset.objectPath,
+      stagedObjectPath,
+    )
+  } catch (error) {
+    if (
+      error instanceof ObjectStorageError &&
+      error.code === "NOT_FOUND"
+    ) {
+      await dependencies.media.retireWithAudit(retirement)
+      return
+    }
+    throw error
+  }
 
   try {
-    await dependencies.media.retireWithAudit({
-      actorId: actor.id,
-      tournamentId: input.tournamentId,
-      assetId: asset.id,
-      adminOverride:
-        actor.role === "PLATFORM_ADMIN" &&
-        actor.id !== tournament.organizerId,
-    })
+    await dependencies.media.retireWithAudit(retirement)
   } catch (error) {
     try {
       await dependencies.storage.move(
@@ -73,6 +88,12 @@ export async function deleteTournamentMedia(
   try {
     await dependencies.storage.remove(asset.bucket, stagedObjectPath)
   } catch (cleanupError) {
+    if (
+      cleanupError instanceof ObjectStorageError &&
+      cleanupError.code === "NOT_FOUND"
+    ) {
+      return
+    }
     reportMediaCleanupFailure(
       "media.delete.cleanup",
       asset.id,

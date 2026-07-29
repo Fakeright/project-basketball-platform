@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest"
 
 import { deleteTournamentMedia } from "@/features/tournament-media/application/delete-tournament-media"
+import { ObjectStorageError } from "@/features/tournament-media/application/ports/object-storage"
 import type { TournamentMediaAsset } from "@/features/tournament-media/domain/media-asset"
 
 const asset: TournamentMediaAsset = {
@@ -103,5 +104,48 @@ describe("deleteTournamentMedia", () => {
       assetId: "asset-1",
       errorType: "Error",
     })
+  })
+
+  it("retires metadata and audit when the source object is already missing", async () => {
+    const dependencies = createDependencies()
+    dependencies.storage.move.mockRejectedValueOnce(
+      new ObjectStorageError("NOT_FOUND"),
+    )
+
+    await expect(
+      deleteTournamentMedia(
+        { tournamentId: "tournament-1", assetId: "asset-1" },
+        { id: "organizer-1", role: "TOURNAMENT_ORGANIZER" },
+        dependencies,
+      ),
+    ).resolves.toBeUndefined()
+
+    expect(dependencies.media.retireWithAudit).toHaveBeenCalledWith({
+      tournamentId: "tournament-1",
+      assetId: "asset-1",
+      actorId: "organizer-1",
+      adminOverride: false,
+    })
+    expect(dependencies.storage.remove).not.toHaveBeenCalled()
+  })
+
+  it("preserves active metadata when object storage is unavailable", async () => {
+    const dependencies = createDependencies()
+    dependencies.storage.move.mockRejectedValueOnce(
+      new ObjectStorageError("UNAVAILABLE"),
+    )
+
+    await expect(
+      deleteTournamentMedia(
+        { tournamentId: "tournament-1", assetId: "asset-1" },
+        { id: "organizer-1", role: "TOURNAMENT_ORGANIZER" },
+        dependencies,
+      ),
+    ).rejects.toMatchObject({
+      name: "ObjectStorageError",
+      code: "UNAVAILABLE",
+    })
+
+    expect(dependencies.media.retireWithAudit).not.toHaveBeenCalled()
   })
 })

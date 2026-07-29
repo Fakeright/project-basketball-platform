@@ -6,7 +6,7 @@ export interface SafeHttpDiagnostics {
     error(event: {
       operation: string
       correlationId: string
-      errorType: "Error" | "NonError"
+      errorType: string
     }): void
   }
 }
@@ -26,12 +26,13 @@ export function unexpectedFailureResponse(
   error: unknown,
   operation: string,
   diagnostics: SafeHttpDiagnostics = {},
+  status = 500,
 ) {
   const correlationId = createCorrelationId(diagnostics.createCorrelationId)
   const event = {
     operation,
     correlationId,
-    errorType: error instanceof Error ? ("Error" as const) : ("NonError" as const),
+    errorType: safeErrorType(error),
   }
   try {
     ;(diagnostics.logger ?? defaultSafeHttpLogger).error(event)
@@ -42,8 +43,20 @@ export function unexpectedFailureResponse(
       message: "ไม่สามารถดำเนินการได้ในขณะนี้",
       correlationId,
     },
-    { status: 500 },
+    { status },
   )
+}
+
+export async function withSafeRouteBoundary(
+  operation: string,
+  execute: () => Promise<Response>,
+  diagnostics: SafeHttpDiagnostics = {},
+) {
+  try {
+    return await execute()
+  } catch (error) {
+    return unexpectedFailureResponse(error, operation, diagnostics)
+  }
 }
 
 function createCorrelationId(factory?: () => string) {
@@ -53,6 +66,13 @@ function createCorrelationId(factory?: () => string) {
     } catch {}
   }
   return randomUUID()
+}
+
+function safeErrorType(error: unknown) {
+  if (!(error instanceof Error)) return "NonError"
+  return /^[A-Za-z][A-Za-z0-9_.-]{0,63}$/.test(error.name)
+    ? error.name
+    : "Error"
 }
 
 const defaultSafeHttpLogger: NonNullable<SafeHttpDiagnostics["logger"]> = {
