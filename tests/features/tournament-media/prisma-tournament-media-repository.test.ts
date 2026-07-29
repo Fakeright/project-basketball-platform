@@ -18,45 +18,186 @@ const mediaRow = {
 }
 
 function createPrismaMock() {
-  return {
+  const prisma = {
     mediaAsset: {
       create: vi.fn(),
       findFirst: vi.fn(),
       findMany: vi.fn(),
-      update: vi.fn(),
+      updateMany: vi.fn(),
       count: vi.fn(),
     },
     auditLog: {
       create: vi.fn(),
     },
+    $transaction: vi.fn(
+      async (operation: (client: typeof prisma) => Promise<unknown>) =>
+        operation(prisma),
+    ),
   }
+  return prisma
 }
 
 describe("PrismaTournamentMediaRepository", () => {
-  it("maps created media dates to ISO strings", async () => {
+  it("retires the previous poster, creates the replacement, and audits in one transaction", async () => {
     const prisma = createPrismaMock()
+    const oldPoster = { ...mediaRow, id: "asset-old" }
+    prisma.mediaAsset.findFirst.mockResolvedValue(oldPoster)
+    prisma.mediaAsset.updateMany.mockResolvedValue({ count: 1 })
     prisma.mediaAsset.create.mockResolvedValue(mediaRow)
+    prisma.auditLog.create.mockResolvedValue({})
     const repository = new PrismaTournamentMediaRepository(
       prisma as unknown as PrismaClient,
     )
 
-    const created = await repository.createAsset({
-      id: mediaRow.id,
-      tournamentId: mediaRow.tournamentId,
-      kind: mediaRow.kind,
-      bucket: mediaRow.bucket,
-      objectPath: mediaRow.objectPath,
-      fileName: mediaRow.fileName,
-      contentType: mediaRow.contentType,
-      byteSize: mediaRow.byteSize,
-      createdById: mediaRow.createdById,
+    const result = await repository.commitUpload({
+      asset: {
+        id: mediaRow.id,
+        tournamentId: mediaRow.tournamentId,
+        kind: mediaRow.kind,
+        bucket: mediaRow.bucket,
+        objectPath: mediaRow.objectPath,
+        fileName: mediaRow.fileName,
+        contentType: mediaRow.contentType,
+        byteSize: mediaRow.byteSize,
+        createdById: mediaRow.createdById,
+      },
+      actorId: "organizer-1",
+      adminOverride: false,
     })
 
+    expect(prisma.$transaction).toHaveBeenCalledOnce()
+    expect(prisma.mediaAsset.updateMany).toHaveBeenCalledWith({
+      where: { id: "asset-old", deletedAt: null },
+      data: { deletedAt: expect.any(Date) },
+    })
     expect(prisma.mediaAsset.create).toHaveBeenCalledWith({
       data: expect.objectContaining({ id: "asset-1", kind: "POSTER" }),
     })
-    expect(created.createdAt).toBe("2026-07-26T01:00:00.000Z")
-    expect(created.deletedAt).toBeNull()
+    expect(prisma.auditLog.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        action: "media.replaced",
+        beforeJson: expect.anything(),
+        afterJson: expect.anything(),
+      }),
+    })
+    expect(result.retiredAsset?.id).toBe("asset-old")
+  })
+
+  it("maps the active-poster unique constraint to a recoverable conflict", async () => {
+    const prisma = createPrismaMock()
+    prisma.mediaAsset.findFirst.mockResolvedValue(null)
+    prisma.mediaAsset.create.mockRejectedValue(
+      Object.assign(new Error("unique"), { code: "P2002" }),
+    )
+    const repository = new PrismaTournamentMediaRepository(
+      prisma as unknown as PrismaClient,
+    )
+
+    await expect(
+      repository.commitUpload({
+        asset: {
+          id: mediaRow.id,
+          tournamentId: mediaRow.tournamentId,
+          kind: mediaRow.kind,
+          bucket: mediaRow.bucket,
+          objectPath: mediaRow.objectPath,
+          fileName: mediaRow.fileName,
+          contentType: mediaRow.contentType,
+          byteSize: mediaRow.byteSize,
+          createdById: mediaRow.createdById,
+        },
+        actorId: "organizer-1",
+        adminOverride: false,
+      }),
+    ).rejects.toThrow("MEDIA_POSTER_CONFLICT")
+  })
+
+  it("rolls back poster metadata when its audit write fails", async () => {
+    let activeAssetIds = ["asset-old"]
+    const oldPoster = { ...mediaRow, id: "asset-old" }
+    const transactionClient = {
+      mediaAsset: {
+        findFirst: vi.fn(async () =>
+          activeAssetIds.includes("asset-old") ? oldPoster : null,
+        ),
+        updateMany: vi.fn(async () => {
+          activeAssetIds = activeAssetIds.filter((id) => id !== "asset-old")
+          return { count: 1 }
+        }),
+        create: vi.fn(async () => {
+          activeAssetIds.push("asset-1")
+          return mediaRow
+        }),
+      },
+      auditLog: {
+        create: vi.fn(async () => {
+          throw new Error("AUDIT_FAILED")
+        }),
+      },
+    }
+    const prisma = {
+      $transaction: vi.fn(
+        async (
+          operation: (client: typeof transactionClient) => Promise<unknown>,
+        ) => {
+          const snapshot = [...activeAssetIds]
+          try {
+            return await operation(transactionClient)
+          } catch (error) {
+            activeAssetIds = snapshot
+            throw error
+          }
+        },
+      ),
+    }
+    const repository = new PrismaTournamentMediaRepository(
+      prisma as unknown as PrismaClient,
+    )
+
+    await expect(
+      repository.commitUpload({
+        asset: {
+          id: mediaRow.id,
+          tournamentId: mediaRow.tournamentId,
+          kind: mediaRow.kind,
+          bucket: mediaRow.bucket,
+          objectPath: mediaRow.objectPath,
+          fileName: mediaRow.fileName,
+          contentType: mediaRow.contentType,
+          byteSize: mediaRow.byteSize,
+          createdById: mediaRow.createdById,
+        },
+        actorId: "organizer-1",
+        adminOverride: false,
+      }),
+    ).rejects.toThrow("AUDIT_FAILED")
+    expect(activeAssetIds).toEqual(["asset-old"])
+  })
+
+  it("retires metadata and writes its audit in one transaction", async () => {
+    const prisma = createPrismaMock()
+    prisma.mediaAsset.findFirst.mockResolvedValue(mediaRow)
+    prisma.mediaAsset.updateMany.mockResolvedValue({ count: 1 })
+    prisma.auditLog.create.mockResolvedValue({})
+    const repository = new PrismaTournamentMediaRepository(
+      prisma as unknown as PrismaClient,
+    )
+
+    await repository.retireWithAudit({
+      tournamentId: "tournament-1",
+      assetId: "asset-1",
+      actorId: "organizer-1",
+      adminOverride: false,
+    })
+
+    expect(prisma.$transaction).toHaveBeenCalledOnce()
+    expect(prisma.auditLog.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        action: "media.deleted",
+        beforeJson: expect.anything(),
+        afterJson: expect.anything(),
+      }),
+    })
   })
 
   it("queries only active assets and returns the latest active poster", async () => {
@@ -83,48 +224,5 @@ describe("PrismaTournamentMediaRepository", () => {
       orderBy: { createdAt: "asc" },
     })
     expect(assets).toHaveLength(1)
-  })
-
-  it("soft-deletes media metadata", async () => {
-    const prisma = createPrismaMock()
-    prisma.mediaAsset.update.mockResolvedValue({
-      ...mediaRow,
-      deletedAt: new Date(),
-    })
-    const repository = new PrismaTournamentMediaRepository(
-      prisma as unknown as PrismaClient,
-    )
-
-    await repository.retireAsset("asset-1")
-
-    expect(prisma.mediaAsset.update).toHaveBeenCalledWith({
-      where: { id: "asset-1" },
-      data: { deletedAt: expect.any(Date) },
-    })
-  })
-
-  it("records media audit events with the required entity type", async () => {
-    const prisma = createPrismaMock()
-    prisma.auditLog.create.mockResolvedValue({})
-    const repository = new PrismaTournamentMediaRepository(
-      prisma as unknown as PrismaClient,
-    )
-
-    await repository.appendAuditEvent({
-      actorId: "organizer-1",
-      tournamentId: "tournament-1",
-      action: "media.uploaded",
-      entityId: "asset-1",
-    })
-
-    expect(prisma.auditLog.create).toHaveBeenCalledWith({
-      data: {
-        actorId: "organizer-1",
-        tournamentId: "tournament-1",
-        action: "media.uploaded",
-        entityType: "MediaAsset",
-        entityId: "asset-1",
-      },
-    })
   })
 })

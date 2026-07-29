@@ -53,16 +53,16 @@ function tournament(status: TournamentOperation["status"]): TournamentOperation 
 
 function dependencies() {
   const media: TournamentMediaRepository = {
-    createAsset: vi.fn(),
+    commitUpload: vi.fn(),
+    retireWithAudit: vi.fn(),
     findActivePoster: vi.fn(),
     findActiveAsset: vi.fn(),
     listActiveAssets: vi.fn(async () => [poster, document]),
-    retireAsset: vi.fn(),
-    appendAuditEvent: vi.fn(),
     hasActiveAssetOfKind: vi.fn(),
   }
   const storage: ObjectStorage = {
     upload: vi.fn(),
+    move: vi.fn(),
     remove: vi.fn(),
     getPublicUrl: vi.fn(() => "https://example.test/poster.webp"),
     createSignedUrl: vi.fn(async () => "https://example.test/document.pdf?token=signed"),

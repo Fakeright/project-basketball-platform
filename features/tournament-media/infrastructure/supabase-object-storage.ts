@@ -33,6 +33,17 @@ export class SupabaseObjectStorage implements ObjectStorage {
     if (error) throw new Error("STORAGE_REMOVE_FAILED")
   }
 
+  async move(
+    bucket: string,
+    fromPath: string,
+    toPath: string,
+  ): Promise<void> {
+    const { error } = await this.client.storage
+      .from(bucket)
+      .move(fromPath, toPath)
+    if (error) throw new Error("STORAGE_MOVE_FAILED")
+  }
+
   getPublicUrl(bucket: string, objectPath: string): string {
     return this.client.storage.from(bucket).getPublicUrl(objectPath).data.publicUrl
   }

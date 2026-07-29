@@ -85,6 +85,7 @@ function createRepository(
   }
   const storage: ObjectStorage = {
     upload: vi.fn(),
+    move: vi.fn(),
     remove: vi.fn(),
     getPublicUrl: vi.fn(
       (_bucket, objectPath) => `https://storage.test/public/${objectPath}`,

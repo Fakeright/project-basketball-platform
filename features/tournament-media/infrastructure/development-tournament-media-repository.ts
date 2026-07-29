@@ -24,18 +24,46 @@ const statePath = path.join(stateDirectory, "development-tournaments.json")
 export class DevelopmentTournamentMediaRepository
   implements TournamentMediaRepository
 {
-  async createAsset(
-    asset: Omit<TournamentMediaAsset, "createdAt" | "deletedAt">,
-  ): Promise<TournamentMediaAsset> {
+  async commitUpload(input: {
+    asset: Omit<TournamentMediaAsset, "createdAt" | "deletedAt">
+    actorId: string
+    adminOverride: boolean
+  }) {
     const state = await readState()
+    const retiredAsset =
+      input.asset.kind === "POSTER"
+        ? (state.mediaAssets.find(
+            (asset) =>
+              asset.tournamentId === input.asset.tournamentId &&
+              asset.kind === "POSTER" &&
+              asset.deletedAt === null,
+          ) ?? null)
+        : null
+    if (retiredAsset) retiredAsset.deletedAt = new Date().toISOString()
     const created = {
-      ...asset,
+      ...input.asset,
       createdAt: new Date().toISOString(),
       deletedAt: null,
     }
     state.mediaAssets.push(created)
+    state.auditEvents.push({
+      actorId: input.actorId,
+      tournamentId: input.asset.tournamentId,
+      action: retiredAsset ? "media.replaced" : "media.uploaded",
+      entityId: created.id,
+      createdAt: new Date().toISOString(),
+    })
+    if (input.adminOverride) {
+      state.auditEvents.push({
+        actorId: input.actorId,
+        tournamentId: input.asset.tournamentId,
+        action: "media.admin_override",
+        entityId: created.id,
+        createdAt: new Date().toISOString(),
+      })
+    }
     await writeState(state)
-    return created
+    return { asset: created, retiredAsset }
   }
 
   async findActivePoster(tournamentId: string) {
@@ -71,23 +99,39 @@ export class DevelopmentTournamentMediaRepository
     )
   }
 
-  async retireAsset(assetId: string) {
-    const state = await readState()
-    const asset = state.mediaAssets.find((candidate) => candidate.id === assetId)
-    if (!asset) throw new Error("MEDIA_ASSET_NOT_FOUND")
-    asset.deletedAt = new Date().toISOString()
-    await writeState(state)
-  }
-
-  async appendAuditEvent(input: {
-    actorId: string
+  async retireWithAudit(input: {
     tournamentId: string
-    action: "media.uploaded" | "media.replaced" | "media.deleted"
-    entityId: string
+    assetId: string
+    actorId: string
+    adminOverride: boolean
   }) {
     const state = await readState()
-    state.auditEvents.push({ ...input, createdAt: new Date().toISOString() })
+    const asset = state.mediaAssets.find(
+      (candidate) =>
+        candidate.id === input.assetId &&
+        candidate.tournamentId === input.tournamentId &&
+        candidate.deletedAt === null,
+    )
+    if (!asset) throw new Error("MEDIA_ASSET_NOT_FOUND")
+    asset.deletedAt = new Date().toISOString()
+    state.auditEvents.push({
+      actorId: input.actorId,
+      tournamentId: input.tournamentId,
+      action: "media.deleted",
+      entityId: asset.id,
+      createdAt: new Date().toISOString(),
+    })
+    if (input.adminOverride) {
+      state.auditEvents.push({
+        actorId: input.actorId,
+        tournamentId: input.tournamentId,
+        action: "media.admin_override",
+        entityId: asset.id,
+        createdAt: new Date().toISOString(),
+      })
+    }
     await writeState(state)
+    return asset
   }
 
   async hasActiveAssetOfKind(tournamentId: string, kind: MediaAssetKind) {

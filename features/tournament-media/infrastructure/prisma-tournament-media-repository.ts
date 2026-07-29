@@ -1,5 +1,6 @@
 import type {
   MediaAsset,
+  Prisma,
   PrismaClient,
 } from "@/lib/generated/prisma/client"
 import type { TournamentMediaRepository } from "@/features/tournament-media/application/ports/tournament-media-repository"
@@ -13,11 +14,97 @@ export class PrismaTournamentMediaRepository
 {
   constructor(private readonly prisma: PrismaClient) {}
 
-  async createAsset(
-    asset: Omit<TournamentMediaAsset, "createdAt" | "deletedAt">,
-  ) {
-    const created = await this.prisma.mediaAsset.create({ data: asset })
-    return mapMediaAsset(created)
+  async commitUpload(input: {
+    asset: Omit<TournamentMediaAsset, "createdAt" | "deletedAt">
+    actorId: string
+    adminOverride: boolean
+  }) {
+    try {
+      return await this.prisma.$transaction(async (transaction) => {
+        const previousPoster =
+          input.asset.kind === "POSTER"
+            ? await transaction.mediaAsset.findFirst({
+                where: {
+                  tournamentId: input.asset.tournamentId,
+                  kind: "POSTER",
+                  deletedAt: null,
+                },
+                orderBy: { createdAt: "desc" },
+              })
+            : null
+
+        if (previousPoster) {
+          const retired = await transaction.mediaAsset.updateMany({
+            where: { id: previousPoster.id, deletedAt: null },
+            data: { deletedAt: new Date() },
+          })
+          if (retired.count !== 1) throw new Error("MEDIA_POSTER_CONFLICT")
+        }
+
+        const created = await transaction.mediaAsset.create({
+          data: input.asset,
+        })
+        const after = mapMediaAsset(created)
+        await appendMediaAudit(transaction, {
+          actorId: input.actorId,
+          tournamentId: input.asset.tournamentId,
+          action: previousPoster ? "media.replaced" : "media.uploaded",
+          entityId: created.id,
+          before: previousPoster ? mapMediaAsset(previousPoster) : null,
+          after,
+          adminOverride: input.adminOverride,
+        })
+        return {
+          asset: after,
+          retiredAsset: previousPoster
+            ? mapMediaAsset(previousPoster)
+            : null,
+        }
+      })
+    } catch (error) {
+      if (isPrismaUniqueError(error) && input.asset.kind === "POSTER") {
+        throw new Error("MEDIA_POSTER_CONFLICT")
+      }
+      throw error
+    }
+  }
+
+  async retireWithAudit(input: {
+    tournamentId: string
+    assetId: string
+    actorId: string
+    adminOverride: boolean
+  }) {
+    return this.prisma.$transaction(async (transaction) => {
+      const current = await transaction.mediaAsset.findFirst({
+        where: {
+          id: input.assetId,
+          tournamentId: input.tournamentId,
+          deletedAt: null,
+        },
+      })
+      if (!current) throw new Error("MEDIA_ASSET_NOT_FOUND")
+
+      const deletedAt = new Date()
+      const retired = await transaction.mediaAsset.updateMany({
+        where: { id: current.id, deletedAt: null },
+        data: { deletedAt },
+      })
+      if (retired.count !== 1) throw new Error("MEDIA_ASSET_NOT_FOUND")
+
+      const before = mapMediaAsset(current)
+      const after = { ...before, deletedAt: deletedAt.toISOString() }
+      await appendMediaAudit(transaction, {
+        actorId: input.actorId,
+        tournamentId: input.tournamentId,
+        action: "media.deleted",
+        entityId: current.id,
+        before,
+        after,
+        adminOverride: input.adminOverride,
+      })
+      return after
+    })
   }
 
   async findActivePoster(tournamentId: string) {
@@ -43,31 +130,6 @@ export class PrismaTournamentMediaRepository
     return assets.map(mapMediaAsset)
   }
 
-  async retireAsset(assetId: string) {
-    try {
-      await this.prisma.mediaAsset.update({
-        where: { id: assetId },
-        data: { deletedAt: new Date() },
-      })
-    } catch (error) {
-      if (isPrismaNotFoundError(error)) {
-        throw new Error("MEDIA_ASSET_NOT_FOUND")
-      }
-      throw error
-    }
-  }
-
-  async appendAuditEvent(
-    input: Parameters<TournamentMediaRepository["appendAuditEvent"]>[0],
-  ) {
-    await this.prisma.auditLog.create({
-      data: {
-        ...input,
-        entityType: "MediaAsset",
-      },
-    })
-  }
-
   async hasActiveAssetOfKind(
     tournamentId: string,
     kind: MediaAssetKind,
@@ -76,6 +138,36 @@ export class PrismaTournamentMediaRepository
       where: { tournamentId, kind, deletedAt: null },
     })
     return count > 0
+  }
+}
+
+async function appendMediaAudit(
+  client: Pick<Prisma.TransactionClient, "auditLog">,
+  input: {
+    actorId: string
+    tournamentId: string
+    action: "media.uploaded" | "media.replaced" | "media.deleted"
+    entityId: string
+    before: TournamentMediaAsset | null
+    after: TournamentMediaAsset
+    adminOverride: boolean
+  },
+) {
+  const data = {
+    actorId: input.actorId,
+    tournamentId: input.tournamentId,
+    entityType: "MediaAsset",
+    entityId: input.entityId,
+    beforeJson: input.before ? toJsonValue(input.before) : undefined,
+    afterJson: toJsonValue(input.after),
+  }
+  await client.auditLog.create({
+    data: { ...data, action: input.action },
+  })
+  if (input.adminOverride) {
+    await client.auditLog.create({
+      data: { ...data, action: "media.admin_override" },
+    })
   }
 }
 
@@ -95,11 +187,15 @@ function mapMediaAsset(asset: MediaAsset): TournamentMediaAsset {
   }
 }
 
-function isPrismaNotFoundError(error: unknown) {
+function isPrismaUniqueError(error: unknown) {
   return (
     typeof error === "object" &&
     error !== null &&
     "code" in error &&
-    error.code === "P2025"
+    error.code === "P2002"
   )
+}
+
+function toJsonValue(value: unknown): Prisma.InputJsonValue {
+  return JSON.parse(JSON.stringify(value)) as Prisma.InputJsonValue
 }

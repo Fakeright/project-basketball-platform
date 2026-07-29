@@ -1,8 +1,9 @@
 import { describe, expect, it, vi } from "vitest"
 
 import { uploadTournamentMedia } from "@/features/tournament-media/application/upload-tournament-media"
-import type { TournamentMediaRepository } from "@/features/tournament-media/application/ports/tournament-media-repository"
 import type { ObjectStorage } from "@/features/tournament-media/application/ports/object-storage"
+import type { TournamentMediaRepository } from "@/features/tournament-media/application/ports/tournament-media-repository"
+import type { TournamentMediaAsset } from "@/features/tournament-media/domain/media-asset"
 import type { TournamentOperation } from "@/features/tournament-operations/domain/tournament-operation"
 
 const organizer = { id: "organizer-1", role: "TOURNAMENT_ORGANIZER" } as const
@@ -27,28 +28,56 @@ const tournament: TournamentOperation = {
   updatedAt: "2026-01-01T00:00:00Z",
 }
 
-function createDependencies(overrides: Partial<TournamentMediaRepository> = {}) {
+const oldPoster: TournamentMediaAsset = {
+  id: "asset-old",
+  tournamentId: tournament.id,
+  kind: "POSTER",
+  bucket: "tournament-posters",
+  objectPath: "tournaments/tournament-1/poster/asset-old.webp",
+  fileName: "old.webp",
+  contentType: "image/webp",
+  byteSize: 2_000,
+  createdById: organizer.id,
+  createdAt: "2026-01-01T00:00:00Z",
+  deletedAt: null,
+}
+
+function createDependencies(
+  overrides: {
+    commitUpload?: TournamentMediaRepository["commitUpload"]
+    remove?: ObjectStorage["remove"]
+  } = {},
+) {
   const storage: ObjectStorage = {
     upload: vi.fn(),
-    remove: vi.fn(),
+    move: vi.fn(),
+    remove: overrides.remove ?? vi.fn(),
     getPublicUrl: vi.fn(),
     createSignedUrl: vi.fn(),
   }
   const media: TournamentMediaRepository = {
-    createAsset: vi.fn(async (asset) => ({ ...asset, createdAt: "2026-01-01T00:00:00Z", deletedAt: null })),
+    commitUpload:
+      overrides.commitUpload ??
+      vi.fn(async ({ asset }) => ({
+        asset: {
+          ...asset,
+          createdAt: "2026-01-01T00:00:00Z",
+          deletedAt: null,
+        },
+        retiredAsset: null,
+      })),
+    retireWithAudit: vi.fn(),
     findActivePoster: vi.fn(async () => null),
     findActiveAsset: vi.fn(async () => null),
     listActiveAssets: vi.fn(async () => []),
-    retireAsset: vi.fn(),
-    appendAuditEvent: vi.fn(),
     hasActiveAssetOfKind: vi.fn(async () => false),
-    ...overrides,
   }
   return {
     storage,
     media,
     tournaments: { findById: vi.fn(async () => tournament) },
     createId: vi.fn(() => "asset-new"),
+    cleanupLogger: { error: vi.fn() },
   }
 }
 
@@ -64,35 +93,39 @@ const posterInput = {
 }
 
 describe("uploadTournamentMedia", () => {
-  it("replaces an owned poster and removes its previous object", async () => {
-    const dependencies = createDependencies({
-      findActivePoster: vi.fn(async () => ({
-        id: "asset-old",
-        tournamentId: tournament.id,
-        kind: "POSTER",
-        bucket: "tournament-posters",
-        objectPath: "tournaments/tournament-1/poster/asset-old.webp",
-        fileName: "old.webp",
-        contentType: "image/webp",
-        byteSize: 2_000,
-        createdById: organizer.id,
-        createdAt: "2026-01-01T00:00:00Z",
+  it("commits poster metadata and audit atomically before cleaning up the previous object", async () => {
+    const commitUpload = vi.fn(async ({ asset }) => ({
+      asset: {
+        ...asset,
+        createdAt: "2026-01-02T00:00:00Z",
         deletedAt: null,
-      })),
-    })
+      },
+      retiredAsset: oldPoster,
+    }))
+    const dependencies = createDependencies({ commitUpload })
 
     await uploadTournamentMedia(posterInput, organizer, dependencies)
 
+    expect(commitUpload).toHaveBeenCalledWith({
+      asset: expect.objectContaining({
+        id: "asset-new",
+        kind: "POSTER",
+      }),
+      actorId: organizer.id,
+      adminOverride: false,
+    })
     expect(dependencies.storage.remove).toHaveBeenCalledWith(
-      "tournament-posters",
-      "tournaments/tournament-1/poster/asset-old.webp",
+      oldPoster.bucket,
+      oldPoster.objectPath,
     )
-    expect(dependencies.media.retireAsset).toHaveBeenCalledWith("asset-old")
+    expect(commitUpload.mock.invocationCallOrder[0]).toBeLessThan(
+      vi.mocked(dependencies.storage.remove).mock.invocationCallOrder[0],
+    )
   })
 
-  it("removes the uploaded object when metadata persistence fails", async () => {
+  it("removes the uploaded object when the metadata transaction fails", async () => {
     const dependencies = createDependencies({
-      createAsset: vi.fn(async () => {
+      commitUpload: vi.fn(async () => {
         throw new Error("DATABASE_UNAVAILABLE")
       }),
     })
@@ -104,5 +137,28 @@ describe("uploadTournamentMedia", () => {
       "tournament-posters",
       "tournaments/tournament-1/poster/asset-new.webp",
     )
+  })
+
+  it("preserves the database failure and safely reports failed compensation", async () => {
+    const dependencies = createDependencies({
+      commitUpload: vi.fn(async () => {
+        throw new Error("DATABASE_UNAVAILABLE")
+      }),
+      remove: vi.fn(async () => {
+        throw new Error("secret storage detail")
+      }),
+    })
+
+    await expect(
+      uploadTournamentMedia(posterInput, organizer, dependencies),
+    ).rejects.toThrow("DATABASE_UNAVAILABLE")
+    expect(dependencies.cleanupLogger.error).toHaveBeenCalledWith({
+      operation: "media.upload.compensate",
+      assetId: "asset-new",
+      errorType: "Error",
+    })
+    expect(
+      JSON.stringify(dependencies.cleanupLogger.error.mock.calls),
+    ).not.toContain("secret storage detail")
   })
 })

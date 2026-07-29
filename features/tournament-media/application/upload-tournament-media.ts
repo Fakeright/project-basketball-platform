@@ -6,6 +6,10 @@ import { validateMediaFile } from "@/features/tournament-media/domain/media-poli
 
 import type { ObjectStorage } from "./ports/object-storage"
 import type { TournamentMediaRepository } from "./ports/tournament-media-repository"
+import {
+  reportMediaCleanupFailure,
+  type MediaCleanupLogger,
+} from "./media-cleanup"
 
 export interface UploadTournamentMediaInput {
   tournamentId: string
@@ -23,6 +27,7 @@ interface UploadTournamentMediaDependencies {
   media: TournamentMediaRepository
   tournaments: Pick<TournamentOperationsRepository, "findById">
   createId: () => string
+  cleanupLogger?: MediaCleanupLogger
 }
 
 export async function uploadTournamentMedia(
@@ -38,10 +43,6 @@ export async function uploadTournamentMedia(
   const assetId = dependencies.createId()
   const bucket = input.kind === "POSTER" ? "tournament-posters" : "tournament-documents"
   const objectPath = buildObjectPath(input.tournamentId, input.kind, assetId, input.file.contentType)
-  const previousPoster =
-    input.kind === "POSTER"
-      ? await dependencies.media.findActivePoster(input.tournamentId)
-      : null
 
   await dependencies.storage.upload({
     bucket,
@@ -50,46 +51,56 @@ export async function uploadTournamentMedia(
     data: input.file.data,
   })
 
-  let asset: TournamentMediaAsset
+  let result: Awaited<ReturnType<TournamentMediaRepository["commitUpload"]>>
   try {
-    asset = await dependencies.media.createAsset({
-      id: assetId,
-      tournamentId: input.tournamentId,
-      kind: input.kind,
-      bucket,
-      objectPath,
-      fileName: input.file.fileName,
-      contentType: input.file.contentType,
-      byteSize: input.file.byteSize,
-      createdById: actor.id,
+    result = await dependencies.media.commitUpload({
+      asset: {
+        id: assetId,
+        tournamentId: input.tournamentId,
+        kind: input.kind,
+        bucket,
+        objectPath,
+        fileName: input.file.fileName,
+        contentType: input.file.contentType,
+        byteSize: input.file.byteSize,
+        createdById: actor.id,
+      },
+      actorId: actor.id,
+      adminOverride:
+        actor.role === "PLATFORM_ADMIN" &&
+        actor.id !== tournament.organizerId,
     })
   } catch (error) {
-    await dependencies.storage.remove(bucket, objectPath)
+    try {
+      await dependencies.storage.remove(bucket, objectPath)
+    } catch (cleanupError) {
+      reportMediaCleanupFailure(
+        "media.upload.compensate",
+        assetId,
+        cleanupError,
+        dependencies.cleanupLogger,
+      )
+    }
     throw error
   }
 
-  if (previousPoster) {
-    await dependencies.storage.remove(
-      previousPoster.bucket,
-      previousPoster.objectPath,
-    )
-    await dependencies.media.retireAsset(previousPoster.id)
-    await dependencies.media.appendAuditEvent({
-      actorId: actor.id,
-      tournamentId: input.tournamentId,
-      action: "media.replaced",
-      entityId: asset.id,
-    })
-  } else {
-    await dependencies.media.appendAuditEvent({
-      actorId: actor.id,
-      tournamentId: input.tournamentId,
-      action: "media.uploaded",
-      entityId: asset.id,
-    })
+  if (result.retiredAsset) {
+    try {
+      await dependencies.storage.remove(
+        result.retiredAsset.bucket,
+        result.retiredAsset.objectPath,
+      )
+    } catch (cleanupError) {
+      reportMediaCleanupFailure(
+        "media.upload.retired_object",
+        result.retiredAsset.id,
+        cleanupError,
+        dependencies.cleanupLogger,
+      )
+    }
   }
 
-  return asset
+  return result.asset
 }
 
 function buildObjectPath(
