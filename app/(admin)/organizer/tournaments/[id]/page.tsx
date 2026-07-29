@@ -4,15 +4,12 @@ import { ClipboardCheck } from "lucide-react"
 
 import { TournamentEditor } from "@/components/admin/tournament-editor"
 import { TournamentLifecycleActions } from "@/components/admin/tournament-lifecycle-actions"
+import { utcToBangkokDateTimeLocal } from "@/features/admin/presentation/tournament-editor-time"
 import { authorize } from "@/features/identity/application/authorize"
 import { createNextCookieCurrentActorProvider } from "@/features/identity/infrastructure/next-cookie-current-actor-provider"
 import { getTournamentOperationsRepository } from "@/features/tournament-operations/infrastructure/get-tournament-operations-repository"
 import { getTournamentMediaRepository } from "@/features/tournament-media/infrastructure/get-tournament-media-repository"
 import { SupabaseObjectStorage } from "@/features/tournament-media/infrastructure/supabase-object-storage"
-
-function toLocalDateTime(value: string) {
-  return value.slice(0, 16)
-}
 
 export default async function EditTournamentPage({
   params,
@@ -70,9 +67,9 @@ export default async function EditTournamentPage({
       <TournamentEditor
         initialTournament={{
           ...tournament,
-          startsAt: toLocalDateTime(tournament.startsAt),
-          endsAt: toLocalDateTime(tournament.endsAt),
-          registrationDeadline: toLocalDateTime(
+          startsAt: utcToBangkokDateTimeLocal(tournament.startsAt),
+          endsAt: utcToBangkokDateTimeLocal(tournament.endsAt),
+          registrationDeadline: utcToBangkokDateTimeLocal(
             tournament.registrationDeadline,
           ),
           mediaAssets,

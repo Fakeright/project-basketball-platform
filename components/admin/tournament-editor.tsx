@@ -2,6 +2,7 @@
 
 import type { FormEvent } from "react"
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 
 import {
   tournamentEditorSchema,
@@ -15,6 +16,7 @@ import {
 export interface EditableTournament extends TournamentEditorInput {
   id: string
   version: number
+  status?: string
   mediaAssets?: TournamentMediaManagerAsset[]
 }
 
@@ -26,6 +28,8 @@ export function TournamentEditor({
 }: {
   initialTournament: EditableTournament | null
 }) {
+  const router = useRouter()
+  const [tournament, setTournament] = useState(initialTournament)
   const [message, setMessage] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
 
@@ -47,7 +51,7 @@ export function TournamentEditor({
       registrationDeadline: formData.get("registrationDeadline"),
       capacity: formData.get("capacity"),
       rules: formData.get("rules"),
-      version: initialTournament?.version,
+      version: tournament?.version,
     })
 
     if (!parsed.success) {
@@ -59,7 +63,7 @@ export function TournamentEditor({
       (event.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null
     )?.value
 
-    if (action === "submit" && !initialTournament) {
+    if (action === "submit" && !tournament) {
       setMessage("กรุณาบันทึกฉบับร่างก่อนส่งตรวจสอบ")
       return
     }
@@ -68,24 +72,47 @@ export function TournamentEditor({
     try {
       const endpoint =
         action === "submit"
-          ? `/api/admin/tournaments/${initialTournament?.id}/submit`
-          : initialTournament
-            ? `/api/admin/tournaments/${initialTournament.id}`
+          ? `/api/admin/tournaments/${tournament?.id}/submit`
+          : tournament
+            ? `/api/admin/tournaments/${tournament.id}`
             : "/api/admin/tournaments"
       const response = await fetch(endpoint, {
-        method: action === "submit" ? "POST" : initialTournament ? "PUT" : "POST",
+        method: action === "submit" ? "POST" : tournament ? "PUT" : "POST",
         headers: { "Content-Type": "application/json" },
         body: action === "submit" ? undefined : JSON.stringify(parsed.data),
       })
-      const result = (await response.json()) as { message?: string }
+      const result = (await response.json()) as TournamentMutationResponse
 
+      if (!response.ok) {
+        setMessage(result.message ?? "ไม่สามารถดำเนินการได้")
+        return
+      }
+      if (!hasTournamentIdentity(result.tournament)) {
+        setMessage("ระบบตอบกลับข้อมูลรายการไม่ครบ กรุณาโหลดหน้าใหม่")
+        return
+      }
+
+      const wasCreated = !tournament
+      const nextTournament: EditableTournament = {
+        ...(tournament ?? parsed.data),
+        ...result.tournament,
+        id: result.tournament.id,
+        version: result.tournament.version,
+        startsAt: String(formData.get("startsAt")),
+        endsAt: String(formData.get("endsAt")),
+        registrationDeadline: String(formData.get("registrationDeadline")),
+        mediaAssets:
+          result.tournament.mediaAssets ?? tournament?.mediaAssets ?? [],
+      }
+      setTournament(nextTournament)
       setMessage(
-        response.ok
-          ? action === "submit"
-            ? "ส่งรายการให้ผู้ดูแลตรวจสอบแล้ว"
-            : "บันทึกฉบับร่างแล้ว"
-          : result.message ?? "ไม่สามารถดำเนินการได้",
+        action === "submit"
+          ? "ส่งรายการให้ผู้ดูแลตรวจสอบแล้ว"
+          : "บันทึกฉบับร่างแล้ว",
       )
+      if (wasCreated) {
+        router.replace(`/organizer/tournaments/${nextTournament.id}`)
+      }
     } catch {
       setMessage("ไม่สามารถเชื่อมต่อระบบ กรุณาลองอีกครั้ง")
     } finally {
@@ -98,7 +125,7 @@ export function TournamentEditor({
       <header className="border-b border-border pb-5">
         <p className="text-xs font-semibold text-court">TOURNAMENT EDITOR</p>
         <h1 className="mt-2 text-2xl font-semibold">
-          {initialTournament ? "แก้ไขรายการแข่งขัน" : "สร้างรายการแข่งขัน"}
+          {tournament ? "แก้ไขรายการแข่งขัน" : "สร้างรายการแข่งขัน"}
         </h1>
         <p className="mt-2 text-sm text-muted-foreground">
           บันทึกฉบับร่างได้ตลอด และส่งตรวจสอบเมื่อข้อมูลครบ
@@ -106,15 +133,15 @@ export function TournamentEditor({
       </header>
 
       <div className="grid gap-5 md:grid-cols-2">
-        <Field label="ชื่อรายการ" name="title" defaultValue={initialTournament?.title} />
-        <Field label="จังหวัด" name="province" defaultValue={initialTournament?.province} />
-        <Field label="สถานที่" name="venue" defaultValue={initialTournament?.venue} />
-        <Field label="รุ่นอายุ" name="ageGroup" defaultValue={initialTournament?.ageGroup} />
+        <Field label="ชื่อรายการ" name="title" defaultValue={tournament?.title} />
+        <Field label="จังหวัด" name="province" defaultValue={tournament?.province} />
+        <Field label="สถานที่" name="venue" defaultValue={tournament?.venue} />
+        <Field label="รุ่นอายุ" name="ageGroup" defaultValue={tournament?.ageGroup} />
         <label className="space-y-2 text-sm">
           <span>ประเภทการแข่งขัน</span>
           <select
             className={fieldClassName}
-            defaultValue={initialTournament?.format ?? "FIVE_V_FIVE"}
+            defaultValue={tournament?.format ?? "FIVE_V_FIVE"}
             name="format"
           >
             <option value="FIVE_V_FIVE">5v5</option>
@@ -122,7 +149,7 @@ export function TournamentEditor({
           </select>
         </label>
         <Field
-          defaultValue={String(initialTournament?.capacity ?? 16)}
+          defaultValue={String(tournament?.capacity ?? 16)}
           label="จำนวนทีมสูงสุด"
           max="64"
           min="2"
@@ -130,19 +157,19 @@ export function TournamentEditor({
           type="number"
         />
         <Field
-          defaultValue={initialTournament?.startsAt}
+          defaultValue={tournament?.startsAt}
           label="วันเริ่มแข่งขัน"
           name="startsAt"
           type="datetime-local"
         />
         <Field
-          defaultValue={initialTournament?.endsAt}
+          defaultValue={tournament?.endsAt}
           label="วันสิ้นสุดการแข่งขัน"
           name="endsAt"
           type="datetime-local"
         />
         <Field
-          defaultValue={initialTournament?.registrationDeadline}
+          defaultValue={tournament?.registrationDeadline}
           label="วันปิดรับสมัคร"
           name="registrationDeadline"
           type="datetime-local"
@@ -151,21 +178,21 @@ export function TournamentEditor({
 
       <div className="grid gap-5 md:grid-cols-2">
         <TextArea
-          defaultValue={initialTournament?.description}
+          defaultValue={tournament?.description}
           label="รายละเอียด"
           name="description"
         />
         <TextArea
-          defaultValue={initialTournament?.rules}
+          defaultValue={tournament?.rules}
           label="กติกา"
           name="rules"
         />
       </div>
 
-      {initialTournament ? (
+      {tournament ? (
         <TournamentMediaManager
-          assets={initialTournament.mediaAssets ?? []}
-          tournamentId={initialTournament.id}
+          assets={tournament.mediaAssets ?? []}
+          tournamentId={tournament.id}
         />
       ) : (
         <section className="border-t border-border pt-8">
@@ -201,6 +228,26 @@ export function TournamentEditor({
         </button>
       </div>
     </form>
+  )
+}
+
+interface TournamentMutationResponse {
+  message?: string
+  tournament?: Partial<EditableTournament> & {
+    id?: unknown
+    version?: unknown
+  }
+}
+
+function hasTournamentIdentity(
+  tournament: TournamentMutationResponse["tournament"],
+): tournament is Partial<EditableTournament> & {
+  id: string
+  version: number
+} {
+  return (
+    typeof tournament?.id === "string" &&
+    typeof tournament.version === "number"
   )
 }
 

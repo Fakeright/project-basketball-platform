@@ -1,6 +1,20 @@
 import { z } from "zod"
 
+import { tournamentDateTimeToUtc } from "./tournament-editor-time"
+
 const requiredText = (message: string) => z.string().trim().min(1, message)
+const dateTime = (requiredMessage: string) =>
+  requiredText(requiredMessage).transform((value, context) => {
+    try {
+      return tournamentDateTimeToUtc(value)
+    } catch {
+      context.addIssue({
+        code: "custom",
+        message: "กรุณาระบุวันและเวลาให้ถูกต้อง",
+      })
+      return z.NEVER
+    }
+  })
 
 export const tournamentEditorSchema = z
   .object({
@@ -10,9 +24,9 @@ export const tournamentEditorSchema = z
     venue: requiredText("กรุณาระบุสถานที่"),
     format: z.enum(["FIVE_V_FIVE", "THREE_V_THREE"]),
     ageGroup: requiredText("กรุณาระบุรุ่นอายุ"),
-    startsAt: requiredText("กรุณาระบุวันเริ่มแข่งขัน"),
-    endsAt: requiredText("กรุณาระบุวันสิ้นสุดการแข่งขัน"),
-    registrationDeadline: requiredText("กรุณาระบุวันปิดรับสมัคร"),
+    startsAt: dateTime("กรุณาระบุวันเริ่มแข่งขัน"),
+    endsAt: dateTime("กรุณาระบุวันสิ้นสุดการแข่งขัน"),
+    registrationDeadline: dateTime("กรุณาระบุวันปิดรับสมัคร"),
     capacity: z.coerce.number().int().min(2).max(64),
     rules: requiredText("กรุณาระบุกติกา"),
     version: z.coerce.number().int().nonnegative().optional(),

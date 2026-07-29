@@ -1,42 +1,127 @@
-import { cleanup, render, screen } from "@testing-library/react"
+import { cleanup, render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
 import { TournamentEditor } from "@/components/admin/tournament-editor"
 
+const router = vi.hoisted(() => ({
+  replace: vi.fn(),
+  refresh: vi.fn(),
+}))
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => router,
+}))
+
 afterEach(() => {
   cleanup()
+  vi.clearAllMocks()
   vi.unstubAllGlobals()
 })
 
 describe("TournamentEditor", () => {
   it("saves a valid tournament draft", async () => {
     const fetchMock = vi.fn().mockResolvedValue(
-      new Response(JSON.stringify({ tournament: { id: "tournament-4" } }), {
-        status: 201,
-      }),
+      new Response(
+        JSON.stringify({
+          tournament: {
+            id: "tournament-4",
+            version: 0,
+            status: "DRAFT",
+          },
+        }),
+        { status: 201 },
+      ),
     )
     vi.stubGlobal("fetch", fetchMock)
     const user = userEvent.setup()
 
     render(<TournamentEditor initialTournament={null} />)
 
-    await user.type(screen.getByLabelText("ชื่อรายการ"), "Chiang Rai Cup")
-    await user.type(screen.getByLabelText("รายละเอียด"), "การแข่งขันระดับชุมชน")
-    await user.type(screen.getByLabelText("จังหวัด"), "เชียงราย")
-    await user.type(screen.getByLabelText("สถานที่"), "สนามกีฬากลาง")
-    await user.type(screen.getByLabelText("รุ่นอายุ"), "Open")
-    await user.type(screen.getByLabelText("วันเริ่มแข่งขัน"), "2026-12-10T09:00")
-    await user.type(screen.getByLabelText("วันสิ้นสุดการแข่งขัน"), "2026-12-11T18:00")
-    await user.type(screen.getByLabelText("วันปิดรับสมัคร"), "2026-12-01T23:59")
-    await user.type(screen.getByLabelText("กติกา"), "ใช้กติกามาตรฐาน")
+    await fillValidTournament(user)
     await user.click(screen.getByRole("button", { name: "บันทึกฉบับร่าง" }))
 
     expect(fetchMock).toHaveBeenCalledWith(
       "/api/admin/tournaments",
       expect.objectContaining({ method: "POST" }),
     )
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toMatchObject({
+      startsAt: "2026-12-10T02:00:00.000Z",
+      endsAt: "2026-12-11T11:00:00.000Z",
+      registrationDeadline: "2026-12-01T16:59:00.000Z",
+    })
     expect(await screen.findByText("บันทึกฉบับร่างแล้ว")).toBeTruthy()
+    expect(router.replace).toHaveBeenCalledWith(
+      "/organizer/tournaments/tournament-4",
+    )
+  })
+
+  it("adopts the returned id and version for sequential saves", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            tournament: {
+              id: "tournament-4",
+              version: 0,
+              status: "DRAFT",
+            },
+          }),
+          { status: 201 },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            tournament: {
+              id: "tournament-4",
+              version: 1,
+              status: "DRAFT",
+            },
+          }),
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            tournament: {
+              id: "tournament-4",
+              version: 2,
+              status: "DRAFT",
+            },
+          }),
+        ),
+      )
+    vi.stubGlobal("fetch", fetchMock)
+    const user = userEvent.setup()
+
+    render(<TournamentEditor initialTournament={null} />)
+    await fillValidTournament(user)
+
+    await user.click(screen.getByRole("button", { name: "บันทึกฉบับร่าง" }))
+    await screen.findByText("บันทึกฉบับร่างแล้ว")
+    await user.click(screen.getByRole("button", { name: "บันทึกฉบับร่าง" }))
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2))
+    expect(fetchMock.mock.calls[1][0]).toBe(
+      "/api/admin/tournaments/tournament-4",
+    )
+    expect(fetchMock.mock.calls[1][1]).toMatchObject({ method: "PUT" })
+    expect(JSON.parse(fetchMock.mock.calls[1][1].body)).toMatchObject({
+      version: 0,
+    })
+
+    const saveButton = screen.getByRole("button", {
+      name: "บันทึกฉบับร่าง",
+    })
+    await waitFor(() => expect(saveButton.hasAttribute("disabled")).toBe(false))
+    await user.click(saveButton)
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3))
+    expect(JSON.parse(fetchMock.mock.calls[2][1].body)).toMatchObject({
+      version: 1,
+    })
   })
 
   it("shows a deadline error before submitting", async () => {
@@ -67,3 +152,17 @@ describe("TournamentEditor", () => {
     expect(await screen.findByText("กรุณาระบุวันปิดรับสมัคร")).toBeTruthy()
   })
 })
+
+async function fillValidTournament(
+  user: ReturnType<typeof userEvent.setup>,
+) {
+  await user.type(screen.getByLabelText("ชื่อรายการ"), "Chiang Rai Cup")
+  await user.type(screen.getByLabelText("รายละเอียด"), "การแข่งขันระดับชุมชน")
+  await user.type(screen.getByLabelText("จังหวัด"), "เชียงราย")
+  await user.type(screen.getByLabelText("สถานที่"), "สนามกีฬากลาง")
+  await user.type(screen.getByLabelText("รุ่นอายุ"), "Open")
+  await user.type(screen.getByLabelText("วันเริ่มแข่งขัน"), "2026-12-10T09:00")
+  await user.type(screen.getByLabelText("วันสิ้นสุดการแข่งขัน"), "2026-12-11T18:00")
+  await user.type(screen.getByLabelText("วันปิดรับสมัคร"), "2026-12-01T23:59")
+  await user.type(screen.getByLabelText("กติกา"), "ใช้กติกามาตรฐาน")
+}
