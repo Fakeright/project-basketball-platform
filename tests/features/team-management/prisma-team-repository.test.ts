@@ -16,7 +16,8 @@ const memberRow = {
 const teamRow = {
   id: "team-1",
   name: "Bangkok Ballers",
-  province: "Bangkok",
+  provinceCode: "10",
+  province: { nameTh: "กรุงเทพมหานคร" },
   ownerId: "manager-1",
 }
 
@@ -123,7 +124,7 @@ describe("PrismaTeamRepository", () => {
       repository.inTransaction(async (transaction) => {
         const updated = await transaction.update("team-1", {
           name: "Changed",
-          province: "Bangkok",
+          provinceCode: "10",
         })
         await transaction.appendAuditEvent({
           actorId: "manager-1",

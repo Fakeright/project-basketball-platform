@@ -1,5 +1,6 @@
 import type { Actor } from "@/features/identity/domain/actor"
 import type { TeamSummary } from "@/features/team-management/domain/team"
+import { assertProvinceCode } from "@/features/provinces/application/assert-province-code"
 
 import { authorizeTeamAccess } from "./team-access"
 import type { TeamRepository } from "./ports/team-repository"
@@ -7,7 +8,7 @@ import type { TeamRepository } from "./ports/team-repository"
 export interface UpdateTeamInput {
   teamId: string
   name: string
-  province: string
+  provinceCode: string
 }
 
 export async function updateTeam(
@@ -15,6 +16,7 @@ export async function updateTeam(
   actor: Actor,
   dependencies: { teams: TeamRepository },
 ): Promise<TeamSummary> {
+  assertProvinceCode(input.provinceCode)
   const team = await dependencies.teams.findById(input.teamId)
   if (!team) throw new Error("NOT_FOUND")
 
@@ -22,7 +24,7 @@ export async function updateTeam(
   return dependencies.teams.inTransaction(async (teams) => {
     const updated = await teams.update(team.id, {
       name: input.name,
-      province: input.province,
+      provinceCode: input.provinceCode,
     })
 
     await teams.appendAuditEvent({

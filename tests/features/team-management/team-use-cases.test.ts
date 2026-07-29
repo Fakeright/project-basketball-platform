@@ -16,7 +16,8 @@ const platformAdmin = createTestActor("admin-1", "PLATFORM_ADMIN")
 const team = {
   id: "team-1",
   name: "Bangkok Ballers",
-  province: "Bangkok",
+  provinceCode: "10",
+  province: "กรุงเทพมหานคร",
   ownerId: teamManager.id,
 }
 
@@ -59,7 +60,7 @@ describe("team use cases", () => {
     const repository = createRepository()
 
     const created = await createTeam(
-      { name: "Chiang Mai Hoops", province: "Chiang Mai" },
+      { name: "Chiang Mai Hoops", provinceCode: "50" },
       teamManager,
       { teams: repository },
     )
@@ -67,7 +68,7 @@ describe("team use cases", () => {
     expect(created.ownerId).toBe(teamManager.id)
     expect(repository.create).toHaveBeenCalledWith({
       name: "Chiang Mai Hoops",
-      province: "Chiang Mai",
+      provinceCode: "50",
       ownerId: teamManager.id,
     })
     expect(repository.appendAuditEvent).toHaveBeenCalledWith(
@@ -87,7 +88,7 @@ describe("team use cases", () => {
 
     await expect(
       updateTeam(
-        { teamId: team.id, name: "Changed", province: "Bangkok" },
+        { teamId: team.id, name: "Changed", provinceCode: "10" },
         teamManager,
         { teams: repository },
       ),
@@ -100,7 +101,7 @@ describe("team use cases", () => {
     })
 
     await updateTeam(
-      { teamId: team.id, name: "Changed", province: "Bangkok" },
+      { teamId: team.id, name: "Changed", provinceCode: "10" },
       platformAdmin,
       { teams: repository },
     )
@@ -233,11 +234,11 @@ describe("team use cases", () => {
       ]),
     })
 
-    await createTeam({ name: "Khon Kaen Hoops", province: "Khon Kaen" }, teamManager, {
+    await createTeam({ name: "Khon Kaen Hoops", provinceCode: "40" }, teamManager, {
       teams: repository,
     })
     await updateTeam(
-      { teamId: team.id, name: "Changed", province: "Bangkok" },
+      { teamId: team.id, name: "Changed", provinceCode: "10" },
       teamManager,
       { teams: repository },
     )
@@ -279,7 +280,7 @@ describe("team use cases", () => {
 
     await expect(
       updateTeam(
-        { teamId: team.id, name: "Changed", province: "Bangkok" },
+        { teamId: team.id, name: "Changed", provinceCode: "10" },
         teamManager,
         { teams: repository },
       ),

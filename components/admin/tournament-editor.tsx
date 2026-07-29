@@ -12,6 +12,7 @@ import {
   TournamentMediaManager,
   type TournamentMediaManagerAsset,
 } from "./tournament-media-manager"
+import { ProvinceCombobox } from "@/components/province-combobox"
 
 export interface EditableTournament extends TournamentEditorInput {
   id: string
@@ -42,7 +43,7 @@ export function TournamentEditor({
     const parsed = tournamentEditorSchema.safeParse({
       title: formData.get("title"),
       description: formData.get("description"),
-      province: formData.get("province"),
+      provinceCode: formData.get("provinceCode"),
       venue: formData.get("venue"),
       format: formData.get("format"),
       ageGroup: formData.get("ageGroup"),
@@ -134,7 +135,13 @@ export function TournamentEditor({
 
       <div className="grid gap-5 md:grid-cols-2">
         <Field label="ชื่อรายการ" name="title" defaultValue={tournament?.title} />
-        <Field label="จังหวัด" name="province" defaultValue={tournament?.province} />
+        <ProvinceCombobox
+          defaultValue={tournament?.provinceCode}
+          id="provinceCode"
+          label="จังหวัด"
+          name="provinceCode"
+          required
+        />
         <Field label="สถานที่" name="venue" defaultValue={tournament?.venue} />
         <Field label="รุ่นอายุ" name="ageGroup" defaultValue={tournament?.ageGroup} />
         <label className="space-y-2 text-sm">

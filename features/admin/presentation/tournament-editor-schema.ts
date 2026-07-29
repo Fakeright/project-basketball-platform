@@ -1,6 +1,7 @@
 import { z } from "zod"
 
 import { tournamentDateTimeToUtc } from "./tournament-editor-time"
+import { assertProvinceCode } from "@/features/provinces/application/assert-province-code"
 
 const requiredText = (message: string) => z.string().trim().min(1, message)
 const dateTime = (requiredMessage: string) =>
@@ -20,7 +21,17 @@ export const tournamentEditorSchema = z
   .object({
     title: requiredText("กรุณาระบุชื่อรายการ"),
     description: requiredText("กรุณาระบุรายละเอียด"),
-    province: requiredText("กรุณาระบุจังหวัด"),
+    provinceCode: z.string().trim().refine(
+      (value) => {
+        try {
+          assertProvinceCode(value)
+          return true
+        } catch {
+          return false
+        }
+      },
+      { message: "กรุณาเลือกจังหวัดจากรายการ" },
+    ),
     venue: requiredText("กรุณาระบุสถานที่"),
     format: z.enum(["FIVE_V_FIVE", "THREE_V_THREE"]),
     ageGroup: requiredText("กรุณาระบุรุ่นอายุ"),

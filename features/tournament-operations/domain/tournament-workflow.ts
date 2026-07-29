@@ -1,7 +1,7 @@
 import type { TournamentOperation, TournamentOperationInput, TournamentOperationStatus } from "./tournament-operation"
 
 const requiredFields: Array<keyof TournamentOperationInput> = [
-  "title", "description", "rules", "province", "venue", "ageGroup", "startsAt", "endsAt", "registrationDeadline",
+  "title", "description", "rules", "provinceCode", "venue", "ageGroup", "startsAt", "endsAt", "registrationDeadline",
 ]
 
 export function validateTournamentInput(input: TournamentOperationInput): void {

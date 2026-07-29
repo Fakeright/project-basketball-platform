@@ -11,7 +11,7 @@ const organizer = createTestActor("organizer-1", "TOURNAMENT_ORGANIZER")
 const validTournament = {
   title: "Chiang Rai Cup",
   description: "การแข่งขันระดับชุมชน",
-  province: "เชียงราย",
+  provinceCode: "57",
   venue: "สนามกีฬากลาง",
   format: "FIVE_V_FIVE" as const,
   ageGroup: "Open",

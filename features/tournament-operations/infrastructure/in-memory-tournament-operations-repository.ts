@@ -3,6 +3,7 @@ import type {
   TournamentOperationInput,
   TournamentReviewInput,
 } from "@/features/tournament-operations/domain/tournament-operation"
+import { findProvinceByCode } from "@/features/provinces/domain/thai-provinces"
 import type {
   TournamentLifecycleTransition,
   TournamentMutationAudit,
@@ -25,7 +26,7 @@ export class InMemoryTournamentOperationsRepository implements TournamentOperati
     audit: TournamentMutationAudit = systemAudit("tournament.created"),
   ): Promise<TournamentOperation> {
     const now = new Date().toISOString()
-    const tournament: TournamentOperation = { ...input, id: `tournament-${this.tournaments.size + 1}`, status: "DRAFT", version: 0, createdAt: now, updatedAt: now }
+    const tournament: TournamentOperation = { ...input, province: provinceName(input.provinceCode), id: `tournament-${this.tournaments.size + 1}`, status: "DRAFT", version: 0, createdAt: now, updatedAt: now }
     this.tournaments.set(tournament.id, tournament)
     this.appendAudit(audit, tournament.id, null, tournament)
     return tournament
@@ -54,7 +55,13 @@ export class InMemoryTournamentOperationsRepository implements TournamentOperati
     const current = this.tournaments.get(id)
     if (!current) throw new Error("NOT_FOUND")
     if (current.version !== version) throw new Error("CONFLICT")
-    const updated = { ...current, ...changes, version: version + 1, updatedAt: new Date().toISOString() }
+    const updated = {
+      ...current,
+      ...changes,
+      province: provinceName(changes.provinceCode ?? current.provinceCode),
+      version: version + 1,
+      updatedAt: new Date().toISOString(),
+    }
     this.tournaments.set(id, updated)
     this.appendAudit(audit, id, current, updated)
     return updated
@@ -142,6 +149,12 @@ export class InMemoryTournamentOperationsRepository implements TournamentOperati
       })
     }
   }
+}
+
+function provinceName(provinceCode: string) {
+  const province = findProvinceByCode(provinceCode)
+  if (!province) throw new Error("INVALID_PROVINCE_CODE")
+  return province.nameTh
 }
 
 function systemAudit(

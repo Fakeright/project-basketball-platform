@@ -17,7 +17,7 @@ const approvedTournament: TournamentOperation = {
   title: "Bangkok Open",
   description: "Community tournament",
   rules: "Standard rules",
-  province: "Bangkok",
+  provinceCode: "10",
   venue: "COURTSIDE Arena",
   format: "FIVE_V_FIVE",
   ageGroup: "Open",

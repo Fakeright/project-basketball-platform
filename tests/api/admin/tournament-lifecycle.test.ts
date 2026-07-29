@@ -14,7 +14,7 @@ const anotherOrganizer = createTestActor(
 const validTournament = {
   title: "Lifecycle Cup",
   description: "การแข่งขันระดับชุมชน",
-  province: "กรุงเทพมหานคร",
+  provinceCode: "10",
   venue: "COURTSIDE Arena",
   format: "FIVE_V_FIVE" as const,
   ageGroup: "Open",

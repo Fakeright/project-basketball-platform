@@ -7,6 +7,7 @@ import {
   TournamentFormat,
   TournamentStatus,
 } from "../lib/generated/prisma/client"
+import { thaiProvinces } from "../features/provinces/domain/thai-provinces"
 
 config({ path: ".env.local" })
 config()
@@ -28,6 +29,14 @@ const tournaments: Array<{ id: string; slug: string; title: string; status: Tour
 ]
 
 async function main() {
+  for (const province of thaiProvinces) {
+    await prisma.province.upsert({
+      where: { code: province.code },
+      update: { nameTh: province.nameTh, nameEn: province.nameEn },
+      create: province,
+    })
+  }
+
   const users = [
     { id: "admin-1", email: "admin@courtside.local", displayName: "COURTSIDE Admin", role: Role.PLATFORM_ADMIN },
     { id: "organizer-1", email: "organizer.one@courtside.local", displayName: "ผู้จัดการแข่งขัน 1", role: Role.TOURNAMENT_ORGANIZER },
@@ -61,7 +70,7 @@ async function main() {
       update: { status: tournament.status, title: tournament.title },
       create: {
         ...tournament,
-        province: "Bangkok",
+        provinceCode: "10",
         venue: "COURTSIDE Arena",
         format: TournamentFormat.FIVE_V_FIVE,
         ageGroup: "Open",
@@ -78,7 +87,7 @@ async function main() {
   const developmentTeam = {
     id: "team-manager-1-team",
     name: "COURTSIDE Development Team",
-    province: "Bangkok",
+    provinceCode: "10",
     ownerId: "team-manager-1",
   }
   await prisma.team.upsert({

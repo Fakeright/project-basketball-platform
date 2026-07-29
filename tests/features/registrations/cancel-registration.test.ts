@@ -25,7 +25,7 @@ function createRepository(ownerId = owner.id): RegistrationRepository {
       version: 0,
       createdAt: "2026-10-01T00:00:00.000Z",
       updatedAt: "2026-10-01T00:00:00.000Z",
-      team: { id: "team-1", name: "Ballers", province: "Bangkok", ownerId },
+      team: { id: "team-1", name: "Ballers", provinceCode: "10", province: "กรุงเทพมหานคร", ownerId },
     })),
     cancelWithVersion: vi.fn(async () => ({
       id: "registration-1",
@@ -44,7 +44,7 @@ function createRepository(ownerId = owner.id): RegistrationRepository {
     approveWithCapacity: vi.fn(),
     rejectWithVersion: vi.fn(),
     withdrawWithVersion: vi.fn(),
-    findTeam: vi.fn(async () => ({ id: "team-1", name: "Ballers", province: "Bangkok", ownerId })),
+    findTeam: vi.fn(async () => ({ id: "team-1", name: "Ballers", provinceCode: "10", province: "กรุงเทพมหานคร", ownerId })),
     listByTeam: vi.fn(async () => []),
     findTournamentForReview: vi.fn(),
     listByTournament: vi.fn(async () => []),

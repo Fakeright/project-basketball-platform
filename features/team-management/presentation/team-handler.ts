@@ -11,10 +11,21 @@ import type { AddTeamMemberInput } from "@/features/team-management/application/
 import type { CreateTeamInput } from "@/features/team-management/application/create-team"
 import type { DeactivateTeamMemberInput } from "@/features/team-management/application/deactivate-team-member"
 import type { UpdateTeamInput } from "@/features/team-management/application/update-team"
+import { assertProvinceCode } from "@/features/provinces/application/assert-province-code"
 
 const teamIdentitySchema = z.object({
   name: z.string().trim().min(2).max(80),
-  province: z.string().trim().min(2).max(80),
+  provinceCode: z.string().trim().refine(
+    (value) => {
+      try {
+        assertProvinceCode(value)
+        return true
+      } catch {
+        return false
+      }
+    },
+    { message: "กรุณาเลือกจังหวัดจากรายการ" },
+  ),
 })
 
 const teamMemberSchema = z.object({

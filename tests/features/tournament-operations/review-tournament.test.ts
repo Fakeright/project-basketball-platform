@@ -8,7 +8,7 @@ import { createTestActor } from "@/tests/fixtures/actor"
 const organizer = createTestActor("organizer-1", "TOURNAMENT_ORGANIZER")
 const admin = createTestActor("admin-1", "PLATFORM_ADMIN")
 const input = {
-  title: "Review Cup", description: "description", rules: "rules", province: "Bangkok", venue: "Arena",
+  title: "Review Cup", description: "description", rules: "rules", provinceCode: "10", venue: "Arena",
   format: "FIVE_V_FIVE" as const, ageGroup: "Open", startsAt: "2026-11-15T09:00:00+07:00",
   endsAt: "2026-11-16T18:00:00+07:00", registrationDeadline: "2026-11-01T23:59:00+07:00", capacity: 8,
 }

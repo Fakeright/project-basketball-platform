@@ -106,7 +106,10 @@ export class PrismaRegistrationRepository implements RegistrationRepository {
   }
 
   async findTeam(teamId: string): Promise<TeamSummary | null> {
-    const team = await this.prisma.team.findUnique({ where: { id: teamId } })
+    const team = await this.prisma.team.findUnique({
+      where: { id: teamId },
+      include: { province: true },
+    })
     return team ? mapTeam(team) : null
   }
 
@@ -148,6 +151,7 @@ export class PrismaRegistrationRepository implements RegistrationRepository {
       include: {
         team: {
           include: {
+            province: true,
             members: {
               where: { isActive: true },
               select: { role: true },
@@ -161,7 +165,7 @@ export class PrismaRegistrationRepository implements RegistrationRepository {
     return registrations.map((registration) => ({
       ...mapRegistration(registration),
       teamName: registration.team.name,
-      province: registration.team.province,
+      province: registration.team.province.nameTh,
       playerCount: registration.team.members.filter(
         (member) => member.role === "PLAYER",
       ).length,
@@ -209,7 +213,10 @@ class PrismaRegistrationOperations implements RegistrationRepositoryTransaction 
     )
 
     const [team, roster, approvedCount] = await Promise.all([
-      this.prisma.team.findUnique({ where: { id: teamId } }),
+      this.prisma.team.findUnique({
+        where: { id: teamId },
+        include: { province: true },
+      }),
       this.prisma.teamMember.findMany({
         where: { teamId, isActive: true },
         orderBy: { createdAt: "asc" },
@@ -284,7 +291,7 @@ class PrismaRegistrationOperations implements RegistrationRepositoryTransaction 
   async findById(id: string): Promise<TournamentRegistrationWithOwnership | null> {
     const registration = await this.prisma.registration.findUnique({
       where: { id },
-      include: { team: true },
+      include: { team: { include: { province: true } } },
     })
     return registration
       ? { ...mapRegistration(registration), team: mapTeam(registration.team) }
@@ -508,8 +515,14 @@ class PrismaRegistrationOperations implements RegistrationRepositoryTransaction 
   }
 }
 
-function mapTeam(team: Team): TeamSummary {
-  return { id: team.id, name: team.name, province: team.province, ownerId: team.ownerId }
+function mapTeam(team: Team & { province: { nameTh: string } }): TeamSummary {
+  return {
+    id: team.id,
+    name: team.name,
+    provinceCode: team.provinceCode,
+    province: team.province.nameTh,
+    ownerId: team.ownerId,
+  }
 }
 
 function mapMember(member: TeamMember): TeamRosterMember {

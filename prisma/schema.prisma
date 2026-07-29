@@ -120,7 +120,8 @@ model OrganizerProfile {
 model Team {
   id             String         @id @default(cuid())
   name           String
-  province       String
+  provinceCode   String         @db.Char(2)
+  province       Province       @relation(fields: [provinceCode], references: [code], onDelete: Restrict)
   ownerId        String
   owner          User           @relation("TeamOwner", fields: [ownerId], references: [id])
   members        TeamMember[]
@@ -128,6 +129,7 @@ model Team {
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
   @@index([ownerId])
+  @@index([provinceCode])
 }
 
 model TeamMember {
@@ -147,7 +149,8 @@ model Tournament {
   id                   String             @id @default(cuid())
   slug                 String             @unique
   title                String
-  province             String
+  provinceCode         String             @db.Char(2)
+  province             Province           @relation(fields: [provinceCode], references: [code], onDelete: Restrict)
   venue                String
   format               TournamentFormat
   ageGroup             String
@@ -171,6 +174,15 @@ model Tournament {
   updatedAt            DateTime           @updatedAt
   @@index([organizerId, status])
   @@index([status, startsAt])
+  @@index([provinceCode])
+}
+
+model Province {
+  code        String       @id @db.Char(2)
+  nameTh      String       @unique
+  nameEn      String       @unique
+  teams       Team[]
+  tournaments Tournament[]
 }
 
 model TournamentReview {

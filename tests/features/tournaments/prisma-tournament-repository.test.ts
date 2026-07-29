@@ -8,7 +8,8 @@ const publicTournamentRow = {
   id: "tournament-published",
   slug: "published-bangkok-open",
   title: "Published Bangkok Open",
-  province: "Bangkok",
+  provinceCode: "10",
+  province: { nameTh: "กรุงเทพมหานคร", nameEn: "Bangkok" },
   venue: "COURTSIDE Arena",
   format: "FIVE_V_FIVE" as const,
   ageGroup: "Open",
@@ -107,6 +108,18 @@ function createRepository(
 }
 
 describe("PrismaTournamentRepository", () => {
+  it("filters public tournaments by the exact province code", async () => {
+    const { prisma, repository } = createRepository([])
+
+    await repository.list({ provinceCode: "92" })
+
+    expect(prisma.tournament.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ provinceCode: "92" }),
+      }),
+    )
+  })
+
   it("returns only public lifecycle states and maps stable public ids", async () => {
     const { prisma, repository } = createRepository()
 
@@ -230,6 +243,7 @@ describe("PrismaTournamentRepository", () => {
     expect(prisma.tournament.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         include: {
+          province: true,
           mediaAssets: expect.objectContaining({
             where: { deletedAt: null, kind: "POSTER" },
           }),
@@ -303,7 +317,8 @@ describe("PrismaTournamentRepository", () => {
       id: "tournament-closed",
       slug: "north-court-3x3",
       title: "North Court 3x3",
-      province: "Chiang Mai",
+      provinceCode: "50",
+      province: { nameTh: "เชียงใหม่", nameEn: "Chiang Mai" },
       venue: "สนามกีฬานิมมาน",
       format: "THREE_V_THREE" as const,
       ageGroup: "U18",
@@ -317,7 +332,7 @@ describe("PrismaTournamentRepository", () => {
 
     const tournaments = await repository.list({
       query: "north",
-      province: "chiang",
+      provinceCode: "50",
       format: "THREE_V_THREE",
       ageGroup: "u18",
       venue: "นิมมาน",
@@ -332,7 +347,7 @@ describe("PrismaTournamentRepository", () => {
       expect.objectContaining({
         where: expect.objectContaining({
           status: { in: ["REGISTRATION_CLOSED"] },
-          province: { contains: "chiang", mode: "insensitive" },
+          provinceCode: "50",
           format: "THREE_V_THREE",
           ageGroup: { contains: "u18", mode: "insensitive" },
           venue: { contains: "นิมมาน", mode: "insensitive" },

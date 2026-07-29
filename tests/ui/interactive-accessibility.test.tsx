@@ -66,6 +66,20 @@ describe("interactive accessibility", () => {
     expect(push).toHaveBeenCalledWith("/tournaments?q=Bangkok")
   })
 
+  it("submits the selected province code instead of its display name", async () => {
+    const user = userEvent.setup()
+    const { container } = render(<TournamentSearchForm initialFilters={{}} />)
+
+    const province = screen.getByLabelText("จังหวัด")
+    await user.click(province)
+    await user.clear(province)
+    await user.type(province, "Trang")
+    await user.click(await screen.findByRole("option", { name: /ตรัง.*Trang/i }))
+    await user.click(within(container).getByRole("button", { name: "ค้นหา" }))
+
+    expect(push).toHaveBeenCalledWith("/tournaments?province=92")
+  })
+
   it("shows the sheet close tooltip and returns focus to its trigger", async () => {
     const user = userEvent.setup()
     render(<TestSheet />)

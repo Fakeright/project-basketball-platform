@@ -6,7 +6,8 @@ import type { TeamRosterMember, TeamSummary } from "@/features/team-management/d
 const team: TeamSummary = {
   id: "team-1",
   name: "Bangkok Ballers",
-  province: "Bangkok",
+  provinceCode: "10",
+  province: "กรุงเทพมหานคร",
   ownerId: "manager-1",
 }
 

@@ -9,7 +9,8 @@ const tournamentRow = {
   title: "Review Cup",
   description: "Tournament description",
   rules: "Tournament rules",
-  province: "Bangkok",
+  provinceCode: "10",
+  province: { nameTh: "กรุงเทพมหานคร" },
   venue: "COURTSIDE Arena",
   format: "FIVE_V_FIVE" as const,
   ageGroup: "Open",
@@ -220,6 +221,7 @@ describe("PrismaTournamentOperationsRepository", () => {
       orderBy: { updatedAt: "asc" },
       include: {
         organizer: { select: { displayName: true } },
+        province: true,
       },
     })
     expect(tournaments[0]?.updatedAt).toBe("2026-07-26T02:00:00.000Z")

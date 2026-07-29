@@ -14,6 +14,10 @@ import type {
   TeamSummary,
 } from "@/features/team-management/domain/team"
 
+const teamWithProvinceInclude = {
+  province: true,
+} satisfies Prisma.TeamInclude
+
 type TeamDatabaseClient = Pick<
   PrismaClient,
   "team" | "teamMember" | "auditLog"
@@ -39,7 +43,10 @@ export class PrismaTeamRepository implements TeamRepository {
   }
 
   async findById(id: string) {
-    const team = await this.prisma.team.findUnique({ where: { id } })
+    const team = await this.prisma.team.findUnique({
+      where: { id },
+      include: teamWithProvinceInclude,
+    })
     return team ? mapTeam(team) : null
   }
 
@@ -47,6 +54,7 @@ export class PrismaTeamRepository implements TeamRepository {
     const teams = await this.prisma.team.findMany({
       where: { ownerId },
       orderBy: { updatedAt: "desc" },
+      include: teamWithProvinceInclude,
     })
     return teams.map(mapTeam)
   }
@@ -113,7 +121,10 @@ class PrismaTeamMutationRepository implements TeamMutationRepository {
   constructor(private readonly prisma: TeamDatabaseClient) {}
 
   async create(input: Parameters<TeamMutationRepository["create"]>[0]) {
-    const team = await this.prisma.team.create({ data: input })
+    const team = await this.prisma.team.create({
+      data: input,
+      include: teamWithProvinceInclude,
+    })
     return mapTeam(team)
   }
 
@@ -121,7 +132,11 @@ class PrismaTeamMutationRepository implements TeamMutationRepository {
     id: string,
     input: Parameters<TeamMutationRepository["update"]>[1],
   ) {
-    const team = await this.prisma.team.update({ where: { id }, data: input })
+    const team = await this.prisma.team.update({
+      where: { id },
+      data: input,
+      include: teamWithProvinceInclude,
+    })
     return mapTeam(team)
   }
 
@@ -183,11 +198,12 @@ class PrismaTeamMutationRepository implements TeamMutationRepository {
   }
 }
 
-function mapTeam(team: Team): TeamSummary {
+function mapTeam(team: Team & { province: { nameTh: string } }): TeamSummary {
   return {
     id: team.id,
     name: team.name,
-    province: team.province,
+    provinceCode: team.provinceCode,
+    province: team.province.nameTh,
     ownerId: team.ownerId,
   }
 }

@@ -3,9 +3,12 @@
 import type { FormEvent } from "react"
 import { useState } from "react"
 
+import { ProvinceCombobox } from "@/components/province-combobox"
+
 export interface EditableTeam {
   id: string
   name: string
+  provinceCode: string
   province: string
 }
 
@@ -28,8 +31,8 @@ export function TeamEditor({
 
     const formData = new FormData(event.currentTarget)
     const name = String(formData.get("name") ?? "").trim()
-    const province = String(formData.get("province") ?? "").trim()
-    if (name.length < 2 || province.length < 2) {
+    const provinceCode = String(formData.get("provinceCode") ?? "").trim()
+    if (name.length < 2 || provinceCode.length !== 2) {
       setMessage("กรุณากรอกชื่อทีมและจังหวัดอย่างน้อย 2 ตัวอักษร")
       return
     }
@@ -41,7 +44,7 @@ export function TeamEditor({
         {
           method: initialTeam ? "PATCH" : "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name, province }),
+          body: JSON.stringify({ name, provinceCode }),
         },
       )
       const result = (await response.json()) as { message?: string }
@@ -70,15 +73,14 @@ export function TeamEditor({
             required
           />
         </label>
-        <label className="space-y-2 text-sm">
-          <span>จังหวัด</span>
-          <input
-            className={fieldClassName}
-            defaultValue={initialTeam?.province}
-            name="province"
-            required
-          />
-        </label>
+        <ProvinceCombobox
+          className="gap-2 text-sm [&>label]:text-sm"
+          defaultValue={initialTeam?.provinceCode}
+          id="provinceCode"
+          label="จังหวัด"
+          name="provinceCode"
+          required
+        />
       </div>
 
       {message ? (

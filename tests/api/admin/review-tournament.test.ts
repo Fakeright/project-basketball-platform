@@ -12,7 +12,7 @@ const validTournament = {
   title: "Review Cup",
   description: "description",
   rules: "rules",
-  province: "Bangkok",
+  provinceCode: "10",
   venue: "Arena",
   format: "FIVE_V_FIVE" as const,
   ageGroup: "Open",

@@ -5,7 +5,7 @@ import { expect, test } from "vitest"
 const repository = new MockTournamentRepository()
 
 test("returns tournaments in a selected province", async () => {
-  await expect(searchTournaments(repository, { province: "Bangkok" })).resolves.toHaveLength(1)
+  await expect(searchTournaments(repository, { provinceCode: "10" })).resolves.toHaveLength(1)
 })
 
 test("returns tournaments in a selected format", async () => {
@@ -53,7 +53,7 @@ test("filters tournaments by status", async () => {
 test("combines populated filters with AND semantics", async () => {
   await expect(
     repository.list({
-      province: "Chonburi",
+      provinceCode: "20",
       format: "FIVE_V_FIVE",
       ageGroup: "U16",
       venue: "สนามกีฬาชลบุรี",
@@ -64,7 +64,7 @@ test("combines populated filters with AND semantics", async () => {
 })
 
 test("returns matching tournaments newest first", async () => {
-  await expect(repository.list({ province: "Chiang Mai" })).resolves.toEqual([
+  await expect(repository.list({ provinceCode: "50" })).resolves.toEqual([
     expect.objectContaining({ slug: "north-court-3x3" }),
     expect.objectContaining({ slug: "chiang-mai-hoops-classic" }),
     expect.objectContaining({ slug: "lanna-community-cup" }),

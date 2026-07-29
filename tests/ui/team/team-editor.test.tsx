@@ -17,6 +17,7 @@ describe("TeamEditor", () => {
         initialTeam={{
           id: "team-1",
           name: "Bangkok Ballers",
+          provinceCode: "10",
           province: "Bangkok",
         }}
       />,
@@ -34,6 +35,7 @@ describe("TeamEditor", () => {
         initialTeam={{
           id: "team-1",
           name: "Bangkok Ballers",
+          provinceCode: "10",
           province: "Bangkok",
         }}
       />,
@@ -56,14 +58,17 @@ describe("TeamEditor", () => {
     render(<TeamEditor initialTeam={null} />)
 
     await user.type(screen.getByLabelText("ชื่อทีม"), "Bangkok Ballers")
-    await user.type(screen.getByLabelText("จังหวัด"), "Bangkok")
+    const province = screen.getByLabelText("จังหวัด")
+    await user.click(province)
+    await user.type(province, "Bangkok")
+    await user.click(await screen.findByRole("option", { name: /กรุงเทพมหานคร.*Bangkok/i }))
     await user.click(screen.getByRole("button", { name: "บันทึกทีม" }))
 
     expect(fetchMock).toHaveBeenCalledWith(
       "/api/teams",
       expect.objectContaining({
         method: "POST",
-        body: JSON.stringify({ name: "Bangkok Ballers", province: "Bangkok" }),
+        body: JSON.stringify({ name: "Bangkok Ballers", provinceCode: "10" }),
       }),
     )
     expect(await screen.findByText("บันทึกทีมแล้ว")).toBeTruthy()

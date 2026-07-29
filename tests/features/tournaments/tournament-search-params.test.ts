@@ -6,6 +6,15 @@ import {
 } from "@/features/tournaments/presentation/tournament-search-params"
 
 describe("tournament search params", () => {
+  it("keeps only known province codes from the public URL", () => {
+    expect(parseTournamentSearchParams({ province: "92" })).toMatchObject({
+      provinceCode: "92",
+    })
+    expect(parseTournamentSearchParams({ province: "Trang" })).not.toHaveProperty(
+      "provinceCode",
+    )
+  })
+
   it("parses recognized scalar filters", () => {
     expect(parseTournamentSearchParams({ q: "Bangkok", format: "THREE_V_THREE" })).toEqual({
       query: "Bangkok",
@@ -14,8 +23,8 @@ describe("tournament search params", () => {
   })
 
   it("serializes filters in the URL contract order", () => {
-    expect(toTournamentSearchParams({ province: "Chiang Mai", ageGroup: "U18" }).toString()).toBe(
-      "province=Chiang+Mai&ageGroup=U18",
+    expect(toTournamentSearchParams({ provinceCode: "50", ageGroup: "U18" }).toString()).toBe(
+      "province=50&ageGroup=U18",
     )
   })
 

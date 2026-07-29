@@ -9,7 +9,8 @@ const platformAdmin = createTestActor("admin-1", "PLATFORM_ADMIN")
 const team = {
   id: "team-1",
   name: "Bangkok Ballers",
-  province: "Bangkok",
+  provinceCode: "10",
+  province: "กรุงเทพมหานคร",
   ownerId: teamManager.id,
 }
 

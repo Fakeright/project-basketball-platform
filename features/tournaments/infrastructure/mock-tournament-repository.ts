@@ -27,7 +27,7 @@ export class MockTournamentRepository implements TournamentRepository {
 
         return (
           (!filters.query || matchesText(searchText, filters.query)) &&
-          (!filters.province || matchesText(tournament.province, filters.province)) &&
+          (!filters.provinceCode || tournament.provinceCode === filters.provinceCode) &&
           (!filters.format || tournament.format === filters.format) &&
           (!filters.ageGroup || matchesText(tournament.ageGroup, filters.ageGroup)) &&
           (!filters.venue || matchesText(tournament.venue, filters.venue)) &&

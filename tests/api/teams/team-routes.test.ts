@@ -29,7 +29,7 @@ describe("team route handlers", () => {
   })
 
   it("returns 422 for an invalid team identity", async () => {
-    const response = await handleCreateTeam(jsonRequest({ name: "A", province: "" }), {
+    const response = await handleCreateTeam(jsonRequest({ name: "A", provinceCode: "" }), {
       actorProvider: { getCurrentActor: vi.fn(async () => teamManager) },
       create: vi.fn(),
     })
@@ -37,8 +37,20 @@ describe("team route handlers", () => {
     expect(response.status).toBe(422)
   })
 
+  it("rejects a free-text province instead of a province code", async () => {
+    const response = await handleCreateTeam(
+      jsonRequest({ name: "Trang Hoops", provinceCode: "Trang" }),
+      {
+        actorProvider: { getCurrentActor: vi.fn(async () => teamManager) },
+        create: vi.fn(),
+      },
+    )
+
+    expect(response.status).toBe(422)
+  })
+
   it("returns 404 when a manager updates an inaccessible team", async () => {
-    const response = await handleUpdateTeam("team-2", jsonRequest({ name: "Updated", province: "Bangkok" }), {
+    const response = await handleUpdateTeam("team-2", jsonRequest({ name: "Updated", provinceCode: "10" }), {
       actorProvider: { getCurrentActor: vi.fn(async () => teamManager) },
       update: vi.fn(async () => {
         throw new Error("NOT_FOUND")

@@ -19,7 +19,7 @@ export interface TournamentOperationInput {
   title: string
   description: string
   rules: string
-  province: string
+  provinceCode: string
   venue: string
   format: TournamentFormat
   ageGroup: string
@@ -31,6 +31,7 @@ export interface TournamentOperationInput {
 
 export interface TournamentOperation extends TournamentOperationInput {
   id: string
+  province: string
   organizerId: string
   organizerName?: string
   status: TournamentOperationStatus

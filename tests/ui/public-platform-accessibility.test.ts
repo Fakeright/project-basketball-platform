@@ -63,6 +63,15 @@ describe("public platform accessibility", () => {
     expect(markup).toContain("สนามบาสเกตบอลในร่มพร้อมห่วงและเส้นสนามในประเทศไทย")
   })
 
+  it("keeps anonymous authentication actions out of the home hero", async () => {
+    const homePageSource = await readFile(
+      resolve(root, "app/(public)/page.tsx"),
+      "utf8",
+    )
+
+    expect(homePageSource).not.toContain("HomeAuthActions")
+  })
+
   it("renders a named close control before sheet navigation", () => {
     const markup = renderToStaticMarkup(
       createElement(

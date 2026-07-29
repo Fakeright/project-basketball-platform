@@ -8,6 +8,7 @@ import type {
   TournamentOperationInput,
   TournamentReviewInput,
 } from "@/features/tournament-operations/domain/tournament-operation"
+import { findProvinceByCode } from "@/features/provinces/domain/thai-provinces"
 
 import type {
   TournamentLifecycleTransition,
@@ -55,6 +56,7 @@ class DevelopmentTournamentOperationsRepository
     const now = new Date().toISOString()
     const tournament: TournamentOperation = {
       ...input,
+      province: provinceName(input.provinceCode),
       id: `tournament-${state.tournaments.length + 1}`,
       status: "DRAFT",
       version: 0,
@@ -104,6 +106,7 @@ class DevelopmentTournamentOperationsRepository
     const updated: TournamentOperation = {
       ...current,
       ...changes,
+      province: provinceName(changes.provinceCode ?? current.provinceCode),
       version: version + 1,
       updatedAt: new Date().toISOString(),
     }
@@ -191,6 +194,12 @@ class DevelopmentTournamentOperationsRepository
   }
 }
 
+function provinceName(provinceCode: string) {
+  const province = findProvinceByCode(provinceCode)
+  if (!province) throw new Error("INVALID_PROVINCE_CODE")
+  return province.nameTh
+}
+
 async function ensureDevelopmentState() {
   try {
     await readFile(statePath, "utf8")
@@ -227,7 +236,8 @@ function createSeedState(): DevelopmentState {
       organizerId,
       description: "รายการตัวอย่างสำหรับคิวตรวจสอบ",
       rules: "กติกามาตรฐาน",
-      province: "Bangkok",
+      provinceCode: "10",
+      province: "กรุงเทพมหานคร",
       venue: "COURTSIDE Arena",
       format: "FIVE_V_FIVE",
       ageGroup: "Open",

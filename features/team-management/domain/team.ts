@@ -3,6 +3,7 @@ export type TeamMemberRole = "PLAYER" | "COACH"
 export interface TeamSummary {
   id: string
   name: string
+  provinceCode: string
   province: string
   ownerId: string
 }

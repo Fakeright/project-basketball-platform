@@ -1,21 +1,16 @@
 import Link from "next/link"
 import { connection } from "next/server"
 
-import { HomeAuthActions } from "@/components/home-auth-actions"
 import { HomeHeroImage } from "@/components/home-hero-image"
 import { TournamentSearchForm } from "@/components/tournament-search-form"
 import { TournamentRow } from "@/components/tournament-row"
-import { getCurrentActor } from "@/features/identity/infrastructure/get-current-actor"
 import { searchTournaments } from "@/features/tournaments/application/search-tournaments"
 import { getTournamentRepository } from "@/features/tournaments/infrastructure/get-tournament-repository"
 
 export default async function HomePage() {
   await connection()
   const repository = getTournamentRepository()
-  const [actor, openTournaments] = await Promise.all([
-    getCurrentActor(),
-    searchTournaments(repository, { status: "OPEN" }),
-  ])
+  const openTournaments = await searchTournaments(repository, { status: "OPEN" })
 
   return (
     <div className="py-1 sm:py-8">
@@ -28,7 +23,6 @@ export default async function HomePage() {
           <p className="mt-2 max-w-xl text-sm leading-5 text-muted-foreground sm:mt-3 sm:leading-6 sm:text-base">
             รวมรายการแข่งขันทั่วไทย เลือกสนาม รุ่นอายุ และรูปแบบการแข่งขันได้ในที่เดียว
           </p>
-          <HomeAuthActions isAuthenticated={actor !== null} />
           <div className="mt-4 sm:mt-6">
             <TournamentSearchForm initialFilters={{}} />
           </div>

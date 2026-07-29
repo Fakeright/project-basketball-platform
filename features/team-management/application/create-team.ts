@@ -1,6 +1,7 @@
 import { authorize } from "@/features/identity/application/authorize"
 import type { Actor } from "@/features/identity/domain/actor"
 import type { TeamSummary } from "@/features/team-management/domain/team"
+import { assertProvinceCode } from "@/features/provinces/application/assert-province-code"
 
 import type {
   TeamMutationRepository,
@@ -9,7 +10,7 @@ import type {
 
 export interface CreateTeamInput {
   name: string
-  province: string
+  provinceCode: string
 }
 
 export async function createTeam(
@@ -17,6 +18,7 @@ export async function createTeam(
   actor: Actor,
   dependencies: { teams: TeamRepository },
 ): Promise<TeamSummary> {
+  assertProvinceCode(input.provinceCode)
   authorize(actor, "team.create", { organizerId: actor.id })
   return dependencies.teams.inTransaction(async (teams) => {
     const team = await teams.create({ ...input, ownerId: actor.id })

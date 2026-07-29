@@ -8,10 +8,10 @@ import type {
 export interface TeamMutationRepository {
   create(input: {
     name: string
-    province: string
+    provinceCode: string
     ownerId: string
   }): Promise<TeamSummary>
-  update(id: string, input: { name: string; province: string }): Promise<TeamSummary>
+  update(id: string, input: { name: string; provinceCode: string }): Promise<TeamSummary>
   addMember(input: {
     teamId: string
     userId: string

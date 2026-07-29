@@ -24,7 +24,8 @@ function teamRepository(): TeamRepository {
       {
         id: "team-1",
         name: "Bangkok Ballers",
-        province: "Bangkok",
+        provinceCode: "10",
+        province: "กรุงเทพมหานคร",
         ownerId: "team-manager-1",
       },
     ]),
@@ -148,7 +149,8 @@ describe("getTournamentRegistrationOptions", () => {
       {
         id: "team-1",
         name: "Bangkok Ballers",
-        province: "Bangkok",
+        provinceCode: "10",
+        province: "กรุงเทพมหานคร",
         ownerId: "team-manager-1",
       },
     ])

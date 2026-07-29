@@ -3,6 +3,7 @@ import type {
   TournamentSearchFilters,
   TournamentStatus,
 } from "@/features/tournaments/domain/tournament"
+import { findProvinceByCode } from "@/features/provinces/domain/thai-provinces"
 
 const formats = new Set<TournamentFormat>(["FIVE_V_FIVE", "THREE_V_THREE"])
 const statuses = new Set<TournamentStatus>(["OPEN", "CLOSED", "ONGOING", "COMPLETED"])
@@ -20,7 +21,7 @@ export function parseTournamentSearchParams(
   input: Record<string, string | string[] | undefined>,
 ): TournamentSearchFilters {
   const query = scalarValue(input.q)
-  const province = scalarValue(input.province)
+  const provinceCode = scalarValue(input.province)
   const format = scalarValue(input.format)
   const ageGroup = scalarValue(input.ageGroup)
   const venue = scalarValue(input.venue)
@@ -29,7 +30,7 @@ export function parseTournamentSearchParams(
 
   return {
     ...(query ? { query } : {}),
-    ...(province ? { province } : {}),
+    ...(provinceCode && findProvinceByCode(provinceCode) ? { provinceCode } : {}),
     ...(format && formats.has(format as TournamentFormat) ? { format: format as TournamentFormat } : {}),
     ...(ageGroup ? { ageGroup } : {}),
     ...(venue ? { venue } : {}),
@@ -42,7 +43,7 @@ export function toTournamentSearchParams(filters: TournamentSearchFilters): URLS
   const params = new URLSearchParams()
 
   if (filters.query) params.set("q", filters.query)
-  if (filters.province) params.set("province", filters.province)
+  if (filters.provinceCode) params.set("province", filters.provinceCode)
   if (filters.format) params.set("format", filters.format)
   if (filters.ageGroup) params.set("ageGroup", filters.ageGroup)
   if (filters.venue) params.set("venue", filters.venue)

@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest"
 
-import { createTournament, submitTournament } from "@/features/tournament-operations/application/create-tournament"
+import {
+  createTournament,
+  submitTournament,
+  updateTournament,
+} from "@/features/tournament-operations/application/create-tournament"
 import { reviewTournament } from "@/features/tournament-operations/application/review-tournament"
 import { InMemoryTournamentOperationsRepository } from "@/features/tournament-operations/infrastructure/in-memory-tournament-operations-repository"
 import { createTestActor } from "@/tests/fixtures/actor"
@@ -12,7 +16,7 @@ const validInput = {
   title: "Bangkok Admin Cup",
   description: "รายการแข่งขันสำหรับการทดสอบ",
   rules: "กติกามาตรฐาน",
-  province: "Bangkok",
+  provinceCode: "10",
   venue: "COURTSIDE Arena",
   format: "FIVE_V_FIVE" as const,
   ageGroup: "Open",
@@ -37,6 +41,24 @@ describe("tournament workflow", () => {
     const submitted = await submitTournament(repository, tournament.id, organizer)
 
     expect(submitted.status).toBe("SUBMITTED")
+  })
+
+  it("updates the displayed province and audit snapshot from a new province code", async () => {
+    const repository = new InMemoryTournamentOperationsRepository()
+    const tournament = await createTournament(repository, validInput, organizer)
+
+    const updated = await updateTournament(
+      repository,
+      tournament.id,
+      { ...validInput, provinceCode: "92", version: tournament.version },
+      organizer,
+    )
+
+    expect(updated).toMatchObject({ provinceCode: "92", province: "ตรัง" })
+    expect(repository.audits.at(-1)?.after).toMatchObject({
+      provinceCode: "92",
+      province: "ตรัง",
+    })
   })
 
   it("requires a note when an admin requests changes", async () => {

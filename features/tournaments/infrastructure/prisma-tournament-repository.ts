@@ -44,16 +44,19 @@ const posterMediaInclude = {
 } satisfies Prisma.Tournament$mediaAssetsArgs
 
 const publicDiscoveryInclude = {
+  province: true,
   mediaAssets: posterMediaInclude,
 } satisfies Prisma.TournamentInclude
 
 const publicCompetitionInclude = {
+  province: true,
   registrations: approvedRegistrationsInclude,
   matches: publishedMatchesInclude,
   mediaAssets: posterMediaInclude,
 } satisfies Prisma.TournamentInclude
 
 const publicDetailInclude = {
+  province: true,
   registrations: approvedRegistrationsInclude,
   matches: publishedMatchesInclude,
   mediaAssets: {
@@ -202,7 +205,16 @@ function buildDiscoveryWhere(
           OR: [
             { slug: containsText(filters.query) },
             { title: containsText(filters.query) },
-            { province: containsText(filters.query) },
+            {
+              province: {
+                is: {
+                  OR: [
+                    { nameTh: containsText(filters.query) },
+                    { nameEn: containsText(filters.query) },
+                  ],
+                },
+              },
+            },
             { venue: containsText(filters.query) },
             { ageGroup: containsText(filters.query) },
             { description: containsText(filters.query) },
@@ -217,8 +229,8 @@ function buildDiscoveryWhere(
           ],
         }
       : {}),
-    ...(filters.province
-      ? { province: containsText(filters.province) }
+    ...(filters.provinceCode
+      ? { provinceCode: filters.provinceCode }
       : {}),
     ...(filters.format ? { format: filters.format } : {}),
     ...(filters.ageGroup
@@ -247,7 +259,8 @@ function mapTournamentBase(
     id: row.id,
     slug: row.slug,
     title: row.title,
-    province: row.province,
+    provinceCode: row.provinceCode,
+    province: row.province.nameTh,
     venue: row.venue,
     format: row.format,
     ageGroup: row.ageGroup,

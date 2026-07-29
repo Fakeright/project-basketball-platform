@@ -3,7 +3,7 @@ export type TournamentFormat = "FIVE_V_FIVE" | "THREE_V_THREE"
 
 export interface TournamentSearchFilters {
   query?: string
-  province?: string
+  provinceCode?: string
   format?: TournamentFormat
   ageGroup?: string
   venue?: string
@@ -35,6 +35,7 @@ export interface Tournament {
   id: string
   slug: string
   title: string
+  provinceCode: string
   province: string
   venue: string
   format: TournamentFormat

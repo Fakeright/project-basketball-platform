@@ -3,7 +3,6 @@ import { randomUUID } from "node:crypto"
 import type {
   Prisma,
   PrismaClient,
-  Tournament,
 } from "@/lib/generated/prisma/client"
 import type {
   TournamentOperation,
@@ -16,6 +15,14 @@ import type {
   TournamentOperationsRepository,
   TournamentReviewTransition,
 } from "./tournament-operations-repository"
+
+const tournamentOperationInclude = {
+  province: true,
+} satisfies Prisma.TournamentInclude
+
+type TournamentOperationRow = Prisma.TournamentGetPayload<{
+  include: typeof tournamentOperationInclude
+}> & { organizer?: { displayName: string } }
 
 type TournamentTransactionClient = Pick<
   Prisma.TransactionClient,
@@ -43,6 +50,7 @@ export class PrismaTournamentOperationsRepository
           endsAt: new Date(input.endsAt),
           registrationDeadline: new Date(input.registrationDeadline),
         },
+        include: tournamentOperationInclude,
       })
       const mapped = mapTournament(tournament)
       await appendTournamentAudit(transaction, {
@@ -58,6 +66,7 @@ export class PrismaTournamentOperationsRepository
   async findById(id: string) {
     const tournament = await this.prisma.tournament.findUnique({
       where: { id },
+      include: tournamentOperationInclude,
     })
     return tournament ? mapTournament(tournament) : null
   }
@@ -66,6 +75,7 @@ export class PrismaTournamentOperationsRepository
     const tournaments = await this.prisma.tournament.findMany({
       where: { organizerId },
       orderBy: { updatedAt: "desc" },
+      include: tournamentOperationInclude,
     })
     return tournaments.map(mapTournament)
   }
@@ -76,6 +86,7 @@ export class PrismaTournamentOperationsRepository
       orderBy: { updatedAt: "asc" },
       include: {
         organizer: { select: { displayName: true } },
+        province: true,
       },
     })
     return tournaments.map(mapTournament)
@@ -104,6 +115,7 @@ export class PrismaTournamentOperationsRepository
     return this.prisma.$transaction(async (transaction) => {
       const current = await transaction.tournament.findUnique({
         where: { id: input.tournamentId },
+        include: tournamentOperationInclude,
       })
       if (!current) throw new Error("NOT_FOUND")
 
@@ -131,6 +143,7 @@ export class PrismaTournamentOperationsRepository
 
       const tournament = await transaction.tournament.findUnique({
         where: { id: input.tournamentId },
+        include: tournamentOperationInclude,
       })
       if (!tournament) throw new Error("NOT_FOUND")
       const after = mapTournament(tournament)
@@ -152,6 +165,7 @@ export class PrismaTournamentOperationsRepository
     return this.prisma.$transaction(async (transaction) => {
       const current = await transaction.tournament.findUnique({
         where: { id: input.tournamentId },
+        include: tournamentOperationInclude,
       })
       if (!current) throw new Error("NOT_FOUND")
 
@@ -170,6 +184,7 @@ export class PrismaTournamentOperationsRepository
 
       const tournament = await transaction.tournament.findUnique({
         where: { id: input.tournamentId },
+        include: tournamentOperationInclude,
       })
       if (!tournament) throw new Error("NOT_FOUND")
       const after = mapTournament(tournament)
@@ -190,10 +205,13 @@ async function updateAndReloadTournament(
   client: TournamentTransactionClient,
   id: string,
   version: number,
-  data: Prisma.TournamentUpdateManyMutationInput,
+  data: Prisma.TournamentUncheckedUpdateManyInput,
   audit: TournamentMutationAudit,
 ) {
-  const current = await client.tournament.findUnique({ where: { id } })
+  const current = await client.tournament.findUnique({
+    where: { id },
+    include: tournamentOperationInclude,
+  })
   if (!current) throw new Error("NOT_FOUND")
 
   const update = await client.tournament.updateMany({
@@ -205,7 +223,10 @@ async function updateAndReloadTournament(
   })
   if (update.count !== 1) throw new Error("CONFLICT")
 
-  const tournament = await client.tournament.findUnique({ where: { id } })
+  const tournament = await client.tournament.findUnique({
+    where: { id },
+    include: tournamentOperationInclude,
+  })
   if (!tournament) throw new Error("NOT_FOUND")
   const after = mapTournament(tournament)
   await appendTournamentAudit(client, {
@@ -245,13 +266,13 @@ async function appendTournamentAudit(
 
 function mapTournamentChanges(
   changes: Partial<TournamentOperation>,
-): Prisma.TournamentUpdateManyMutationInput {
-  const data: Prisma.TournamentUpdateManyMutationInput = {}
+): Prisma.TournamentUncheckedUpdateManyInput {
+  const data: Prisma.TournamentUncheckedUpdateManyInput = {}
 
   if (changes.title !== undefined) data.title = changes.title
   if (changes.description !== undefined) data.description = changes.description
   if (changes.rules !== undefined) data.rules = changes.rules
-  if (changes.province !== undefined) data.province = changes.province
+  if (changes.provinceCode !== undefined) data.provinceCode = changes.provinceCode
   if (changes.venue !== undefined) data.venue = changes.venue
   if (changes.format !== undefined) data.format = changes.format
   if (changes.ageGroup !== undefined) data.ageGroup = changes.ageGroup
@@ -266,15 +287,14 @@ function mapTournamentChanges(
   return data
 }
 
-function mapTournament(
-  tournament: Tournament & { organizer?: { displayName: string } },
-): TournamentOperation {
+function mapTournament(tournament: TournamentOperationRow): TournamentOperation {
   return {
     id: tournament.id,
     title: tournament.title,
     description: tournament.description,
     rules: tournament.rules,
-    province: tournament.province,
+    provinceCode: tournament.provinceCode,
+    province: tournament.province.nameTh,
     venue: tournament.venue,
     format: tournament.format,
     ageGroup: tournament.ageGroup,

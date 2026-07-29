@@ -133,7 +133,7 @@ describe("TournamentEditor", () => {
           id: "tournament-1",
           title: "Chiang Rai Cup",
           description: "การแข่งขันระดับชุมชน",
-          province: "เชียงราย",
+          provinceCode: "57",
           venue: "สนามกีฬากลาง",
           format: "FIVE_V_FIVE",
           ageGroup: "Open",
@@ -158,7 +158,10 @@ async function fillValidTournament(
 ) {
   await user.type(screen.getByLabelText("ชื่อรายการ"), "Chiang Rai Cup")
   await user.type(screen.getByLabelText("รายละเอียด"), "การแข่งขันระดับชุมชน")
-  await user.type(screen.getByLabelText("จังหวัด"), "เชียงราย")
+  const province = screen.getByLabelText("จังหวัด")
+  await user.click(province)
+  await user.type(province, "Chiang Rai")
+  await user.click(await screen.findByRole("option", { name: /เชียงราย.*Chiang Rai/i }))
   await user.type(screen.getByLabelText("สถานที่"), "สนามกีฬากลาง")
   await user.type(screen.getByLabelText("รุ่นอายุ"), "Open")
   await user.type(screen.getByLabelText("วันเริ่มแข่งขัน"), "2026-12-10T09:00")

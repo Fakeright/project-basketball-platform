@@ -6,6 +6,7 @@ import { Search } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { ProvinceCombobox } from "@/components/province-combobox"
 import {
   Select,
   SelectContent,
@@ -28,7 +29,7 @@ export function TournamentSearchForm({ initialFilters }: TournamentSearchFormPro
     const formData = new FormData(event.currentTarget)
     const filters: TournamentSearchFilters = {
       query: formData.get("q")?.toString(),
-      province: formData.get("province")?.toString(),
+      provinceCode: formData.get("province")?.toString(),
       format: formData.get("format")?.toString() as TournamentSearchFilters["format"],
       ageGroup: formData.get("ageGroup")?.toString(),
       venue: formData.get("venue")?.toString(),
@@ -51,16 +52,14 @@ export function TournamentSearchForm({ initialFilters }: TournamentSearchFormPro
           placeholder="เช่น Bangkok Hoops"
         />
       </div>
-      <div className="grid gap-1 sm:gap-1.5">
-        <label className="text-xs font-medium" htmlFor="province">จังหวัด</label>
-        <Input
-          className="h-9 sm:h-10"
-          defaultValue={initialFilters.province}
-          id="province"
-          name="province"
-          placeholder="กรุงเทพฯ"
-        />
-      </div>
+      <ProvinceCombobox
+        allowEmpty
+        className="gap-1 sm:gap-1.5"
+        defaultValue={initialFilters.provinceCode}
+        id="province"
+        label="จังหวัด"
+        name="province"
+      />
       <div className="grid gap-1 sm:gap-1.5">
         <label className="text-xs font-medium" htmlFor="format">รูปแบบ</label>
         <Select
