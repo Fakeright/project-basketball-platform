@@ -8,6 +8,8 @@ const mocks = vi.hoisted(() => ({
   getCurrentActor: vi.fn(async () => ({
     id: "admin-1",
     role: "PLATFORM_ADMIN" as const,
+    email: "admin@example.com",
+    displayName: "Admin",
   })),
   findById: vi.fn(async () => ({
     id: "tournament-submitted",
@@ -29,6 +31,11 @@ const mocks = vi.hoisted(() => ({
     createdAt: "2026-01-01T00:00:00.000Z",
     updatedAt: "2026-01-01T00:00:00.000Z",
   })),
+}))
+
+vi.mock("next/navigation", () => ({
+  redirect: vi.fn(),
+  useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }),
 }))
 
 vi.mock(

@@ -2,6 +2,7 @@
 
 import { Moon, Sun } from "lucide-react"
 import { useTheme } from "next-themes"
+import { useSyncExternalStore } from "react"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -10,9 +11,16 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 
+const subscribeToHydration = () => () => undefined
+
 export function ThemeToggle() {
   const { resolvedTheme, setTheme } = useTheme()
-  const isDark = resolvedTheme === "dark"
+  const mounted = useSyncExternalStore(
+    subscribeToHydration,
+    () => true,
+    () => false,
+  )
+  const isDark = mounted && resolvedTheme === "dark"
   const label = isDark ? "ใช้โหมดสว่าง" : "ใช้โหมดมืด"
 
   return (

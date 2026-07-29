@@ -1,51 +1,69 @@
-export default function LoginPage() {
-  const developmentEnabled = process.env.NODE_ENV !== "production"
+import Link from "next/link"
+
+import { AuthFormLayout } from "@/components/auth/auth-form-layout"
+import { LoginForm } from "@/components/auth/login-form"
+
+type LoginPageProps = {
+  searchParams: Promise<{
+    next?: string | string[]
+    error?: string | string[]
+  }>
+}
+
+export default async function LoginPage({ searchParams }: LoginPageProps) {
+  const query = await searchParams
+  const nextPath = typeof query.next === "string" ? query.next : undefined
+  const recoveryError =
+    typeof query.error === "string" &&
+    ["auth_callback", "recovery_invalid"].includes(query.error)
 
   return (
-    <div className="mx-auto max-w-xl px-4 py-16 sm:px-6">
-      <p className="text-sm font-medium text-court">COURTSIDE ACCESS</p>
-      <h1 className="mt-2 text-3xl font-semibold">เข้าสู่พื้นที่จัดการแข่งขัน</h1>
-      <p className="mt-3 text-muted-foreground">
-        ระบบยืนยันตัวตนจริงจะเพิ่มใน phase Authentication
-      </p>
-      {developmentEnabled ? (
-        <div className="mt-8 border-y border-border py-6">
-          <h2 className="font-semibold">บัญชีสำหรับพัฒนา</h2>
-          <div className="mt-4 grid gap-3 sm:grid-cols-2">
-            <form action="/api/dev/session" method="post">
-              <input name="actorId" type="hidden" value="admin-1" />
-              <button
-                className="min-h-11 w-full border border-foreground px-4 text-sm font-medium hover:bg-foreground hover:text-background"
-                type="submit"
-              >
-                เข้าใช้งานเป็น Platform Admin
-              </button>
-            </form>
-            <form action="/api/dev/session" method="post">
-              <input name="actorId" type="hidden" value="organizer-1" />
-              <button
-                className="min-h-11 w-full border border-border px-4 text-sm font-medium hover:border-foreground"
-                type="submit"
-              >
-                เข้าใช้งานเป็น Organizer
-              </button>
-            </form>
-            <form action="/api/dev/session" method="post">
-              <input name="actorId" type="hidden" value="team-manager-1" />
-              <button
-                className="min-h-11 w-full border border-border px-4 text-sm font-medium hover:border-foreground"
-                type="submit"
-              >
-                เข้าใช้งานเป็น Team Manager
-              </button>
-            </form>
-          </div>
-        </div>
-      ) : (
-        <p className="mt-8 border-y border-border py-6 text-muted-foreground">
-          ระบบเข้าสู่ระบบยังไม่เปิดใช้งาน
+    <AuthFormLayout
+      description="เข้าสู่พื้นที่จัดการตามบทบาทของคุณด้วยบัญชี COURTSIDE"
+      eyebrow="COURTSIDE ACCESS"
+      footer={
+        <p>
+          ยังไม่มีบัญชี?{" "}
+          <Link className="font-medium text-court hover:underline" href="/register">
+            สมัครสมาชิก
+          </Link>
         </p>
-      )}
-    </div>
+      }
+      title="เข้าสู่ระบบ"
+    >
+      {recoveryError ? (
+        <p
+          className="mb-5 border-l-2 border-destructive pl-3 text-sm text-destructive"
+          role="alert"
+        >
+          ลิงก์ตั้งรหัสผ่านไม่ถูกต้องหรือหมดอายุแล้ว
+        </p>
+      ) : null}
+      <LoginForm nextPath={nextPath} />
+      {process.env.NODE_ENV !== "production" ? (
+        <details className="mt-8 border-t border-dashed border-border pt-4 text-sm">
+          <summary className="cursor-pointer font-medium">
+            เครื่องมือ session สำหรับ Local Development
+          </summary>
+          <div className="mt-3 grid gap-2">
+            {[
+              ["admin-1", "Platform Admin"],
+              ["organizer-1", "Tournament Organizer"],
+              ["team-manager-1", "Team Manager"],
+            ].map(([actorId, label]) => (
+              <form action="/api/dev/session" key={actorId} method="post">
+                <input name="actorId" type="hidden" value={actorId} />
+                <button
+                  className="min-h-9 w-full border border-border px-3 text-left hover:border-foreground"
+                  type="submit"
+                >
+                  Local: {label}
+                </button>
+              </form>
+            ))}
+          </div>
+        </details>
+      ) : null}
+    </AuthFormLayout>
   )
 }

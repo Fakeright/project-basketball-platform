@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises"
 import { resolve } from "node:path"
 import { createElement } from "react"
 import { renderToStaticMarkup } from "react-dom/server"
-import { describe, expect, it } from "vitest"
+import { describe, expect, it, vi } from "vitest"
 
 import { HomeHeroImage } from "@/components/home-hero-image"
 import { Sheet, SheetCloseButton } from "@/components/ui/sheet"
@@ -14,11 +14,34 @@ const root = process.cwd()
 const heroJpeg = resolve(root, "public/images/courtside-hero.jpg")
 const legacyHeroPng = resolve(root, "public/images/courtside-hero.png")
 
+vi.mock(
+  "@/features/identity/infrastructure/next-cookie-current-actor-provider",
+  () => ({
+    createNextCookieCurrentActorProvider: () => ({
+      getCurrentActor: async () => null,
+    }),
+  }),
+)
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }),
+}))
+
 describe("public platform accessibility", () => {
-  it("keeps a single main landmark on the login route", () => {
-    const markup = renderToStaticMarkup(
-      createElement(PublicLayout, null, createElement(LoginPage)),
-    )
+  it("shows a recovery error returned by the auth callback", async () => {
+    const page = await LoginPage({
+      searchParams: Promise.resolve({ error: "auth_callback" }),
+    })
+    const markup = renderToStaticMarkup(page)
+
+    expect(markup).toContain('role="alert"')
+    expect(markup).toContain("ลิงก์ตั้งรหัสผ่านไม่ถูกต้องหรือหมดอายุแล้ว")
+  })
+
+  it("keeps a single main landmark on the login route", async () => {
+    const page = await LoginPage({ searchParams: Promise.resolve({}) })
+    const layout = await PublicLayout({ children: page })
+    const markup = renderToStaticMarkup(layout)
 
     expect(markup.match(/<main\b/g)).toHaveLength(1)
   })
