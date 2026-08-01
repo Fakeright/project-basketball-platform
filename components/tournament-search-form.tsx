@@ -54,7 +54,7 @@ export function TournamentSearchForm({ initialFilters }: TournamentSearchFormPro
       </div>
       <ProvinceCombobox
         allowEmpty
-        className="min-w-0 gap-1 sm:gap-1.5"
+        className="min-w-0 grid-cols-[minmax(0,1fr)] gap-1 sm:gap-1.5"
         defaultValue={initialFilters.provinceCode}
         id="province"
         label="จังหวัด"

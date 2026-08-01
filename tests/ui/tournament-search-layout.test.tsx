@@ -23,6 +23,9 @@ describe("TournamentSearchForm responsive layout", () => {
     expect(queryField?.className).toContain("sm:col-span-2")
     expect(queryField?.className).toContain("min-w-0")
     expect(provinceField?.className).toContain("min-w-0")
+    expect(provinceField?.className).toContain(
+      "grid-cols-[minmax(0,1fr)]",
+    )
     expect(formatControl.className).toContain("h-10!")
   })
 })
