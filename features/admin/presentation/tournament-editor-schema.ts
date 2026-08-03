@@ -2,8 +2,11 @@ import { z } from "zod"
 
 import { tournamentDateTimeToUtc } from "./tournament-editor-time"
 import { assertProvinceCode } from "@/features/provinces/application/assert-province-code"
+import { isValidTournamentCapacity } from "@/features/tournament-operations/domain/tournament-capacity"
 
 const requiredText = (message: string) => z.string().trim().min(1, message)
+const tournamentCapacityMessage =
+  "จำนวนทีมต้องเป็นเลขคู่ตั้งแต่ 6 ถึง 32 ทีม"
 const dateTime = (requiredMessage: string) =>
   requiredText(requiredMessage).transform((value, context) => {
     try {
@@ -38,7 +41,11 @@ export const tournamentEditorSchema = z
     startsAt: dateTime("กรุณาระบุวันเริ่มแข่งขัน"),
     endsAt: dateTime("กรุณาระบุวันสิ้นสุดการแข่งขัน"),
     registrationDeadline: dateTime("กรุณาระบุวันปิดรับสมัคร"),
-    capacity: z.coerce.number().int().min(2).max(64),
+    capacity: z.coerce
+      .number({ error: tournamentCapacityMessage })
+      .refine(isValidTournamentCapacity, {
+        message: tournamentCapacityMessage,
+      }),
     rules: requiredText("กรุณาระบุกติกา"),
     version: z.coerce.number().int().nonnegative().optional(),
   })

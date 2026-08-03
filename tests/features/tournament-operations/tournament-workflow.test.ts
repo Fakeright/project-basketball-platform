@@ -61,6 +61,25 @@ describe("tournament workflow", () => {
     })
   })
 
+  it.each([6, 10, 32])("accepts an even capacity of %i", async (capacity) => {
+    const repository = new InMemoryTournamentOperationsRepository()
+
+    await expect(
+      createTournament(repository, { ...validInput, capacity }, organizer),
+    ).resolves.toMatchObject({ capacity })
+  })
+
+  it.each([5, 7, 10.5, 33])(
+    "rejects an invalid capacity of %s",
+    async (capacity) => {
+      const repository = new InMemoryTournamentOperationsRepository()
+
+      await expect(
+        createTournament(repository, { ...validInput, capacity }, organizer),
+      ).rejects.toThrow("CAPACITY_INVALID")
+    },
+  )
+
   it("requires a note when an admin requests changes", async () => {
     const repository = new InMemoryTournamentOperationsRepository()
     const tournament = await createTournament(repository, validInput, organizer)

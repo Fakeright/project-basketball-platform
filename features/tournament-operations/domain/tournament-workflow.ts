@@ -1,4 +1,5 @@
 import type { TournamentOperation, TournamentOperationInput, TournamentOperationStatus } from "./tournament-operation"
+import { isValidTournamentCapacity } from "./tournament-capacity"
 
 const requiredFields: Array<keyof TournamentOperationInput> = [
   "title", "description", "rules", "provinceCode", "venue", "ageGroup", "startsAt", "endsAt", "registrationDeadline",
@@ -8,7 +9,9 @@ export function validateTournamentInput(input: TournamentOperationInput): void {
   for (const field of requiredFields) {
     if (!String(input[field]).trim()) throw new Error(`FIELD_REQUIRED:${field}`)
   }
-  if (!Number.isInteger(input.capacity) || input.capacity < 2 || input.capacity > 64) throw new Error("CAPACITY_INVALID")
+  if (!isValidTournamentCapacity(input.capacity)) {
+    throw new Error("CAPACITY_INVALID")
+  }
   const startsAt = Date.parse(input.startsAt)
   const endsAt = Date.parse(input.endsAt)
   const deadline = Date.parse(input.registrationDeadline)

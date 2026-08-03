@@ -73,6 +73,22 @@ describe("saveTournamentHandler", () => {
     expect(response.status).toBe(422)
   })
 
+  it("returns 422 with an actionable message for an odd capacity", async () => {
+    const response = await saveTournamentHandler({
+      actor: organizer,
+      request: new Request("http://localhost/api/admin/tournaments", {
+        method: "POST",
+        body: JSON.stringify({ ...validTournament, capacity: 7 }),
+      }),
+      repository: new InMemoryTournamentOperationsRepository(),
+    })
+
+    expect(response.status).toBe(422)
+    await expect(response.json()).resolves.toEqual({
+      message: "จำนวนทีมต้องเป็นเลขคู่ตั้งแต่ 6 ถึง 32 ทีม",
+    })
+  })
+
   it("returns 409 when an editor saves a stale version", async () => {
     const repository = new InMemoryTournamentOperationsRepository()
     const tournament = await repository.create({
