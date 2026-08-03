@@ -49,6 +49,7 @@ describe("TournamentEditor", () => {
       startsAt: "2026-12-10T02:00:00.000Z",
       endsAt: "2026-12-11T11:00:00.000Z",
       registrationDeadline: "2026-12-01T16:59:00.000Z",
+      capacity: 16,
     })
     expect(await screen.findByText("บันทึกฉบับร่างแล้ว")).toBeTruthy()
     expect(router.replace).toHaveBeenCalledWith(
@@ -122,6 +123,59 @@ describe("TournamentEditor", () => {
     expect(JSON.parse(fetchMock.mock.calls[2][1].body)).toMatchObject({
       version: 1,
     })
+  })
+
+  it("saves a valid custom even capacity", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          tournament: {
+            id: "tournament-10",
+            version: 0,
+            status: "DRAFT",
+          },
+        }),
+        { status: 201 },
+      ),
+    )
+    vi.stubGlobal("fetch", fetchMock)
+    const user = userEvent.setup()
+
+    render(<TournamentEditor initialTournament={null} />)
+    await fillValidTournament(user)
+    await user.selectOptions(
+      screen.getByLabelText("จำนวนทีมสูงสุด"),
+      "CUSTOM",
+    )
+    await user.type(screen.getByLabelText("ระบุจำนวนทีม"), "10")
+    await user.click(screen.getByRole("button", { name: "บันทึกฉบับร่าง" }))
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledOnce())
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toMatchObject({
+      capacity: 10,
+    })
+  })
+
+  it("blocks an odd custom capacity before sending a request", async () => {
+    const fetchMock = vi.fn()
+    vi.stubGlobal("fetch", fetchMock)
+    const user = userEvent.setup()
+
+    render(<TournamentEditor initialTournament={null} />)
+    await fillValidTournament(user)
+    await user.selectOptions(
+      screen.getByLabelText("จำนวนทีมสูงสุด"),
+      "CUSTOM",
+    )
+    await user.type(screen.getByLabelText("ระบุจำนวนทีม"), "7")
+    await user.click(screen.getByRole("button", { name: "บันทึกฉบับร่าง" }))
+
+    expect(
+      await screen.findByText(
+        "จำนวนทีมต้องเป็นเลขคู่ตั้งแต่ 6 ถึง 32 ทีม",
+      ),
+    ).toBeTruthy()
+    expect(fetchMock).not.toHaveBeenCalled()
   })
 
   it("shows a deadline error before submitting", async () => {

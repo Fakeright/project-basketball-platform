@@ -12,6 +12,7 @@ import {
   TournamentMediaManager,
   type TournamentMediaManagerAsset,
 } from "./tournament-media-manager"
+import { TournamentCapacityField } from "./tournament-capacity-field"
 import { ProvinceCombobox } from "@/components/province-combobox"
 
 export interface EditableTournament extends TournamentEditorInput {
@@ -122,7 +123,7 @@ export function TournamentEditor({
   }
 
   return (
-    <form className="space-y-8" onSubmit={handleSubmit}>
+    <form className="space-y-8" noValidate onSubmit={handleSubmit}>
       <header className="border-b border-border pb-5">
         <p className="text-xs font-semibold text-court">TOURNAMENT EDITOR</p>
         <h1 className="mt-2 text-2xl font-semibold">
@@ -155,14 +156,7 @@ export function TournamentEditor({
             <option value="THREE_V_THREE">3v3</option>
           </select>
         </label>
-        <Field
-          defaultValue={String(tournament?.capacity ?? 16)}
-          label="จำนวนทีมสูงสุด"
-          max="64"
-          min="2"
-          name="capacity"
-          type="number"
-        />
+        <TournamentCapacityField defaultValue={tournament?.capacity} />
         <Field
           defaultValue={tournament?.startsAt}
           label="วันเริ่มแข่งขัน"
