@@ -78,4 +78,3 @@ Documentation completion requires:
 - Scanning for placeholders and contradictory status labels.
 - Running `git diff --check`.
 - Confirming no credential values or local `.env` contents are included.
-
