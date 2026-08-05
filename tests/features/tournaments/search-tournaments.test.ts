@@ -32,6 +32,10 @@ test("filters tournaments by age group", async () => {
   ])
 })
 
+test("does not partially match an age group", async () => {
+  await expect(repository.list({ ageGroup: "U1" })).resolves.toEqual([])
+})
+
 test("filters tournaments by venue", async () => {
   await expect(repository.list({ venue: "นิมมาน" })).resolves.toEqual([
     expect.objectContaining({ slug: "north-court-3x3" }),

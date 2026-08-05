@@ -4,6 +4,7 @@ import type {
   TournamentStatus,
 } from "@/features/tournaments/domain/tournament"
 import { findProvinceByCode } from "@/features/provinces/domain/thai-provinces"
+import { isTournamentAgeGroup } from "@/features/tournament-operations/domain/tournament-age-group"
 
 const formats = new Set<TournamentFormat>(["FIVE_V_FIVE", "THREE_V_THREE"])
 const statuses = new Set<TournamentStatus>(["OPEN", "CLOSED", "ONGOING", "COMPLETED"])
@@ -32,7 +33,7 @@ export function parseTournamentSearchParams(
     ...(query ? { query } : {}),
     ...(provinceCode && findProvinceByCode(provinceCode) ? { provinceCode } : {}),
     ...(format && formats.has(format as TournamentFormat) ? { format: format as TournamentFormat } : {}),
-    ...(ageGroup ? { ageGroup } : {}),
+    ...(ageGroup && isTournamentAgeGroup(ageGroup) ? { ageGroup } : {}),
     ...(venue ? { venue } : {}),
     ...(date ? { date } : {}),
     ...(status && statuses.has(status as TournamentStatus) ? { status: status as TournamentStatus } : {}),

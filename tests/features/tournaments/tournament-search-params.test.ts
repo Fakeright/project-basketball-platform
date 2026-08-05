@@ -31,4 +31,18 @@ describe("tournament search params", () => {
   it("ignores invalid enum values and repeated values", () => {
     expect(parseTournamentSearchParams({ format: "invalid", status: ["OPEN", "CLOSED"] })).toEqual({})
   })
+
+  it.each(["U12", "U14", "U16", "U18", "U23", "Open"])(
+    "parses the canonical age group %s",
+    (ageGroup) => {
+      expect(parseTournamentSearchParams({ ageGroup })).toEqual({ ageGroup })
+    },
+  )
+
+  it.each(["U20", "35+", "open"])(
+    "ignores the unsupported age group %s",
+    (ageGroup) => {
+      expect(parseTournamentSearchParams({ ageGroup })).toEqual({})
+    },
+  )
 })

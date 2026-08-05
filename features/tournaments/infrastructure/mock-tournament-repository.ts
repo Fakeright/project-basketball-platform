@@ -11,6 +11,10 @@ function matchesText(value: string, filter: string): boolean {
   return normalize(value).includes(normalize(filter))
 }
 
+function matchesExactText(value: string, filter: string): boolean {
+  return normalize(value) === normalize(filter)
+}
+
 export class MockTournamentRepository implements TournamentRepository {
   async list(filters: TournamentSearchFilters): Promise<Tournament[]> {
     return mockTournamentData
@@ -29,7 +33,7 @@ export class MockTournamentRepository implements TournamentRepository {
           (!filters.query || matchesText(searchText, filters.query)) &&
           (!filters.provinceCode || tournament.provinceCode === filters.provinceCode) &&
           (!filters.format || tournament.format === filters.format) &&
-          (!filters.ageGroup || matchesText(tournament.ageGroup, filters.ageGroup)) &&
+          (!filters.ageGroup || matchesExactText(tournament.ageGroup, filters.ageGroup)) &&
           (!filters.venue || matchesText(tournament.venue, filters.venue)) &&
           (!filters.date ||
             toBangkokCalendarDate(tournament.startsAt) === filters.date) &&

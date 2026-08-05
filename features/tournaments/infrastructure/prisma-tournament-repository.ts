@@ -234,7 +234,12 @@ function buildDiscoveryWhere(
       : {}),
     ...(filters.format ? { format: filters.format } : {}),
     ...(filters.ageGroup
-      ? { ageGroup: containsText(filters.ageGroup) }
+      ? {
+          ageGroup: {
+            equals: filters.ageGroup,
+            mode: "insensitive" as const,
+          },
+        }
       : {}),
     ...(filters.venue ? { venue: containsText(filters.venue) } : {}),
     ...(calendarDayRange ? { startsAt: calendarDayRange } : {}),

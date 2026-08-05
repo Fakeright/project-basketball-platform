@@ -349,7 +349,7 @@ describe("PrismaTournamentRepository", () => {
           status: { in: ["REGISTRATION_CLOSED"] },
           provinceCode: "50",
           format: "THREE_V_THREE",
-          ageGroup: { contains: "u18", mode: "insensitive" },
+          ageGroup: { equals: "u18", mode: "insensitive" },
           venue: { contains: "นิมมาน", mode: "insensitive" },
           startsAt: {
             gte: new Date("2026-10-03T17:00:00.000Z"),

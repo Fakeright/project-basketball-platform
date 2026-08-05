@@ -16,6 +16,7 @@ describe("TournamentSearchForm responsive layout", () => {
     const queryField = screen.getByLabelText("ค้นหาชื่อรายการ").parentElement
     const provinceField = screen.getByLabelText("จังหวัด").closest(".grid")
     const formatControl = screen.getByLabelText("รูปแบบ")
+    const ageGroupControl = screen.getByLabelText("รุ่นอายุ")
 
     expect(form?.className).toContain("grid-cols-1")
     expect(form?.className).toContain("sm:grid-cols-2")
@@ -27,5 +28,6 @@ describe("TournamentSearchForm responsive layout", () => {
       "grid-cols-[minmax(0,1fr)]",
     )
     expect(formatControl.className).toContain("h-10!")
+    expect(ageGroupControl.className).toContain("h-10!")
   })
 })

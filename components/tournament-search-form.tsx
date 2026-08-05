@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/select"
 import type { TournamentSearchFilters } from "@/features/tournaments/domain/tournament"
 import { toTournamentSearchParams } from "@/features/tournaments/presentation/tournament-search-params"
+import { TOURNAMENT_AGE_GROUPS } from "@/features/tournament-operations/domain/tournament-age-group"
 
 type TournamentSearchFormProps = {
   initialFilters: TournamentSearchFilters
@@ -83,13 +84,29 @@ export function TournamentSearchForm({ initialFilters }: TournamentSearchFormPro
       </div>
       <div className="grid min-w-0 gap-1 sm:gap-1.5">
         <label className="text-xs font-medium" htmlFor="ageGroup">รุ่นอายุ</label>
-        <Input
-          className="h-10"
-          defaultValue={initialFilters.ageGroup}
-          id="ageGroup"
+        <Select
+          defaultValue={initialFilters.ageGroup ?? null}
+          items={[
+            { label: "ทั้งหมด", value: null },
+            ...TOURNAMENT_AGE_GROUPS.map((ageGroup) => ({
+              label: ageGroup,
+              value: ageGroup,
+            })),
+          ]}
           name="ageGroup"
-          placeholder="U18"
-        />
+        >
+          <SelectTrigger className="h-10! w-full" id="ageGroup">
+            <SelectValue placeholder="ทั้งหมด" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={null}>ทั้งหมด</SelectItem>
+            {TOURNAMENT_AGE_GROUPS.map((ageGroup) => (
+              <SelectItem key={ageGroup} value={ageGroup}>
+                {ageGroup}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
       <div className="grid min-w-0 gap-1 sm:gap-1.5">
         <label className="text-xs font-medium" htmlFor="venue">สนาม</label>
