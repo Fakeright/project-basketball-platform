@@ -1,36 +1,100 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# COURTSIDE
 
-## Getting Started
+COURTSIDE is a Thai-first responsive basketball tournament platform for public visitors, players, coaches, team managers, tournament organizers, and platform admins.
 
-First, run the development server:
+The current release covers tournament discovery, authentication, tournament approval and publication, team rosters, registrations, posters, and documents. Bracket generation, scheduling mutations, results, notifications, and advanced analytics remain on the roadmap.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+## Technology
+
+The installed stack is:
+
+- Next.js `16.2.11` with App Router
+- React `19.2.4` and React DOM `19.2.4`
+- TypeScript `^5`
+- Tailwind CSS `^4`, `@tailwindcss/postcss` `^4`, and `tw-animate-css` `^1.4.0`
+- shadcn `^4.14.1` and Base UI React `^1.6.0`
+- Prisma `^7.9.0` with `@prisma/client` `^7.9.0`, `@prisma/adapter-pg` `^7.9.0`, and PostgreSQL driver `pg` `^8.22.0`
+- Supabase JS `^2.110.8` and Supabase SSR `^0.12.4`
+- Zod `^4.4.3`, Lucide React `^1.26.0`, `clsx` `^2.1.1`, `tailwind-merge` `^3.6.0`, and class-variance-authority `^0.7.1`
+- Vitest `^4.1.10`, React Testing Library `^16.3.2`, Testing Library User Event `^14.6.1`, and JSDOM `^29.1.1`
+- ESLint `^9` with `eslint-config-next` `16.2.11`
+
+The architecture follows this dependency direction:
+
+```text
+presentation -> application -> domain
+infrastructure -> application/domain contracts
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Server Components are the default. Route Handlers own HTTP mutations. Application use cases enforce permissions and ownership. Prisma and Supabase are infrastructure adapters.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Roles
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Role | Current scope |
+| --- | --- |
+| `PLAYER` | Registered identity; dedicated self-service workspace is still planned. |
+| `COACH` | Registered identity; dedicated self-service workspace is still planned. |
+| `TEAM_MANAGER` | Manages team rosters and registrations in the current release. |
+| `TOURNAMENT_ORGANIZER` | Creates and operates owned tournaments; organizers record results in the planned competition workflow. |
+| `PLATFORM_ADMIN` | Reviews and governs tournaments across the platform. |
 
-## Learn More
+There is no referee role. Results are part of the planned competition workflow and are recorded by organizers.
 
-To learn more about Next.js, take a look at the following resources:
+## Prerequisites
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Install or provision:
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- Node.js 20 or newer
+- npm
+- A Supabase project
+- PostgreSQL connection details
 
-## Deploy on Vercel
+Copy `.env.example` to `.env.local` and populate only your local file. Use these variable names without committing their values:
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```dotenv
+DATABASE_URL=
+APP_URL=
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=
+SUPABASE_SERVICE_ROLE_KEY=
+AUTH_RECOVERY_SECRET=
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Never commit `.env.local`, service-role keys, or database passwords. Rotate any credential exposed in chat, logs, screenshots, or source history.
+
+## Installation
+
+Run the verified setup sequence from the project root:
+
+```powershell
+npm install
+npm run prisma:generate
+npm run prisma:migrate
+npm run prisma:seed
+npm run dev
+```
+
+`npm run reset:development` is destructive and may only be used against an explicitly confirmed development database.
+
+## Quality Checks
+
+```powershell
+npm run test
+npm run lint
+npm run build
+```
+
+- `npm run test` runs the Vitest test suite.
+- `npm run lint` checks the project with ESLint.
+- `npm run build` creates a production build.
+
+## Project Map
+
+- `app/` - Next.js App Router pages, layouts, loading and error states, and Route Handlers.
+- `components/` - Shared presentation components and UI primitives.
+- `features/` - Feature-oriented domain, application, infrastructure, and presentation modules.
+- `prisma/` - Prisma schema, migrations, and seed data.
+- `tests/` - Unit, integration, and UI tests.
+- `docs/` - Product specifications, implementation plans, and operational documentation.
+
+See the [roadmap](docs/ROADMAP.md) for planned work. The dated documents in [docs/superpowers/specs/](docs/superpowers/specs/) and [docs/superpowers/plans/](docs/superpowers/plans/) are historical implementation records.
