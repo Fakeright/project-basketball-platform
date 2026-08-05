@@ -6,18 +6,23 @@ The current release covers tournament discovery, authentication, tournament appr
 
 ## Technology
 
-The installed stack is:
+The installed runtime dependencies are:
 
-- Next.js `16.2.11` with App Router
-- React `19.2.4` and React DOM `19.2.4`
-- TypeScript `^5`
-- Tailwind CSS `^4`, `@tailwindcss/postcss` `^4`, and `tw-animate-css` `^1.4.0`
-- shadcn `^4.14.1` and Base UI React `^1.6.0`
-- Prisma `^7.9.0` with `@prisma/client` `^7.9.0`, `@prisma/adapter-pg` `^7.9.0`, and PostgreSQL driver `pg` `^8.22.0`
-- Supabase JS `^2.110.8` and Supabase SSR `^0.12.4`
-- Zod `^4.4.3`, Lucide React `^1.26.0`, `clsx` `^2.1.1`, `tailwind-merge` `^3.6.0`, and class-variance-authority `^0.7.1`
-- Vitest `^4.1.10`, React Testing Library `^16.3.2`, Testing Library User Event `^14.6.1`, and JSDOM `^29.1.1`
+- `@base-ui/react` `^1.6.0`
+- `@prisma/adapter-pg` `^7.9.0`, `@prisma/client` `^7.9.0`, and `pg` `^8.22.0`
+- `@supabase/ssr` `^0.12.4` and `@supabase/supabase-js` `^2.110.8`
+- `class-variance-authority` `^0.7.1`, `clsx` `^2.1.1`, `lucide-react` `^1.26.0`, `tailwind-merge` `^3.6.0`, and `zod` `^4.4.3`
+- Next.js `16.2.11` with App Router, React `19.2.4`, and React DOM `19.2.4`
+- `next-themes` `^0.4.6`, shadcn `^4.14.1`, `tw-animate-css` `^1.4.0`
+
+The installed development dependencies are:
+
+- `@tailwindcss/postcss` `^4` and Tailwind CSS `^4`
+- `@testing-library/react` `^16.3.2`, `@testing-library/user-event` `^14.6.1`, and JSDOM `^29.1.1`
+- Node, PostgreSQL, React, and React DOM type packages: `@types/node` `^20`, `@types/pg` `^8.20.0`, `@types/react` `^19`, and `@types/react-dom` `^19`
+- `dotenv` `^17.4.2`, `tsx` `^4.23.1`, and `vite-tsconfig-paths` `^6.1.1`
 - ESLint `^9` with `eslint-config-next` `16.2.11`
+- Prisma CLI `^7.9.0`, TypeScript `^5`, and Vitest `^4.1.10`
 
 The architecture follows this dependency direction:
 
@@ -97,4 +102,4 @@ npm run build
 - `tests/` - Unit, integration, and UI tests.
 - `docs/` - Product specifications, implementation plans, and operational documentation.
 
-See the [roadmap](docs/ROADMAP.md) for planned work. The dated documents in [docs/superpowers/specs/](docs/superpowers/specs/) and [docs/superpowers/plans/](docs/superpowers/plans/) are historical implementation records.
+The [roadmap](docs/ROADMAP.md) is the sole authoritative source for current project status and planned work. The dated documents in [docs/superpowers/specs/](docs/superpowers/specs/) and [docs/superpowers/plans/](docs/superpowers/plans/) are historical implementation records.
