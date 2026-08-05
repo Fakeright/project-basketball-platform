@@ -89,6 +89,22 @@ describe("saveTournamentHandler", () => {
     })
   })
 
+  it("returns 422 for an unsupported age group", async () => {
+    const response = await saveTournamentHandler({
+      actor: organizer,
+      request: new Request("http://localhost/api/admin/tournaments", {
+        method: "POST",
+        body: JSON.stringify({ ...validTournament, ageGroup: "U20" }),
+      }),
+      repository: new InMemoryTournamentOperationsRepository(),
+    })
+
+    expect(response.status).toBe(422)
+    await expect(response.json()).resolves.toEqual({
+      message: "กรุณาเลือกรุ่นอายุจากรายการ",
+    })
+  })
+
   it("returns 409 when an editor saves a stale version", async () => {
     const repository = new InMemoryTournamentOperationsRepository()
     const tournament = await repository.create({

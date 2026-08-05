@@ -80,6 +80,28 @@ describe("tournament workflow", () => {
     },
   )
 
+  it.each(["U12", "U14", "U16", "U18", "U23", "Open"])(
+    "accepts the canonical age group %s",
+    async (ageGroup) => {
+      const repository = new InMemoryTournamentOperationsRepository()
+
+      await expect(
+        createTournament(repository, { ...validInput, ageGroup }, organizer),
+      ).resolves.toMatchObject({ ageGroup })
+    },
+  )
+
+  it.each(["", "U20", "35+", "open"])(
+    "rejects the unsupported age group %s",
+    async (ageGroup) => {
+      const repository = new InMemoryTournamentOperationsRepository()
+
+      await expect(
+        createTournament(repository, { ...validInput, ageGroup }, organizer),
+      ).rejects.toThrow("AGE_GROUP_INVALID")
+    },
+  )
+
   it("requires a note when an admin requests changes", async () => {
     const repository = new InMemoryTournamentOperationsRepository()
     const tournament = await createTournament(repository, validInput, organizer)

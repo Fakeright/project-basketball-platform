@@ -43,3 +43,34 @@ describe("tournamentEditorSchema capacity", () => {
     },
   )
 })
+
+describe("tournamentEditorSchema age group", () => {
+  it.each(["U12", "U14", "U16", "U18", "U23", "Open"])(
+    "accepts %s",
+    (ageGroup) => {
+      const result = tournamentEditorSchema.safeParse({
+        ...validInput,
+        ageGroup,
+        capacity: "16",
+      })
+
+      expect(result.success).toBe(true)
+      if (result.success) expect(result.data.ageGroup).toBe(ageGroup)
+    },
+  )
+
+  it.each(["", "U20", "35+", "open"])("rejects %s", (ageGroup) => {
+    const result = tournamentEditorSchema.safeParse({
+      ...validInput,
+      ageGroup,
+      capacity: "16",
+    })
+
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.error.issues[0]?.message).toBe(
+        "กรุณาเลือกรุ่นอายุจากรายการ",
+      )
+    }
+  })
+})

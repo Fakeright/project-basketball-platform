@@ -2,6 +2,7 @@ import { z } from "zod"
 
 import { tournamentDateTimeToUtc } from "./tournament-editor-time"
 import { assertProvinceCode } from "@/features/provinces/application/assert-province-code"
+import { isTournamentAgeGroup } from "@/features/tournament-operations/domain/tournament-age-group"
 import { isValidTournamentCapacity } from "@/features/tournament-operations/domain/tournament-capacity"
 
 const requiredText = (message: string) => z.string().trim().min(1, message)
@@ -37,7 +38,12 @@ export const tournamentEditorSchema = z
     ),
     venue: requiredText("กรุณาระบุสถานที่"),
     format: z.enum(["FIVE_V_FIVE", "THREE_V_THREE"]),
-    ageGroup: requiredText("กรุณาระบุรุ่นอายุ"),
+    ageGroup: z
+      .string()
+      .trim()
+      .refine(isTournamentAgeGroup, {
+        message: "กรุณาเลือกรุ่นอายุจากรายการ",
+      }),
     startsAt: dateTime("กรุณาระบุวันเริ่มแข่งขัน"),
     endsAt: dateTime("กรุณาระบุวันสิ้นสุดการแข่งขัน"),
     registrationDeadline: dateTime("กรุณาระบุวันปิดรับสมัคร"),
