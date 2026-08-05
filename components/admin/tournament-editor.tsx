@@ -14,6 +14,10 @@ import {
 } from "./tournament-media-manager"
 import { TournamentCapacityField } from "./tournament-capacity-field"
 import { ProvinceCombobox } from "@/components/province-combobox"
+import {
+  TOURNAMENT_AGE_GROUPS,
+  isTournamentAgeGroup,
+} from "@/features/tournament-operations/domain/tournament-age-group"
 
 export interface EditableTournament extends TournamentEditorInput {
   id: string
@@ -34,6 +38,10 @@ export function TournamentEditor({
   const [tournament, setTournament] = useState(initialTournament)
   const [message, setMessage] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
+  const selectedAgeGroup =
+    tournament?.ageGroup && isTournamentAgeGroup(tournament.ageGroup)
+      ? tournament.ageGroup
+      : ""
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -144,7 +152,23 @@ export function TournamentEditor({
           required
         />
         <Field label="สถานที่" name="venue" defaultValue={tournament?.venue} />
-        <Field label="รุ่นอายุ" name="ageGroup" defaultValue={tournament?.ageGroup} />
+        <label className="space-y-2 text-sm">
+          <span>รุ่นอายุ</span>
+          <select
+            className={fieldClassName}
+            defaultValue={selectedAgeGroup}
+            name="ageGroup"
+          >
+            <option disabled value="">
+              เลือกรุ่นอายุ
+            </option>
+            {TOURNAMENT_AGE_GROUPS.map((ageGroup) => (
+              <option key={ageGroup} value={ageGroup}>
+                {ageGroup}
+              </option>
+            ))}
+          </select>
+        </label>
         <label className="space-y-2 text-sm">
           <span>ประเภทการแข่งขัน</span>
           <select

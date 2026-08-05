@@ -2,7 +2,10 @@ import { cleanup, render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
-import { TournamentEditor } from "@/components/admin/tournament-editor"
+import {
+  TournamentEditor,
+  type EditableTournament,
+} from "@/components/admin/tournament-editor"
 
 const router = vi.hoisted(() => ({
   replace: vi.fn(),
@@ -13,6 +16,22 @@ vi.mock("next/navigation", () => ({
   useRouter: () => router,
 }))
 
+const editableTournament: EditableTournament = {
+  id: "tournament-1",
+  title: "Chiang Rai Cup",
+  description: "การแข่งขันระดับชุมชน",
+  provinceCode: "57",
+  venue: "สนามกีฬากลาง",
+  format: "FIVE_V_FIVE",
+  ageGroup: "Open",
+  startsAt: "2026-12-10T09:00",
+  endsAt: "2026-12-11T18:00",
+  registrationDeadline: "2026-12-01T23:59",
+  capacity: 16,
+  rules: "ใช้กติกามาตรฐาน",
+  version: 1,
+}
+
 afterEach(() => {
   cleanup()
   vi.clearAllMocks()
@@ -20,6 +39,49 @@ afterEach(() => {
 })
 
 describe("TournamentEditor", () => {
+  it("requires a canonical age group for a new tournament", () => {
+    render(<TournamentEditor initialTournament={null} />)
+
+    const select = screen.getByLabelText("รุ่นอายุ") as HTMLSelectElement
+    expect(select.tagName).toBe("SELECT")
+    expect(select.value).toBe("")
+    expect(
+      Array.from(select.options).map((option) => option.textContent),
+    ).toEqual([
+      "เลือกรุ่นอายุ",
+      "U12",
+      "U14",
+      "U16",
+      "U18",
+      "U23",
+      "Open",
+    ])
+  })
+
+  it("selects a supported edit value", () => {
+    render(
+      <TournamentEditor
+        initialTournament={{ ...editableTournament, ageGroup: "U23" }}
+      />,
+    )
+
+    expect((screen.getByLabelText("รุ่นอายุ") as HTMLSelectElement).value).toBe(
+      "U23",
+    )
+  })
+
+  it("does not silently map a legacy edit value", () => {
+    render(
+      <TournamentEditor
+        initialTournament={{ ...editableTournament, ageGroup: "U20" }}
+      />,
+    )
+
+    expect((screen.getByLabelText("รุ่นอายุ") as HTMLSelectElement).value).toBe(
+      "",
+    )
+  })
+
   it("saves a valid tournament draft", async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       new Response(
@@ -183,21 +245,7 @@ describe("TournamentEditor", () => {
 
     render(
       <TournamentEditor
-        initialTournament={{
-          id: "tournament-1",
-          title: "Chiang Rai Cup",
-          description: "การแข่งขันระดับชุมชน",
-          provinceCode: "57",
-          venue: "สนามกีฬากลาง",
-          format: "FIVE_V_FIVE",
-          ageGroup: "Open",
-          startsAt: "2026-12-10T09:00",
-          endsAt: "2026-12-11T18:00",
-          registrationDeadline: "",
-          capacity: 16,
-          rules: "ใช้กติกามาตรฐาน",
-          version: 1,
-        }}
+        initialTournament={{ ...editableTournament, registrationDeadline: "" }}
       />,
     )
 
@@ -217,7 +265,7 @@ async function fillValidTournament(
   await user.type(province, "Chiang Rai")
   await user.click(await screen.findByRole("option", { name: /เชียงราย.*Chiang Rai/i }))
   await user.type(screen.getByLabelText("สถานที่"), "สนามกีฬากลาง")
-  await user.type(screen.getByLabelText("รุ่นอายุ"), "Open")
+  await user.selectOptions(screen.getByLabelText("รุ่นอายุ"), "Open")
   await user.type(screen.getByLabelText("วันเริ่มแข่งขัน"), "2026-12-10T09:00")
   await user.type(screen.getByLabelText("วันสิ้นสุดการแข่งขัน"), "2026-12-11T18:00")
   await user.type(screen.getByLabelText("วันปิดรับสมัคร"), "2026-12-01T23:59")
