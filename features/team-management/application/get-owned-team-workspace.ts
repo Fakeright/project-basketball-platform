@@ -1,5 +1,9 @@
 import type { Actor } from "@/features/identity/domain/actor"
-import type { TeamRosterMember, TeamSummary } from "@/features/team-management/domain/team"
+import type {
+  TeamPlayer,
+  TeamRosterMember,
+  TeamSummary,
+} from "@/features/team-management/domain/team"
 
 import { authorizeTeamAccess } from "./team-access"
 import type { TeamRepository } from "./ports/team-repository"
@@ -7,6 +11,7 @@ import type { TeamRepository } from "./ports/team-repository"
 export interface OwnedTeamWorkspace {
   team: TeamSummary
   members: TeamRosterMember[]
+  players: TeamPlayer[]
 }
 
 export async function getOwnedTeamWorkspace(
@@ -19,6 +24,7 @@ export async function getOwnedTeamWorkspace(
 
   authorizeTeamAccess(actor, "team.update", team)
   const members = await dependencies.teams.listActiveMembers(team.id)
+  const players = await dependencies.teams.listActivePlayers(team.id)
 
-  return { team, members }
+  return { team, members, players }
 }

@@ -1,13 +1,17 @@
 import { describe, expect, it, vi } from "vitest"
 
 import { addTeamMember } from "@/features/team-management/application/add-team-member"
+import { addTeamPlayers } from "@/features/team-management/application/add-team-players"
 import { createTeam } from "@/features/team-management/application/create-team"
 import { deactivateTeamMember } from "@/features/team-management/application/deactivate-team-member"
+import { deactivateTeamPlayer } from "@/features/team-management/application/deactivate-team-player"
 import { getOwnedTeamWorkspace } from "@/features/team-management/application/get-owned-team-workspace"
 import { listOwnedTeams } from "@/features/team-management/application/list-owned-teams"
 import { listTeamMemberCandidates } from "@/features/team-management/application/list-team-member-candidates"
 import type { TeamRepository } from "@/features/team-management/application/ports/team-repository"
 import { updateTeam } from "@/features/team-management/application/update-team"
+import { updateTeamPlayer } from "@/features/team-management/application/update-team-player"
+import type { TeamPlayer, TeamPlayerDraft } from "@/features/team-management/domain/team"
 import { createTestActor } from "@/tests/fixtures/actor"
 
 const teamManager = createTestActor("manager-1", "TEAM_MANAGER_COACH")
@@ -19,6 +23,38 @@ const team = {
   provinceCode: "10",
   province: "กรุงเทพมหานคร",
   ownerId: teamManager.id,
+  format: "FIVE_V_FIVE" as const,
+  isActive: true,
+  deactivatedAt: null,
+  version: 0,
+}
+
+function draftPlayer(firstName: string, jerseyNumber: number | null): TeamPlayerDraft {
+  return {
+    firstName,
+    lastName: "player",
+    nickname: null,
+    birthDate: "2010-02-03",
+    jerseyNumber,
+    position: "PG",
+    phone: null,
+  }
+}
+
+function playerFromDraft(
+  input: TeamPlayerDraft,
+  overrides: Partial<TeamPlayer> = {},
+): TeamPlayer {
+  return {
+    id: "player-1",
+    teamId: team.id,
+    ...input,
+    isActive: true,
+    deactivatedAt: null,
+    createdAt: "2026-08-07T00:00:00.000Z",
+    updatedAt: "2026-08-07T00:00:00.000Z",
+    ...overrides,
+  }
 }
 
 type TransactionalTeamRepository = TeamRepository
@@ -40,6 +76,7 @@ function createRepository(
       { id: "player-1", displayName: "Player One", role: "PLAYER" },
     ]),
     listActiveMembers: vi.fn(async () => []),
+    listActivePlayers: vi.fn(async () => []),
     addMember: vi.fn(async (input) => ({
       id: "membership-1",
       ...input,
@@ -47,6 +84,22 @@ function createRepository(
       deactivatedAt: null,
     })),
     deactivateMember: vi.fn(async () => undefined),
+    addPlayers: vi.fn(async (teamId, players) =>
+      players.map((player, index) =>
+        playerFromDraft(player, { id: `player-${index + 1}`, teamId }),
+      ),
+    ),
+    updatePlayer: vi.fn(async (teamId, playerId, input) =>
+      playerFromDraft(input, { id: playerId, teamId }),
+    ),
+    deactivatePlayer: vi.fn(async (teamId, playerId, at) =>
+      playerFromDraft(draftPlayer("one", 4), {
+        id: playerId,
+        teamId,
+        isActive: false,
+        deactivatedAt: at,
+      }),
+    ),
     appendAuditEvent: vi.fn(async () => undefined),
     inTransaction: vi.fn(async (operation) => operation(repository)),
     ...overrides,
@@ -55,6 +108,159 @@ function createRepository(
 }
 
 describe("team use cases", () => {
+  it("adds an owned team's player batch and records one audit event", async () => {
+    const repository = createRepository()
+
+    const players = await addTeamPlayers(
+      { teamId: team.id, players: [draftPlayer("one", 4), draftPlayer("two", 8)] },
+      teamManager,
+      { teams: repository },
+    )
+
+    expect(players).toHaveLength(2)
+    expect(repository.appendAuditEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "team.players_added",
+        entityId: team.id,
+        after: {
+          playerIds: ["player-1", "player-2"],
+          reactivatedPlayerIds: [],
+          count: 2,
+        },
+      }),
+    )
+  })
+
+  it("rejects player batches outside the allowed size", async () => {
+    const repository = createRepository()
+
+    await expect(
+      addTeamPlayers({ teamId: team.id, players: [] }, teamManager, { teams: repository }),
+    ).rejects.toThrow("PLAYER_BATCH_INVALID")
+    await expect(
+      addTeamPlayers(
+        {
+          teamId: team.id,
+          players: Array.from({ length: 31 }, (_, index) =>
+            draftPlayer(`player-${index}`, index + 1),
+          ),
+        },
+        teamManager,
+        { teams: repository },
+      ),
+    ).rejects.toThrow("PLAYER_BATCH_INVALID")
+  })
+
+  it("rejects a non-owner from managing a player roster", async () => {
+    const repository = createRepository({
+      findById: vi.fn(async () => ({ ...team, ownerId: "manager-2" })),
+    })
+
+    await expect(
+      addTeamPlayers(
+        { teamId: team.id, players: [draftPlayer("one", 4)] },
+        teamManager,
+        { teams: repository },
+      ),
+    ).rejects.toThrow("FORBIDDEN")
+  })
+
+  it("rejects player roster changes for an inactive team", async () => {
+    const repository = createRepository({
+      findById: vi.fn(async () => ({ ...team, isActive: false })),
+    })
+
+    await expect(
+      addTeamPlayers(
+        { teamId: team.id, players: [draftPlayer("one", 4)] },
+        teamManager,
+        { teams: repository },
+      ),
+    ).rejects.toThrow("TEAM_INACTIVE")
+  })
+
+  it("records reactivated player ids in the batch audit event", async () => {
+    const reactivated = playerFromDraft(draftPlayer("one", 4), {
+      id: "player-old",
+      createdAt: "2025-08-07T00:00:00.000Z",
+      updatedAt: "2026-08-07T00:00:00.000Z",
+    })
+    const repository = createRepository({ addPlayers: vi.fn(async () => [reactivated]) })
+
+    await addTeamPlayers(
+      { teamId: team.id, players: [draftPlayer("one", 4)] },
+      teamManager,
+      { teams: repository },
+    )
+
+    expect(repository.appendAuditEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        after: expect.objectContaining({ reactivatedPlayerIds: ["player-old"] }),
+      }),
+    )
+  })
+
+  it("updates an active player and audits the before and after values", async () => {
+    const existingPlayer = playerFromDraft(draftPlayer("one", 4))
+    const updatedDraft = { ...draftPlayer("one", 9), position: "SG" as const }
+    const repository = createRepository({
+      listActivePlayers: vi.fn(async () => [existingPlayer]),
+      updatePlayer: vi.fn(async (teamId, playerId, input) =>
+        playerFromDraft(input, { id: playerId, teamId }),
+      ),
+    })
+
+    const updated = await updateTeamPlayer(
+      { teamId: team.id, playerId: existingPlayer.id, player: updatedDraft },
+      teamManager,
+      { teams: repository },
+    )
+
+    expect(updated.jerseyNumber).toBe(9)
+    expect(repository.appendAuditEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "team.player_updated",
+        before: existingPlayer,
+        after: updated,
+      }),
+    )
+  })
+
+  it("soft-removes an active player and audits the transition", async () => {
+    const existingPlayer = playerFromDraft(draftPlayer("one", 4))
+    const at = "2026-08-07T12:00:00.000Z"
+    const repository = createRepository({
+      listActivePlayers: vi.fn(async () => [existingPlayer]),
+    })
+
+    const deactivated = await deactivateTeamPlayer(
+      { teamId: team.id, playerId: existingPlayer.id, at },
+      teamManager,
+      { teams: repository },
+    )
+
+    expect(deactivated).toMatchObject({ isActive: false, deactivatedAt: at })
+    expect(repository.appendAuditEvent).toHaveBeenCalledWith(
+      expect.objectContaining({ action: "team.player_deactivated", before: existingPlayer }),
+    )
+  })
+
+  it("adds an admin override audit event for player mutations", async () => {
+    const repository = createRepository({
+      findById: vi.fn(async () => ({ ...team, ownerId: "manager-2" })),
+    })
+
+    await addTeamPlayers(
+      { teamId: team.id, players: [draftPlayer("one", 4)] },
+      platformAdmin,
+      { teams: repository },
+    )
+
+    expect(repository.appendAuditEvent).toHaveBeenCalledWith(
+      expect.objectContaining({ action: "team.admin_override", entityId: team.id }),
+    )
+  })
+
   it("creates a team owned by the team manager and audits the mutation", async () => {
     const repository = createRepository()
 
@@ -203,6 +409,7 @@ describe("team use cases", () => {
           deactivatedAt: null,
         },
       ],
+      players: [],
     })
   })
 

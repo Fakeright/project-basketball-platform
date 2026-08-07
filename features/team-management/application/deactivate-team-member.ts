@@ -1,7 +1,7 @@
 import type { Actor } from "@/features/identity/domain/actor"
 
 import { authorizeTeamAccess } from "./team-access"
-import type { TeamRepository } from "./ports/team-repository"
+import type { LegacyTeamMemberRepository } from "./ports/team-repository"
 
 export interface DeactivateTeamMemberInput {
   teamId: string
@@ -12,7 +12,7 @@ export interface DeactivateTeamMemberInput {
 export async function deactivateTeamMember(
   input: DeactivateTeamMemberInput,
   actor: Actor,
-  dependencies: { teams: TeamRepository },
+  dependencies: { teams: LegacyTeamMemberRepository },
 ): Promise<void> {
   const team = await dependencies.teams.findById(input.teamId)
   if (!team) throw new Error("NOT_FOUND")

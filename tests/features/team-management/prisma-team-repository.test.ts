@@ -25,6 +25,32 @@ const teamRow = {
   version: 2,
 }
 
+const playerRow = {
+  id: "player-1",
+  teamId: "team-1",
+  firstName: "One",
+  lastName: "Player",
+  nickname: null,
+  birthDate: new Date("2010-02-03T00:00:00.000Z"),
+  jerseyNumber: 4,
+  position: "PG" as const,
+  phone: null,
+  isActive: true,
+  deactivatedAt: null,
+  createdAt: new Date("2026-07-25T00:00:00.000Z"),
+  updatedAt: new Date("2026-07-26T00:00:00.000Z"),
+}
+
+const playerDraft = {
+  firstName: "One",
+  lastName: "Player",
+  nickname: null,
+  birthDate: "2010-02-03",
+  jerseyNumber: 4,
+  position: "PG" as const,
+  phone: null,
+}
+
 function createPrismaMock() {
   const prisma = {
     team: {
@@ -41,6 +67,13 @@ function createPrismaMock() {
       update: vi.fn(),
       updateMany: vi.fn(),
     },
+    teamPlayer: {
+      findUnique: vi.fn(),
+      findMany: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn(),
+      updateMany: vi.fn(),
+    },
     auditLog: { create: vi.fn() },
   }
   return {
@@ -50,6 +83,113 @@ function createPrismaMock() {
 }
 
 describe("PrismaTeamRepository", () => {
+  it("maps active players with date-only birth dates", async () => {
+    const prisma = createPrismaMock()
+    prisma.teamPlayer.findMany.mockResolvedValue([playerRow])
+    const repository = new PrismaTeamRepository(prisma as unknown as PrismaClient)
+
+    await expect(repository.listActivePlayers("team-1")).resolves.toEqual([
+      {
+        id: "player-1",
+        teamId: "team-1",
+        firstName: "One",
+        lastName: "Player",
+        nickname: null,
+        birthDate: "2010-02-03",
+        jerseyNumber: 4,
+        position: "PG",
+        phone: null,
+        isActive: true,
+        deactivatedAt: null,
+        createdAt: "2026-07-25T00:00:00.000Z",
+        updatedAt: "2026-07-26T00:00:00.000Z",
+      },
+    ])
+  })
+
+  it("reactivates an inactive duplicate player instead of inserting another row", async () => {
+    const prisma = createPrismaMock()
+    prisma.teamPlayer.findUnique
+      .mockResolvedValueOnce({ ...playerRow, isActive: false, deactivatedAt: new Date("2026-07-26T00:00:00.000Z") })
+      .mockResolvedValueOnce({ ...playerRow, updatedAt: new Date("2026-08-07T00:00:00.000Z") })
+    prisma.teamPlayer.updateMany.mockResolvedValue({ count: 1 })
+    const repository = new PrismaTeamRepository(prisma as unknown as PrismaClient)
+
+    await expect(repository.addPlayers("team-1", [playerDraft])).resolves.toMatchObject({
+      0: { id: "player-1", isActive: true, deactivatedAt: null },
+    })
+    expect(prisma.teamPlayer.updateMany).toHaveBeenCalledWith({
+      where: { id: "player-1", teamId: "team-1", isActive: false },
+      data: {
+        nickname: null,
+        jerseyNumber: 4,
+        position: "PG",
+        phone: null,
+        isActive: true,
+        deactivatedAt: null,
+      },
+    })
+    expect(prisma.teamPlayer.create).not.toHaveBeenCalled()
+  })
+
+  it("maps player identity and active jersey unique failures", async () => {
+    const identityPrisma = createPrismaMock()
+    identityPrisma.teamPlayer.findUnique.mockResolvedValue({ ...playerRow, isActive: true })
+    const identityRepository = new PrismaTeamRepository(identityPrisma as unknown as PrismaClient)
+
+    await expect(identityRepository.addPlayers("team-1", [playerDraft])).rejects.toThrow(
+      "PLAYER_ALREADY_EXISTS",
+    )
+
+    const jerseyPrisma = createPrismaMock()
+    jerseyPrisma.teamPlayer.findUnique.mockResolvedValue(null)
+    jerseyPrisma.teamPlayer.create.mockRejectedValue({
+      code: "P2002",
+      meta: { target: ["teamId", "jerseyNumber"] },
+    })
+    const jerseyRepository = new PrismaTeamRepository(jerseyPrisma as unknown as PrismaClient)
+
+    await expect(jerseyRepository.addPlayers("team-1", [playerDraft])).rejects.toThrow(
+      "JERSEY_ALREADY_IN_USE",
+    )
+  })
+
+  it("does not persist the first player when the second insert fails in a transaction", async () => {
+    const prisma = createPrismaMock()
+    const persisted: typeof playerRow[] = []
+    prisma.teamPlayer.findUnique.mockResolvedValue(null)
+    prisma.teamPlayer.create.mockImplementation(async ({ data }) => {
+      if (data.firstName === "Two") {
+        throw { code: "P2002", meta: { target: ["teamId", "jerseyNumber"] } }
+      }
+      const created = { ...playerRow, ...data, id: "player-new" }
+      persisted.push(created)
+      return created
+    })
+    prisma.$transaction.mockImplementation(async (operation) => {
+      const before = [...persisted]
+      try {
+        return await operation(prisma)
+      } catch (error) {
+        persisted.splice(0, persisted.length, ...before)
+        throw error
+      }
+    })
+    const repository = new PrismaTeamRepository(prisma as unknown as PrismaClient)
+
+    await expect(
+      repository.inTransaction((transaction) =>
+        transaction.addPlayers("team-1", [
+          playerDraft,
+          { ...playerDraft, firstName: "Two", jerseyNumber: 8 },
+        ]),
+      ),
+    ).rejects.toThrow("JERSEY_ALREADY_IN_USE")
+
+    expect(persisted).toEqual([])
+    expect(prisma.$transaction).toHaveBeenCalledTimes(1)
+  })
+
   it("maps team compatibility fields for team reads", async () => {
     const prisma = createPrismaMock()
     prisma.team.findUnique.mockResolvedValue(teamRow)

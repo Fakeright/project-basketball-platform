@@ -1,6 +1,7 @@
-import type { Role } from "@/features/identity/domain/actor"
 import type {
   TeamMemberRole,
+  TeamPlayer,
+  TeamPlayerDraft,
   TeamRosterMember,
   TeamSummary,
 } from "@/features/team-management/domain/team"
@@ -18,6 +19,13 @@ export interface TeamMutationRepository {
     role: TeamMemberRole
   }): Promise<TeamRosterMember>
   deactivateMember(teamId: string, memberId: string, at: string): Promise<void>
+  addPlayers(teamId: string, players: readonly TeamPlayerDraft[]): Promise<TeamPlayer[]>
+  updatePlayer(
+    teamId: string,
+    playerId: string,
+    input: TeamPlayerDraft,
+  ): Promise<TeamPlayer>
+  deactivatePlayer(teamId: string, playerId: string, at: string): Promise<TeamPlayer>
   appendAuditEvent(input: {
     actorId: string
     action: string
@@ -33,17 +41,21 @@ export interface TeamRepository extends TeamMutationRepository {
   ): Promise<T>
   findById(id: string): Promise<TeamSummary | null>
   listByOwner(ownerId: string): Promise<TeamSummary[]>
+  listActiveMembers(teamId: string): Promise<TeamRosterMember[]>
+  listActivePlayers(teamId: string): Promise<TeamPlayer[]>
+}
+
+export interface LegacyTeamMemberRepository extends TeamRepository {
   findUser(id: string): Promise<{
     id: string
     displayName: string
-    role: Role
+    role: import("@/features/identity/domain/actor").Role
   } | null>
-  listUsersByRoles(roles: readonly Role[]): Promise<
+  listUsersByRoles(roles: readonly import("@/features/identity/domain/actor").Role[]): Promise<
     Array<{
       id: string
       displayName: string
-      role: Role
+      role: import("@/features/identity/domain/actor").Role
     }>
   >
-  listActiveMembers(teamId: string): Promise<TeamRosterMember[]>
 }

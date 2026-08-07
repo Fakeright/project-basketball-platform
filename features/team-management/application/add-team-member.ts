@@ -5,7 +5,7 @@ import type {
 } from "@/features/team-management/domain/team"
 
 import { authorizeTeamAccess } from "./team-access"
-import type { TeamRepository } from "./ports/team-repository"
+import type { LegacyTeamMemberRepository } from "./ports/team-repository"
 
 export interface AddTeamMemberInput {
   teamId: string
@@ -16,7 +16,7 @@ export interface AddTeamMemberInput {
 export async function addTeamMember(
   input: AddTeamMemberInput,
   actor: Actor,
-  dependencies: { teams: TeamRepository },
+  dependencies: { teams: LegacyTeamMemberRepository },
 ): Promise<TeamRosterMember> {
   const team = await dependencies.teams.findById(input.teamId)
   if (!team) throw new Error("NOT_FOUND")
