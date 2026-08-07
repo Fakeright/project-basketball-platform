@@ -10,6 +10,8 @@ export interface EditableTeam {
   name: string
   provinceCode: string
   province: string
+  format: "FIVE_V_FIVE" | "THREE_V_THREE"
+  version: number
 }
 
 const fieldClassName =
@@ -24,6 +26,7 @@ export function TeamEditor({
 }) {
   const [message, setMessage] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
+  const [version, setVersion] = useState(initialTeam?.version ?? 0)
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -32,6 +35,7 @@ export function TeamEditor({
     const formData = new FormData(event.currentTarget)
     const name = String(formData.get("name") ?? "").trim()
     const provinceCode = String(formData.get("provinceCode") ?? "").trim()
+    const format = String(formData.get("format") ?? "")
     if (name.length < 2 || provinceCode.length !== 2) {
       setMessage("กรุณากรอกชื่อทีมและจังหวัดอย่างน้อย 2 ตัวอักษร")
       return
@@ -44,11 +48,29 @@ export function TeamEditor({
         {
           method: initialTeam ? "PATCH" : "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name, provinceCode }),
+          body: JSON.stringify({
+            name,
+            provinceCode,
+            format,
+            ...(initialTeam ? { expectedVersion: version } : {}),
+          }),
         },
       )
-      const result = (await response.json()) as { message?: string }
-      setMessage(response.ok ? "บันทึกทีมแล้ว" : result.message ?? "ไม่สามารถบันทึกทีมได้")
+      const result = (await response.json()) as {
+        message?: string
+        team?: { version: number }
+      }
+      if (response.ok) {
+        if (initialTeam && result.team) setVersion(result.team.version)
+        setMessage("บันทึกทีมแล้ว")
+      } else {
+        setMessage(
+          result.message ??
+            (response.status === 409
+              ? "ข้อมูลทีมมีการเปลี่ยนแปลง กรุณาโหลดหน้าใหม่แล้วลองอีกครั้ง"
+              : "ไม่สามารถบันทึกทีมได้"),
+        )
+      }
     } catch {
       setMessage("ไม่สามารถเชื่อมต่อระบบได้ กรุณาลองอีกครั้ง")
     } finally {
@@ -81,6 +103,18 @@ export function TeamEditor({
           name="provinceCode"
           required
         />
+        <label className="space-y-2 text-sm">
+          <span>รูปแบบทีม</span>
+          <select
+            className={fieldClassName}
+            defaultValue={initialTeam?.format ?? "FIVE_V_FIVE"}
+            name="format"
+            required
+          >
+            <option value="FIVE_V_FIVE">5v5</option>
+            <option value="THREE_V_THREE">3v3</option>
+          </select>
+        </label>
       </div>
 
       {message ? (

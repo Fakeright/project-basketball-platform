@@ -2,6 +2,7 @@ import type { TeamPlayer, TeamSummary } from "@/features/team-management/domain/
 import type { RosterFormat } from "@/features/team-management/domain/team-policy"
 import type { RegistrationTournamentStatus } from "@/features/registrations/domain/registration-policy"
 import type { TournamentRegistration } from "@/features/registrations/domain/registration"
+import type { TournamentAgeGroup } from "@/features/tournament-operations/domain/tournament-age-group"
 
 export interface RegistrationApplicationContext {
   team: TeamSummary
@@ -9,6 +10,8 @@ export interface RegistrationApplicationContext {
   tournament: {
     id: string
     format: RosterFormat
+    ageGroup: TournamentAgeGroup
+    startsAt: string
     status: RegistrationTournamentStatus
     registrationDeadline: string
     capacity: number
@@ -44,7 +47,7 @@ export interface TournamentRegistrationReviewItem
   teamName: string
   province: string
   playerCount: number
-  coachCount: number
+  managerCoachCount: number
   submittedAt: string
 }
 

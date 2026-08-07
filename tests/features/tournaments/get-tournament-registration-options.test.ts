@@ -12,6 +12,7 @@ import { createTestActor } from "@/tests/fixtures/actor"
 const openTournament = {
   id: "tournament-1",
   status: "OPEN",
+  format: "FIVE_V_FIVE",
 } as Tournament
 
 function teamRepository(): TeamRepository {
@@ -27,12 +28,22 @@ function teamRepository(): TeamRepository {
         provinceCode: "10",
         province: "กรุงเทพมหานคร",
         ownerId: "team-manager-1",
+        format: "FIVE_V_FIVE",
+        isActive: true,
+        deactivatedAt: null,
+        version: 0,
       },
     ]),
     findUser: vi.fn(),
     listUsersByRoles: vi.fn(),
     listActiveMembers: vi.fn(),
+    listActivePlayers: vi.fn(),
+    findExistingPlayersByIdentities: vi.fn(),
     addMember: vi.fn(),
+    addPlayers: vi.fn(),
+    updatePlayer: vi.fn(),
+    deactivatePlayer: vi.fn(),
+    hasActiveRegistration: vi.fn(),
     deactivateMember: vi.fn(),
     appendAuditEvent: vi.fn(),
   }
@@ -73,6 +84,59 @@ describe("getTournamentRegistrationOptions", () => {
       { id: "team-1", name: "Bangkok Ballers" },
     ])
     expect(teams.listByOwner).toHaveBeenCalledWith("team-manager-1")
+  })
+
+  it("lists only active owned teams whose format matches the tournament", async () => {
+    const teams = teamRepository()
+    vi.mocked(teams.listByOwner).mockResolvedValue([
+      {
+        id: "matching",
+        name: "Matching Five",
+        provinceCode: "10",
+        province: "กรุงเทพมหานคร",
+        ownerId: "team-manager-1",
+        format: "FIVE_V_FIVE",
+        isActive: true,
+        deactivatedAt: null,
+        version: 1,
+      },
+      {
+        id: "inactive",
+        name: "Inactive Five",
+        provinceCode: "10",
+        province: "กรุงเทพมหานคร",
+        ownerId: "team-manager-1",
+        format: "FIVE_V_FIVE",
+        isActive: false,
+        deactivatedAt: "2026-08-07T00:00:00.000Z",
+        version: 2,
+      },
+      {
+        id: "wrong-format",
+        name: "Active Three",
+        provinceCode: "10",
+        province: "กรุงเทพมหานคร",
+        ownerId: "team-manager-1",
+        format: "THREE_V_THREE",
+        isActive: true,
+        deactivatedAt: null,
+        version: 0,
+      },
+    ])
+    const registrations = registrationRepository()
+
+    await expect(
+      getTournamentRegistrationOptions(
+        openTournament,
+        createTestActor("team-manager-1", "TEAM_MANAGER_COACH"),
+        { teams, registrations },
+      ),
+    ).resolves.toEqual([{ id: "matching", name: "Matching Five" }])
+    expect(registrations.findActive).toHaveBeenCalledTimes(1)
+    expect(registrations.findActive).toHaveBeenCalledWith(
+      "tournament-1",
+      "matching",
+    )
   })
 
   it.each([
@@ -152,6 +216,10 @@ describe("getTournamentRegistrationOptions", () => {
         provinceCode: "10",
         province: "กรุงเทพมหานคร",
         ownerId: "team-manager-1",
+        format: "FIVE_V_FIVE",
+        isActive: true,
+        deactivatedAt: null,
+        version: 0,
       },
     ])
     vi.mocked(registrations.findActive).mockResolvedValueOnce({

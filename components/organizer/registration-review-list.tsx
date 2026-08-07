@@ -15,7 +15,7 @@ export interface RegistrationReviewListItem {
   teamName: string
   province: string
   playerCount: number
-  coachCount: number
+  managerCoachCount: number
   submittedAt: string
   status: RegistrationStatus
   decisionNote: string | null
@@ -187,7 +187,8 @@ export function RegistrationReviewList({
                   {registration.province}
                 </p>
                 <p className="mt-1 text-sm">
-                  ผู้เล่น {registration.playerCount} / โค้ช {registration.coachCount}
+                  ผู้เล่น {registration.playerCount} / ผู้จัดการ/โค้ช{" "}
+                  {registration.managerCoachCount}
                 </p>
               </div>
 

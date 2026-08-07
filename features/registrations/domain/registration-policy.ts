@@ -5,6 +5,8 @@ import {
 } from "@/features/team-management/domain/team-policy"
 
 import type { RegistrationAction, RegistrationStatus } from "./registration"
+import { assertRosterAgeEligibility } from "./player-age-policy"
+import type { TournamentAgeGroup } from "@/features/tournament-operations/domain/tournament-age-group"
 
 export type RegistrationTournamentStatus =
   | "DRAFT"
@@ -25,6 +27,8 @@ export interface RegistrationApplicationEligibility {
   roster: readonly TeamPlayer[]
   tournament: {
     format: RosterFormat
+    ageGroup: TournamentAgeGroup
+    startsAt: string
     status: RegistrationTournamentStatus
     registrationDeadline: string
     capacity: number
@@ -68,7 +72,17 @@ export function assertCanApply(input: RegistrationApplicationEligibility): void 
     throw new Error("TEAM_NOT_OWNED")
   }
 
-  assertRosterEligibility(input.tournament.format, input.roster)
+  if (!input.team.isActive) throw new Error("TEAM_INACTIVE")
+  if (input.team.format !== input.tournament.format) {
+    throw new Error("TEAM_FORMAT_MISMATCH")
+  }
+
+  assertRosterEligibility(input.team.format, input.roster)
+  assertRosterAgeEligibility(
+    input.tournament.ageGroup,
+    input.tournament.startsAt,
+    input.roster,
+  )
 
   if (input.hasActiveRegistration) {
     throw new Error("REGISTRATION_ALREADY_ACTIVE")

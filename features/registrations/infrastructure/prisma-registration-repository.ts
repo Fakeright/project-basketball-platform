@@ -19,7 +19,6 @@ type RegistrationDatabaseClient = Pick<
   PrismaClient,
   | "registration"
   | "team"
-  | "teamMember"
   | "teamPlayer"
   | "tournament"
   | "auditLog"
@@ -153,9 +152,9 @@ export class PrismaRegistrationRepository implements RegistrationRepository {
         team: {
           include: {
             province: true,
-            members: {
+            players: {
               where: { isActive: true },
-              select: { role: true },
+              select: { id: true },
             },
           },
         },
@@ -167,12 +166,8 @@ export class PrismaRegistrationRepository implements RegistrationRepository {
       ...mapRegistration(registration),
       teamName: registration.team.name,
       province: registration.team.province.nameTh,
-      playerCount: registration.team.members.filter(
-        (member) => member.role === "PLAYER",
-      ).length,
-      coachCount: registration.team.members.filter(
-        (member) => member.role === "COACH",
-      ).length,
+      playerCount: registration.team.players.length,
+      managerCoachCount: registration.team.ownerId ? 1 : 0,
       submittedAt: registration.createdAt.toISOString(),
     }))
   }
@@ -189,13 +184,15 @@ class PrismaRegistrationOperations implements RegistrationRepositoryTransaction 
       Array<{
         id: string
         format: RegistrationApplicationContext["tournament"]["format"]
+        ageGroup: RegistrationApplicationContext["tournament"]["ageGroup"]
+        startsAt: Date
         status: RegistrationApplicationContext["tournament"]["status"]
         registrationDeadline: Date
         capacity: number
       }>
     >(
       Prisma.sql`
-        SELECT "id", "format", "status", "registrationDeadline", "capacity"
+        SELECT "id", "format", "ageGroup", "startsAt", "status", "registrationDeadline", "capacity"
         FROM "Tournament"
         WHERE "id" = ${tournamentId}
         FOR UPDATE
@@ -234,6 +231,8 @@ class PrismaRegistrationOperations implements RegistrationRepositoryTransaction 
       tournament: {
         id: tournament.id,
         format: tournament.format,
+        ageGroup: tournament.ageGroup,
+        startsAt: tournament.startsAt.toISOString(),
         status: tournament.status,
         registrationDeadline: tournament.registrationDeadline.toISOString(),
         capacity: tournament.capacity,
@@ -537,7 +536,7 @@ function mapPlayer(player: PrismaTeamPlayer): TeamPlayer {
     firstName: player.firstName,
     lastName: player.lastName,
     nickname: player.nickname,
-    birthDate: player.birthDate.toISOString(),
+    birthDate: player.birthDate.toISOString().slice(0, 10),
     jerseyNumber: player.jerseyNumber,
     position: player.position,
     phone: player.phone,

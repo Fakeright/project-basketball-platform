@@ -24,6 +24,7 @@ const teamWithProvinceInclude = {
 type TeamDatabaseClient = Pick<
   PrismaClient,
   "team" | "teamMember" | "teamPlayer" | "auditLog"
+  | "registration"
 >
 
 export class PrismaTeamRepository implements TeamRepository {
@@ -67,6 +68,10 @@ export class PrismaTeamRepository implements TeamRepository {
     input: Parameters<TeamMutationRepository["update"]>[1],
   ) {
     return this.mutations.update(id, input)
+  }
+
+  hasActiveRegistration(teamId: string) {
+    return this.mutations.hasActiveRegistration(teamId)
   }
 
   async findUser(id: string) {
@@ -169,12 +174,27 @@ class PrismaTeamMutationRepository implements TeamMutationRepository {
     id: string,
     input: Parameters<TeamMutationRepository["update"]>[1],
   ) {
-    const team = await this.prisma.team.update({
+    const { expectedVersion, ...data } = input
+    const updated = await this.prisma.team.updateMany({
+      where: { id, version: expectedVersion },
+      data: { ...data, version: { increment: 1 } },
+    })
+    if (updated.count !== 1) throw new Error("CONFLICT")
+
+    const team = await this.prisma.team.findUnique({
       where: { id },
-      data: input,
       include: teamWithProvinceInclude,
     })
+    if (!team) throw new Error("NOT_FOUND")
     return mapTeam(team)
+  }
+
+  async hasActiveRegistration(teamId: string) {
+    const registration = await this.prisma.registration.findFirst({
+      where: { teamId, status: { in: ["PENDING", "APPROVED"] } },
+      select: { id: true },
+    })
+    return registration !== null
   }
 
   async addMember(input: Parameters<TeamMutationRepository["addMember"]>[0]) {

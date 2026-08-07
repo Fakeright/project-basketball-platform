@@ -8,6 +8,7 @@ import type { CancelRegistrationInput } from "@/features/registrations/applicati
 import type { DecideRegistrationInput } from "@/features/registrations/application/decide-registration"
 import type { WithdrawRegistrationInput } from "@/features/registrations/application/withdraw-registration"
 import type { TournamentRegistration } from "@/features/registrations/domain/registration"
+import { PlayerAgeIneligibleError } from "@/features/registrations/domain/player-age-policy"
 
 const applySchema = z.object({ teamId: z.string().min(1) })
 const cancelSchema = z.object({ version: z.number().int().nonnegative() })
@@ -185,6 +186,16 @@ function registrationFailureResponse(
   operation: RegistrationOperation,
   diagnostics: RegistrationHandlerDiagnostics,
 ) {
+  if (error instanceof PlayerAgeIneligibleError) {
+    return Response.json(
+      {
+        message: "มีผู้เล่นอายุเกินเกณฑ์ของรุ่นการแข่งขัน",
+        details: error.details,
+      },
+      { status: 422 },
+    )
+  }
+
   const code = error instanceof Error ? error.message : "UNKNOWN"
   const responses: Record<string, { status: number; message: string }> = {
     REGISTRATION_DECISION_UNAVAILABLE: {
@@ -204,7 +215,11 @@ function registrationFailureResponse(
     TOURNAMENT_NOT_PUBLISHED: { status: 422, message: "ยังไม่เปิดรับสมัคร" },
     REGISTRATION_DEADLINE_PASSED: { status: 422, message: "เลยกำหนดรับสมัครแล้ว" },
     ROSTER_INCOMPLETE: { status: 422, message: "รายชื่อผู้เล่นในทีมยังไม่ครบ" },
-    ROSTER_COACH_LIMIT_EXCEEDED: { status: 422, message: "ทีมมีโค้ชเกินจำนวนที่กำหนด" },
+    TEAM_INACTIVE: { status: 422, message: "ทีมนี้ปิดใช้งานแล้ว" },
+    TEAM_FORMAT_MISMATCH: {
+      status: 422,
+      message: "รูปแบบทีมไม่ตรงกับรูปแบบการแข่งขัน",
+    },
   }
   const response = responses[code]
   if (!response) {

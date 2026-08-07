@@ -23,7 +23,7 @@ interface RegistrationAvailability {
 }
 
 export async function getTournamentRegistrationOptions(
-  tournament: Pick<Tournament, "id" | "status">,
+  tournament: Pick<Tournament, "id" | "status" | "format">,
   actor: Actor | null,
   dependencies: {
     teams: TeamRepository
@@ -39,7 +39,7 @@ export async function getTournamentRegistrationOptions(
 }
 
 export async function getTournamentRegistrationAvailability(
-  tournament: Pick<Tournament, "id" | "status">,
+  tournament: Pick<Tournament, "id" | "status" | "format">,
   actor: Actor | null,
   dependencies: {
     teams: TeamRepository
@@ -52,7 +52,10 @@ export async function getTournamentRegistrationAvailability(
   if (tournament.status !== "OPEN") {
     return { state: "CLOSED", teams: [] }
   }
-  const teams = await listOwnedTeams(actor, dependencies)
+  const ownedTeams = await listOwnedTeams(actor, dependencies)
+  const teams = ownedTeams.filter(
+    (team) => team.isActive && team.format === tournament.format,
+  )
   if (teams.length === 0) {
     return { state: "NO_TEAMS", teams: [] }
   }

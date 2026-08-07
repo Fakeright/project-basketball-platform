@@ -1,5 +1,6 @@
 import type {
   TeamMemberRole,
+  TeamFormat,
   TeamPlayer,
   TeamPlayerDraft,
   TeamRosterMember,
@@ -10,9 +11,19 @@ export interface TeamMutationRepository {
   create(input: {
     name: string
     provinceCode: string
+    format: TeamFormat
     ownerId: string
   }): Promise<TeamSummary>
-  update(id: string, input: { name: string; provinceCode: string }): Promise<TeamSummary>
+  update(
+    id: string,
+    input: {
+      name: string
+      provinceCode: string
+      format: TeamFormat
+      expectedVersion: number
+    },
+  ): Promise<TeamSummary>
+  hasActiveRegistration(teamId: string): Promise<boolean>
   addMember(input: {
     teamId: string
     userId: string

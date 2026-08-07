@@ -129,20 +129,14 @@ describe("PrismaRegistrationRepository transactions", () => {
         {
           id: "tournament-1",
           format: "FIVE_V_FIVE",
+          ageGroup: "U18",
+          startsAt: new Date("2026-11-15T02:00:00.000Z"),
           status: "PUBLISHED",
           registrationDeadline: new Date("2026-11-01T00:00:00.000Z"),
           capacity: 8,
         },
       ])
       .mockResolvedValueOnce([])
-    const team = {
-      id: "team-1",
-      name: "Bangkok Hoops",
-      province: "กรุงเทพมหานคร",
-      ownerId: "manager-1",
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    }
     const player = {
       id: "team-player-1",
       teamId: "team-1",
@@ -161,7 +155,7 @@ describe("PrismaRegistrationRepository transactions", () => {
     const count = vi.fn(async () => 7)
     const { repository } = repositoryWithTransactionClient({
       $queryRaw: queryRaw,
-      team: { findUnique: vi.fn(async () => team) },
+      team: { findUnique: vi.fn(async () => teamRow) },
       teamPlayer: { findMany: vi.fn(async () => [player]) },
       registration: { count },
     })
@@ -181,7 +175,7 @@ describe("PrismaRegistrationRepository transactions", () => {
         firstName: "Player",
         lastName: "One",
         nickname: null,
-        birthDate: "2008-01-01T00:00:00.000Z",
+        birthDate: "2008-01-01",
         jerseyNumber: 1,
         position: "PG",
         phone: null,
@@ -195,9 +189,60 @@ describe("PrismaRegistrationRepository transactions", () => {
       where: { tournamentId: "tournament-1", status: "APPROVED" },
     })
     expect(context?.tournament).toMatchObject({
+      ageGroup: "U18",
+      startsAt: "2026-11-15T02:00:00.000Z",
       capacity: 8,
       approvedCount: 7,
     })
+  })
+
+  it("summarizes active TeamPlayer rows and the owning manager/coach", async () => {
+    const registration = registrationRow("PENDING", 0)
+    const findMany = vi.fn(async () => [
+      {
+        ...registration,
+        team: {
+          ...teamRow,
+          isActive: true,
+          deactivatedAt: null,
+          players: [
+            {
+              id: "player-1",
+              isActive: true,
+            },
+            {
+              id: "player-2",
+              isActive: true,
+            },
+          ],
+        },
+      },
+    ])
+    const repository = new PrismaRegistrationRepository({
+      registration: { findMany },
+    } as unknown as PrismaClient)
+
+    await expect(repository.listByTournament("tournament-1")).resolves.toEqual([
+      expect.objectContaining({
+        playerCount: 2,
+        managerCoachCount: 1,
+      }),
+    ])
+    expect(findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        include: {
+          team: {
+            include: {
+              province: true,
+              players: {
+                where: { isActive: true },
+                select: { id: true },
+              },
+            },
+          },
+        },
+      }),
+    )
   })
 
   it("writes a distinct admin override audit for application and cancellation", async () => {

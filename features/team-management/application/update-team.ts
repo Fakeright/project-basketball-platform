@@ -2,13 +2,13 @@ import type { Actor } from "@/features/identity/domain/actor"
 import type { TeamSummary } from "@/features/team-management/domain/team"
 import { assertProvinceCode } from "@/features/provinces/application/assert-province-code"
 
+import type { CreateTeamInput } from "./create-team"
 import { authorizeTeamAccess } from "./team-access"
 import type { TeamRepository } from "./ports/team-repository"
 
-export interface UpdateTeamInput {
+export interface UpdateTeamInput extends CreateTeamInput {
   teamId: string
-  name: string
-  provinceCode: string
+  expectedVersion: number
 }
 
 export async function updateTeam(
@@ -22,9 +22,18 @@ export async function updateTeam(
 
   const isOverride = authorizeTeamAccess(actor, "team.update", team)
   return dependencies.teams.inTransaction(async (teams) => {
+    if (
+      team.format !== input.format &&
+      (await teams.hasActiveRegistration(team.id))
+    ) {
+      throw new Error("TEAM_FORMAT_CHANGE_BLOCKED")
+    }
+
     const updated = await teams.update(team.id, {
       name: input.name,
       provinceCode: input.provinceCode,
+      format: input.format,
+      expectedVersion: input.expectedVersion,
     })
 
     await teams.appendAuditEvent({

@@ -38,6 +38,8 @@ const context = {
   tournament: {
     id: "tournament-1",
     format: "FIVE_V_FIVE" as const,
+    ageGroup: "Open" as const,
+    startsAt: "2026-11-15T02:00:00.000Z",
     status: "PUBLISHED" as const,
     registrationDeadline: "2026-11-01T00:00:00.000Z",
     capacity: 8,
@@ -79,6 +81,42 @@ function createRepository(overrides: Partial<RegistrationRepository> = {}): Regi
 }
 
 describe("applyToTournament", () => {
+  it("rejects an inactive team", async () => {
+    const repository = createRepository({
+      getApplicationContext: vi.fn(async () => ({
+        ...context,
+        team: { ...team, isActive: false },
+      })),
+    })
+
+    await expect(
+      applyToTournament(
+        { tournamentId: "tournament-1", teamId: "team-1" },
+        teamManager,
+        { registrations: repository, now: () => new Date("2026-10-01T00:00:00Z") },
+      ),
+    ).rejects.toThrow("TEAM_INACTIVE")
+    expect(repository.createPending).not.toHaveBeenCalled()
+  })
+
+  it("rejects a team whose format does not match the tournament", async () => {
+    const repository = createRepository({
+      getApplicationContext: vi.fn(async () => ({
+        ...context,
+        tournament: { ...context.tournament, format: "THREE_V_THREE" },
+      })),
+    })
+
+    await expect(
+      applyToTournament(
+        { tournamentId: "tournament-1", teamId: "team-1" },
+        teamManager,
+        { registrations: repository, now: () => new Date("2026-10-01T00:00:00Z") },
+      ),
+    ).rejects.toThrow("TEAM_FORMAT_MISMATCH")
+    expect(repository.createPending).not.toHaveBeenCalled()
+  })
+
   it("rejects an application after the registration deadline", async () => {
     const repository = createRepository()
 

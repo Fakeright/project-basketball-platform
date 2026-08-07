@@ -58,7 +58,9 @@ function createPrismaMock() {
       findUnique: vi.fn(),
       findMany: vi.fn(),
       update: vi.fn(),
+      updateMany: vi.fn(),
     },
+    registration: { findFirst: vi.fn() },
     user: { findUnique: vi.fn() },
     teamMember: {
       findUnique: vi.fn(),
@@ -236,6 +238,47 @@ describe("PrismaTeamRepository", () => {
     })
   })
 
+  it("updates a team only at the expected version and increments it", async () => {
+    const prisma = createPrismaMock()
+    prisma.team.updateMany.mockResolvedValue({ count: 1 })
+    prisma.team.findUnique.mockResolvedValue({ ...teamRow, version: 3 })
+    const repository = new PrismaTeamRepository(prisma as unknown as PrismaClient)
+
+    await expect(
+      repository.update("team-1", {
+        name: "Changed",
+        provinceCode: "10",
+        format: "FIVE_V_FIVE",
+        expectedVersion: 2,
+      }),
+    ).resolves.toMatchObject({ name: "Bangkok Ballers", version: 3 })
+    expect(prisma.team.updateMany).toHaveBeenCalledWith({
+      where: { id: "team-1", version: 2 },
+      data: {
+        name: "Changed",
+        provinceCode: "10",
+        format: "FIVE_V_FIVE",
+        version: { increment: 1 },
+      },
+    })
+  })
+
+  it("returns a conflict for a stale team update", async () => {
+    const prisma = createPrismaMock()
+    prisma.team.updateMany.mockResolvedValue({ count: 0 })
+    const repository = new PrismaTeamRepository(prisma as unknown as PrismaClient)
+
+    await expect(
+      repository.update("team-1", {
+        name: "Changed",
+        provinceCode: "10",
+        format: "FIVE_V_FIVE",
+        expectedVersion: 1,
+      }),
+    ).rejects.toThrow("CONFLICT")
+    expect(prisma.team.findUnique).not.toHaveBeenCalled()
+  })
+
   it("reactivates a historical membership instead of inserting a duplicate", async () => {
     const prisma = createPrismaMock()
     prisma.teamMember.findUnique
@@ -294,8 +337,11 @@ describe("PrismaTeamRepository", () => {
   it("rolls back a team update when its audit write fails inside a transaction", async () => {
     const prisma = createPrismaMock()
     let persistedTeam = { ...teamRow }
-    prisma.team.update.mockImplementation(async ({ data }) => {
-      persistedTeam = { ...persistedTeam, ...data }
+    prisma.team.updateMany.mockImplementation(async ({ data }) => {
+      persistedTeam = { ...persistedTeam, ...data, version: persistedTeam.version + 1 }
+      return { count: 1 }
+    })
+    prisma.team.findUnique.mockImplementation(async () => {
       return persistedTeam
     })
     prisma.auditLog.create.mockRejectedValue(new Error("AUDIT_FAILED"))
@@ -315,6 +361,8 @@ describe("PrismaTeamRepository", () => {
         const updated = await transaction.update("team-1", {
           name: "Changed",
           provinceCode: "10",
+          format: "THREE_V_THREE",
+          expectedVersion: 2,
         })
         await transaction.appendAuditEvent({
           actorId: "manager-1",

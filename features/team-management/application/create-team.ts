@@ -1,6 +1,6 @@
 import { authorize } from "@/features/identity/application/authorize"
 import type { Actor } from "@/features/identity/domain/actor"
-import type { TeamSummary } from "@/features/team-management/domain/team"
+import type { TeamFormat, TeamSummary } from "@/features/team-management/domain/team"
 import { assertProvinceCode } from "@/features/provinces/application/assert-province-code"
 
 import type {
@@ -11,6 +11,7 @@ import type {
 export interface CreateTeamInput {
   name: string
   provinceCode: string
+  format: TeamFormat
 }
 
 export async function createTeam(

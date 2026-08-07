@@ -34,6 +34,11 @@ const teamIdentitySchema = z.object({
     },
     { message: "กรุณาเลือกจังหวัดจากรายการ" },
   ),
+  format: z.enum(["FIVE_V_FIVE", "THREE_V_THREE"]),
+})
+
+const teamUpdateSchema = teamIdentitySchema.extend({
+  expectedVersion: z.number().int().nonnegative(),
 })
 
 const teamMemberSchema = z.object({
@@ -152,7 +157,7 @@ export async function handleUpdateTeam(
     const payload = await parseJsonRequest(request)
     if (!payload.ok) return validationResponse()
 
-    const parsed = teamIdentitySchema.safeParse(payload.value)
+    const parsed = teamUpdateSchema.safeParse(payload.value)
     if (!parsed.success) return validationResponse()
 
     const team = await dependencies.update({ teamId, ...parsed.data }, actor)
@@ -341,6 +346,15 @@ function teamFailureResponse(error: unknown): Response | null {
     JERSEY_ALREADY_IN_USE: { status: 409, message: "เบอร์เสื้อนี้ถูกใช้แล้ว" },
     PLAYER_BATCH_INVALID: { status: 422, message: "รายชื่อผู้เล่นไม่ถูกต้อง" },
     TEAM_INACTIVE: { status: 409, message: "ทีมนี้ปิดใช้งานแล้ว" },
+    CONFLICT: {
+      status: 409,
+      message: "ข้อมูลทีมมีการเปลี่ยนแปลง กรุณาโหลดหน้าใหม่แล้วลองอีกครั้ง",
+    },
+    TEAM_FORMAT_CHANGE_BLOCKED: {
+      status: 409,
+      message:
+        "ไม่สามารถเปลี่ยนรูปแบบทีมได้ กรุณายกเลิกหรือรอให้ใบสมัครสิ้นสุดก่อนลองอีกครั้ง",
+    },
   }
   const response = responses[code]
   if (!response) return null

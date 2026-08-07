@@ -77,6 +77,7 @@ function createRepository(
     ]),
     listActiveMembers: vi.fn(async () => []),
     listActivePlayers: vi.fn(async () => []),
+    hasActiveRegistration: vi.fn(async () => false),
     findExistingPlayersByIdentities: vi.fn(async () => []),
     addMember: vi.fn(async (input) => ({
       id: "membership-1",
@@ -299,7 +300,11 @@ describe("team use cases", () => {
     const repository = createRepository()
 
     const created = await createTeam(
-      { name: "Chiang Mai Hoops", provinceCode: "50" },
+      {
+        name: "Chiang Mai Hoops",
+        provinceCode: "50",
+        format: "THREE_V_THREE",
+      },
       teamManager,
       { teams: repository },
     )
@@ -308,6 +313,7 @@ describe("team use cases", () => {
     expect(repository.create).toHaveBeenCalledWith({
       name: "Chiang Mai Hoops",
       provinceCode: "50",
+      format: "THREE_V_THREE",
       ownerId: teamManager.id,
     })
     expect(repository.appendAuditEvent).toHaveBeenCalledWith(
@@ -327,7 +333,13 @@ describe("team use cases", () => {
 
     await expect(
       updateTeam(
-        { teamId: team.id, name: "Changed", provinceCode: "10" },
+        {
+          teamId: team.id,
+          name: "Changed",
+          provinceCode: "10",
+          format: team.format,
+          expectedVersion: team.version,
+        },
         teamManager,
         { teams: repository },
       ),
@@ -340,7 +352,13 @@ describe("team use cases", () => {
     })
 
     await updateTeam(
-      { teamId: team.id, name: "Changed", provinceCode: "10" },
+      {
+        teamId: team.id,
+        name: "Changed",
+        provinceCode: "10",
+        format: team.format,
+        expectedVersion: team.version,
+      },
       platformAdmin,
       { teams: repository },
     )
@@ -351,6 +369,51 @@ describe("team use cases", () => {
     expect(repository.appendAuditEvent).toHaveBeenCalledWith(
       expect.objectContaining({ action: "team.admin_override", entityId: team.id }),
     )
+  })
+
+  it("blocks a format change while the team has an active registration", async () => {
+    const repository = createRepository({
+      hasActiveRegistration: vi.fn(async () => true),
+    })
+
+    await expect(
+      updateTeam(
+        {
+          teamId: team.id,
+          name: team.name,
+          provinceCode: team.provinceCode,
+          format: "THREE_V_THREE",
+          expectedVersion: team.version,
+        },
+        teamManager,
+        { teams: repository },
+      ),
+    ).rejects.toThrow("TEAM_FORMAT_CHANGE_BLOCKED")
+    expect(repository.update).not.toHaveBeenCalled()
+  })
+
+  it("updates with the expected version and skips registration reads when format is unchanged", async () => {
+    const repository = createRepository()
+
+    await updateTeam(
+      {
+        teamId: team.id,
+        name: "Changed",
+        provinceCode: team.provinceCode,
+        format: team.format,
+        expectedVersion: 2,
+      },
+      teamManager,
+      { teams: repository },
+    )
+
+    expect(repository.hasActiveRegistration).not.toHaveBeenCalled()
+    expect(repository.update).toHaveBeenCalledWith(team.id, {
+      name: "Changed",
+      provinceCode: team.provinceCode,
+      format: team.format,
+      expectedVersion: 2,
+    })
   })
 
   it("rejects adding a global player as a coach", async () => {
@@ -473,11 +536,23 @@ describe("team use cases", () => {
       ]),
     })
 
-    await createTeam({ name: "Khon Kaen Hoops", provinceCode: "40" }, teamManager, {
-      teams: repository,
-    })
+    await createTeam(
+      {
+        name: "Khon Kaen Hoops",
+        provinceCode: "40",
+        format: "FIVE_V_FIVE",
+      },
+      teamManager,
+      { teams: repository },
+    )
     await updateTeam(
-      { teamId: team.id, name: "Changed", provinceCode: "10" },
+      {
+        teamId: team.id,
+        name: "Changed",
+        provinceCode: "10",
+        format: team.format,
+        expectedVersion: team.version,
+      },
       teamManager,
       { teams: repository },
     )
@@ -519,7 +594,13 @@ describe("team use cases", () => {
 
     await expect(
       updateTeam(
-        { teamId: team.id, name: "Changed", provinceCode: "10" },
+        {
+          teamId: team.id,
+          name: "Changed",
+          provinceCode: "10",
+          format: team.format,
+          expectedVersion: team.version,
+        },
         teamManager,
         { teams: repository },
       ),

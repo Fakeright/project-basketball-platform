@@ -60,7 +60,11 @@ describe("team route handlers", () => {
 
   it("rejects a free-text province instead of a province code", async () => {
     const response = await handleCreateTeam(
-      jsonRequest({ name: "Trang Hoops", provinceCode: "Trang" }),
+      jsonRequest({
+        name: "Trang Hoops",
+        provinceCode: "Trang",
+        format: "FIVE_V_FIVE",
+      }),
       {
         actorProvider: { getCurrentActor: vi.fn(async () => teamManager) },
         create: vi.fn(),
@@ -71,15 +75,112 @@ describe("team route handlers", () => {
   })
 
   it("returns 404 when a manager updates an inaccessible team", async () => {
-    const response = await handleUpdateTeam("team-2", jsonRequest({ name: "Updated", provinceCode: "10" }), {
-      actorProvider: { getCurrentActor: vi.fn(async () => teamManager) },
-      update: vi.fn(async () => {
-        throw new Error("NOT_FOUND")
+    const response = await handleUpdateTeam(
+      "team-2",
+      jsonRequest({
+        name: "Updated",
+        provinceCode: "10",
+        format: "FIVE_V_FIVE",
+        expectedVersion: 0,
       }),
-    })
+      {
+        actorProvider: { getCurrentActor: vi.fn(async () => teamManager) },
+        update: vi.fn(async () => {
+          throw new Error("NOT_FOUND")
+        }),
+      },
+    )
 
     expect(response.status).toBe(404)
   })
+
+  it("requires a team format when creating a team", async () => {
+    const create = vi.fn()
+    const response = await handleCreateTeam(
+      jsonRequest({ name: "Bangkok Ballers", provinceCode: "10" }),
+      {
+        actorProvider: { getCurrentActor: vi.fn(async () => teamManager) },
+        create,
+      },
+    )
+
+    expect(response.status).toBe(422)
+    expect(create).not.toHaveBeenCalled()
+  })
+
+  it("passes format and expected version through a team update", async () => {
+    const updatedTeam = {
+      id: "team-1",
+      name: "Updated",
+      provinceCode: "10",
+      province: "กรุงเทพมหานคร",
+      ownerId: teamManager.id,
+      format: "THREE_V_THREE" as const,
+      isActive: true,
+      deactivatedAt: null,
+      version: 3,
+    }
+    const update = vi.fn(async () => updatedTeam)
+    const response = await handleUpdateTeam(
+      "team-1",
+      jsonRequest({
+        name: "Updated",
+        provinceCode: "10",
+        format: "THREE_V_THREE",
+        expectedVersion: 2,
+      }),
+      {
+        actorProvider: { getCurrentActor: vi.fn(async () => teamManager) },
+        update,
+      },
+    )
+
+    expect(response.status).toBe(200)
+    expect(update).toHaveBeenCalledWith(
+      {
+        teamId: "team-1",
+        name: "Updated",
+        provinceCode: "10",
+        format: "THREE_V_THREE",
+        expectedVersion: 2,
+      },
+      teamManager,
+    )
+  })
+
+  it.each([
+    {
+      code: "CONFLICT",
+      message: "ข้อมูลทีมมีการเปลี่ยนแปลง กรุณาโหลดหน้าใหม่แล้วลองอีกครั้ง",
+    },
+    {
+      code: "TEAM_FORMAT_CHANGE_BLOCKED",
+      message:
+        "ไม่สามารถเปลี่ยนรูปแบบทีมได้ กรุณายกเลิกหรือรอให้ใบสมัครสิ้นสุดก่อนลองอีกครั้ง",
+    },
+  ])(
+    "maps $code team update failures to actionable 409 responses",
+    async ({ code, message }) => {
+      const response = await handleUpdateTeam(
+        "team-1",
+        jsonRequest({
+          name: "Updated",
+          provinceCode: "10",
+          format: "THREE_V_THREE",
+          expectedVersion: 2,
+        }),
+        {
+          actorProvider: { getCurrentActor: vi.fn(async () => teamManager) },
+          update: vi.fn(async () => {
+            throw new Error(code)
+          }),
+        },
+      )
+
+      expect(response.status).toBe(409)
+      await expect(response.json()).resolves.toEqual({ message })
+    },
+  )
 
   it("returns 409 for an active duplicate roster member", async () => {
     const response = await handleAddTeamMember("team-1", jsonRequest({ userId: "player-1", role: "PLAYER" }), {

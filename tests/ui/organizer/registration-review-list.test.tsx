@@ -11,7 +11,7 @@ const pending = {
   teamName: "Bangkok Ballers",
   province: "Bangkok",
   playerCount: 5,
-  coachCount: 1,
+  managerCoachCount: 1,
   submittedAt: "1 ต.ค. 2569",
   status: "PENDING" as const,
   decisionNote: null,
@@ -63,7 +63,7 @@ describe("RegistrationReviewList", () => {
     expect(screen.getByText("รอพิจารณา 1")).toBeTruthy()
     expect(screen.getByText("อนุมัติ 1")).toBeTruthy()
     expect(screen.getByText("Bangkok")).toBeTruthy()
-    expect(screen.getAllByText("ผู้เล่น 5 / โค้ช 1")).toHaveLength(2)
+    expect(screen.getAllByText("ผู้เล่น 5 / ผู้จัดการ/โค้ช 1")).toHaveLength(2)
   })
 
   it("requires explicit confirmation before approving", async () => {

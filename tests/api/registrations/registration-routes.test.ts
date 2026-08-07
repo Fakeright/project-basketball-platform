@@ -4,6 +4,7 @@ import {
   handleApplyToTournament,
   handleCancelRegistration,
 } from "@/features/registrations/presentation/registration-handler"
+import { PlayerAgeIneligibleError } from "@/features/registrations/domain/player-age-policy"
 import { createTestActor } from "@/tests/fixtures/actor"
 
 const teamManager = createTestActor("manager-1", "TEAM_MANAGER_COACH")
@@ -62,5 +63,26 @@ describe("registration route handlers", () => {
     await expect(response.json()).resolves.toEqual({
       message: "จำนวนทีมที่อนุมัติเต็มความจุการแข่งขันแล้ว",
     })
+  })
+
+  it("maps age-ineligible players to 422 without exposing birth dates", async () => {
+    const response = await handleApplyToTournament(
+      "tournament-1",
+      request("POST", { teamId: "team-1" }),
+      {
+        actorProvider: { getCurrentActor: vi.fn(async () => teamManager) },
+        apply: vi.fn(async () => {
+          throw new PlayerAgeIneligibleError(["player-2"])
+        }),
+      },
+    )
+
+    expect(response.status).toBe(422)
+    const body = await response.json()
+    expect(body).toEqual({
+      message: "มีผู้เล่นอายุเกินเกณฑ์ของรุ่นการแข่งขัน",
+      details: { playerIds: ["player-2"] },
+    })
+    expect(JSON.stringify(body)).not.toContain("birthDate")
   })
 })
