@@ -57,6 +57,14 @@ enum TeamMemberRole {
   COACH
 }
 
+enum BasketballPosition {
+  PG
+  SG
+  SF
+  PF
+  C
+}
+
 enum BracketStatus {
   DRAFT
   PUBLISHED
@@ -75,21 +83,21 @@ enum MediaAssetKind {
 }
 
 model User {
-  id                String             @id @default(cuid())
-  supabaseUserId    String?            @unique
-  email             String             @unique
-  displayName       String
-  role              Role               @default(PLAYER)
-  organizerProfile  OrganizerProfile?
-  teamMemberships   TeamMember[]
-  ownedTeams        Team[]             @relation("TeamOwner")
-  organizedTournaments Tournament[]     @relation("TournamentOrganizer")
-  reviews           TournamentReview[] @relation("ReviewAuthor")
-  auditEvents       AuditLog[]         @relation("AuditActor")
-  mediaAssets       MediaAsset[]       @relation("MediaAssetCreator")
-  authRecoveryGrants AuthRecoveryGrant[]
-  createdAt         DateTime           @default(now())
-  updatedAt         DateTime           @updatedAt
+  id                   String              @id @default(cuid())
+  supabaseUserId       String?             @unique
+  email                String              @unique
+  displayName          String
+  role                 Role                @default(PLAYER)
+  organizerProfile     OrganizerProfile?
+  teamMemberships      TeamMember[]
+  ownedTeams           Team[]              @relation("TeamOwner")
+  organizedTournaments Tournament[]        @relation("TournamentOrganizer")
+  reviews              TournamentReview[]  @relation("ReviewAuthor")
+  auditEvents          AuditLog[]          @relation("AuditActor")
+  mediaAssets          MediaAsset[]        @relation("MediaAssetCreator")
+  authRecoveryGrants   AuthRecoveryGrant[]
+  createdAt            DateTime            @default(now())
+  updatedAt            DateTime            @updatedAt
 }
 
 model AuthRecoveryGrant {
@@ -106,27 +114,33 @@ model AuthRecoveryGrant {
 }
 
 model OrganizerProfile {
-  id          String   @id @default(cuid())
-  userId      String   @unique
+  id               String    @id @default(cuid())
+  userId           String    @unique
   organizationName String?
-  phone       String?
-  verifiedAt  DateTime?
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  phone            String?
+  verifiedAt       DateTime?
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
 }
 
 model Team {
-  id             String         @id @default(cuid())
-  name           String
-  provinceCode   String         @db.Char(2)
-  province       Province       @relation(fields: [provinceCode], references: [code], onDelete: Restrict)
-  ownerId        String
-  owner          User           @relation("TeamOwner", fields: [ownerId], references: [id])
-  members        TeamMember[]
-  registrations  Registration[]
-  createdAt      DateTime       @default(now())
-  updatedAt      DateTime       @updatedAt
+  id            String           @id @default(cuid())
+  name          String
+  provinceCode  String           @db.Char(2)
+  province      Province         @relation(fields: [provinceCode], references: [code], onDelete: Restrict)
+  ownerId       String
+  owner         User             @relation("TeamOwner", fields: [ownerId], references: [id])
+  format        TournamentFormat @default(FIVE_V_FIVE)
+  isActive      Boolean          @default(true)
+  deactivatedAt DateTime?
+  version       Int              @default(0)
+  members       TeamMember[]
+  players       TeamPlayer[]
+  registrations Registration[]
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
   @@index([ownerId])
   @@index([provinceCode])
 }
@@ -141,7 +155,28 @@ model TeamMember {
   team          Team           @relation(fields: [teamId], references: [id], onDelete: Cascade)
   user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt     DateTime       @default(now())
+
   @@unique([teamId, userId])
+}
+
+model TeamPlayer {
+  id            String              @id @default(cuid())
+  teamId        String
+  firstName     String
+  lastName      String
+  nickname      String?
+  birthDate     DateTime            @db.Date
+  jerseyNumber  Int?
+  position      BasketballPosition?
+  phone         String?
+  isActive      Boolean             @default(true)
+  deactivatedAt DateTime?
+  team          Team                @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+
+  @@unique([teamId, firstName, lastName, birthDate])
+  @@index([teamId, isActive])
 }
 
 model Tournament {
@@ -153,7 +188,7 @@ model Tournament {
   venue                String
   format               TournamentFormat
   ageGroup             String
-  status               TournamentStatus  @default(DRAFT)
+  status               TournamentStatus   @default(DRAFT)
   startsAt             DateTime
   endsAt               DateTime
   registrationDeadline DateTime
@@ -171,6 +206,7 @@ model Tournament {
   mediaAssets          MediaAsset[]
   createdAt            DateTime           @default(now())
   updatedAt            DateTime           @updatedAt
+
   @@index([organizerId, status])
   @@index([status, startsAt])
   @@index([provinceCode])
@@ -193,6 +229,7 @@ model TournamentReview {
   tournament   Tournament     @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
   reviewer     User           @relation("ReviewAuthor", fields: [reviewerId], references: [id])
   createdAt    DateTime       @default(now())
+
   @@index([tournamentId, createdAt])
 }
 
@@ -210,19 +247,21 @@ model Registration {
   team         Team               @relation(fields: [teamId], references: [id])
   createdAt    DateTime           @default(now())
   updatedAt    DateTime           @updatedAt
+
   @@index([tournamentId, status])
   @@index([tournamentId, teamId, createdAt])
 }
 
 model Bracket {
-  id           String        @id @default(cuid())
+  id           String         @id @default(cuid())
   tournamentId String
-  status       BracketStatus @default(DRAFT)
-  tournament   Tournament    @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  status       BracketStatus  @default(DRAFT)
+  tournament   Tournament     @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
   rounds       BracketRound[]
   matches      Match[]
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
   @@index([tournamentId, status])
 }
 
@@ -233,57 +272,60 @@ model BracketRound {
   sequence  Int
   bracket   Bracket @relation(fields: [bracketId], references: [id], onDelete: Cascade)
   matches   Match[]
+
   @@unique([bracketId, sequence])
 }
 
 model Match {
-  id             String        @id @default(cuid())
-  tournamentId   String
-  bracketId      String
-  roundId        String
-  sequence       Int
-  scheduledAt    DateTime?
-  court          String?
-  homeTeamId     String?
-  awayTeamId     String?
-  winnerTeamId   String?
-  homeScore      Int?
-  awayScore      Int?
-  status         MatchStatus   @default(SCHEDULED)
-  version        Int           @default(0)
-  tournament     Tournament    @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
-  bracket        Bracket       @relation(fields: [bracketId], references: [id], onDelete: Cascade)
-  round          BracketRound  @relation(fields: [roundId], references: [id], onDelete: Cascade)
-  result         MatchResult?
+  id           String       @id @default(cuid())
+  tournamentId String
+  bracketId    String
+  roundId      String
+  sequence     Int
+  scheduledAt  DateTime?
+  court        String?
+  homeTeamId   String?
+  awayTeamId   String?
+  winnerTeamId String?
+  homeScore    Int?
+  awayScore    Int?
+  status       MatchStatus  @default(SCHEDULED)
+  version      Int          @default(0)
+  tournament   Tournament   @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  bracket      Bracket      @relation(fields: [bracketId], references: [id], onDelete: Cascade)
+  round        BracketRound @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  result       MatchResult?
+
   @@unique([roundId, sequence])
   @@index([tournamentId, scheduledAt])
 }
 
 model MatchResult {
-  id          String   @id @default(cuid())
-  matchId     String   @unique
-  confirmedBy String
-  homeScore   Int
-  awayScore   Int
+  id           String   @id @default(cuid())
+  matchId      String   @unique
+  confirmedBy  String
+  homeScore    Int
+  awayScore    Int
   winnerTeamId String
-  confirmedAt DateTime @default(now())
-  match       Match    @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  confirmedAt  DateTime @default(now())
+  match        Match    @relation(fields: [matchId], references: [id], onDelete: Cascade)
 }
 
 model MediaAsset {
-  id          String         @id @default(cuid())
+  id           String         @id @default(cuid())
   tournamentId String
-  kind        MediaAssetKind
-  bucket      String
-  objectPath  String
-  fileName    String
-  contentType String
-  byteSize    Int
-  createdById String
-  tournament  Tournament     @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
-  createdBy   User           @relation("MediaAssetCreator", fields: [createdById], references: [id])
-  createdAt   DateTime       @default(now())
-  deletedAt   DateTime?
+  kind         MediaAssetKind
+  bucket       String
+  objectPath   String
+  fileName     String
+  contentType  String
+  byteSize     Int
+  createdById  String
+  tournament   Tournament     @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  createdBy    User           @relation("MediaAssetCreator", fields: [createdById], references: [id])
+  createdAt    DateTime       @default(now())
+  deletedAt    DateTime?
+
   @@unique([bucket, objectPath])
   @@index([tournamentId, kind])
   @@index([tournamentId, deletedAt])
@@ -301,6 +343,7 @@ model AuditLog {
   actor        User        @relation("AuditActor", fields: [actorId], references: [id])
   tournament   Tournament? @relation(fields: [tournamentId], references: [id], onDelete: SetNull)
   createdAt    DateTime    @default(now())
+
   @@index([tournamentId, createdAt])
   @@index([actorId, createdAt])
 }

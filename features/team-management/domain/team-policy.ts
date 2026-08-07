@@ -1,25 +1,19 @@
-import type { TeamRosterMember } from "./team"
+import type { TeamFormat, TeamPlayer } from "./team"
 
-export type RosterFormat = "FIVE_V_FIVE" | "THREE_V_THREE"
+export type RosterFormat = TeamFormat
 
-const minimumPlayersByFormat: Record<RosterFormat, number> = {
+const minimumPlayersByFormat: Record<TeamFormat, number> = {
   FIVE_V_FIVE: 5,
   THREE_V_THREE: 3,
 }
 
 export function assertRosterEligibility(
-  format: RosterFormat,
-  members: readonly TeamRosterMember[],
+  format: TeamFormat,
+  players: readonly TeamPlayer[],
 ): void {
-  const activeMembers = members.filter((member) => member.isActive)
-  const activePlayerCount = activeMembers.filter((member) => member.role === "PLAYER").length
-  const activeCoachCount = activeMembers.filter((member) => member.role === "COACH").length
+  const activePlayerCount = players.filter((player) => player.isActive).length
 
   if (activePlayerCount < minimumPlayersByFormat[format]) {
     throw new Error("ROSTER_INCOMPLETE")
-  }
-
-  if (activeCoachCount > 1) {
-    throw new Error("ROSTER_COACH_LIMIT_EXCEEDED")
   }
 }

@@ -3,7 +3,6 @@ import { config } from "dotenv"
 import {
   PrismaClient,
   Role,
-  TeamMemberRole,
   TournamentFormat,
   TournamentStatus,
 } from "../lib/generated/prisma/client"
@@ -89,6 +88,7 @@ async function main() {
     name: "COURTSIDE Development Team",
     provinceCode: "10",
     ownerId: "team-manager-1",
+    format: TournamentFormat.FIVE_V_FIVE,
   }
   await prisma.team.upsert({
     where: { id: developmentTeam.id },
@@ -96,33 +96,32 @@ async function main() {
     create: developmentTeam,
   })
 
-  const members = [
-    { userId: "coach-1", role: TeamMemberRole.COACH },
-    { userId: "player-1", role: TeamMemberRole.PLAYER },
-    { userId: "player-2", role: TeamMemberRole.PLAYER },
-    { userId: "player-3", role: TeamMemberRole.PLAYER },
-    { userId: "player-4", role: TeamMemberRole.PLAYER },
-    { userId: "player-5", role: TeamMemberRole.PLAYER },
+  const players = [
+    { id: "team-manager-1-team-player-1", firstName: "Player", lastName: "One", birthDate: "2008-01-01", jerseyNumber: 1 },
+    { id: "team-manager-1-team-player-2", firstName: "Player", lastName: "Two", birthDate: "2008-02-02", jerseyNumber: 2 },
+    { id: "team-manager-1-team-player-3", firstName: "Player", lastName: "Three", birthDate: "2008-03-03", jerseyNumber: 3 },
+    { id: "team-manager-1-team-player-4", firstName: "Player", lastName: "Four", birthDate: "2008-04-04", jerseyNumber: 4 },
+    { id: "team-manager-1-team-player-5", firstName: "Player", lastName: "Five", birthDate: "2008-05-05", jerseyNumber: 5 },
   ] as const
 
-  for (const member of members) {
-    await prisma.teamMember.upsert({
-      where: {
-        teamId_userId: {
-          teamId: developmentTeam.id,
-          userId: member.userId,
-        },
-      },
+  for (const player of players) {
+    await prisma.teamPlayer.upsert({
+      where: { id: player.id },
       update: {
-        role: member.role,
+        firstName: player.firstName,
+        lastName: player.lastName,
+        birthDate: new Date(player.birthDate),
+        jerseyNumber: player.jerseyNumber,
         isActive: true,
         deactivatedAt: null,
       },
       create: {
-        id: `${developmentTeam.id}-${member.userId}`,
+        id: player.id,
         teamId: developmentTeam.id,
-        userId: member.userId,
-        role: member.role,
+        firstName: player.firstName,
+        lastName: player.lastName,
+        birthDate: new Date(player.birthDate),
+        jerseyNumber: player.jerseyNumber,
       },
     })
   }
