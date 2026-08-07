@@ -1,4 +1,4 @@
-import { Prisma, type PrismaClient, type Registration, type Team, type TeamMember } from "@/lib/generated/prisma/client"
+import { Prisma, type PrismaClient, type Registration, type Team, type TeamPlayer as PrismaTeamPlayer } from "@/lib/generated/prisma/client"
 import type {
   ApproveRegistrationInput,
   RegistrationApplicationContext,
@@ -12,7 +12,7 @@ import type {
   TournamentRegistrationWithOwnership,
   WithdrawRegistrationMutationInput,
 } from "@/features/registrations/application/ports/registration-repository"
-import type { TeamRosterMember, TeamSummary } from "@/features/team-management/domain/team"
+import type { TeamPlayer, TeamSummary } from "@/features/team-management/domain/team"
 import type { TournamentRegistration } from "@/features/registrations/domain/registration"
 
 type RegistrationDatabaseClient = Pick<
@@ -20,6 +20,7 @@ type RegistrationDatabaseClient = Pick<
   | "registration"
   | "team"
   | "teamMember"
+  | "teamPlayer"
   | "tournament"
   | "auditLog"
   | "$queryRaw"
@@ -206,7 +207,7 @@ class PrismaRegistrationOperations implements RegistrationRepositoryTransaction 
     await this.prisma.$queryRaw(
       Prisma.sql`
         SELECT "id"
-        FROM "TeamMember"
+        FROM "TeamPlayer"
         WHERE "teamId" = ${teamId} AND "isActive" = true
         FOR UPDATE
       `,
@@ -217,7 +218,7 @@ class PrismaRegistrationOperations implements RegistrationRepositoryTransaction 
         where: { id: teamId },
         include: { province: true },
       }),
-      this.prisma.teamMember.findMany({
+      this.prisma.teamPlayer.findMany({
         where: { teamId, isActive: true },
         orderBy: { createdAt: "asc" },
       }),
@@ -229,7 +230,7 @@ class PrismaRegistrationOperations implements RegistrationRepositoryTransaction 
 
     return {
       team: mapTeam(team),
-      roster: roster.map(mapMember),
+      roster: roster.map(mapPlayer),
       tournament: {
         id: tournament.id,
         format: tournament.format,
@@ -529,13 +530,21 @@ function mapTeam(team: Team & { province: { nameTh: string } }): TeamSummary {
   }
 }
 
-function mapMember(member: TeamMember): TeamRosterMember {
+function mapPlayer(player: PrismaTeamPlayer): TeamPlayer {
   return {
-    id: member.id,
-    userId: member.userId,
-    role: member.role,
-    isActive: member.isActive,
-    deactivatedAt: member.deactivatedAt?.toISOString() ?? null,
+    id: player.id,
+    teamId: player.teamId,
+    firstName: player.firstName,
+    lastName: player.lastName,
+    nickname: player.nickname,
+    birthDate: player.birthDate.toISOString(),
+    jerseyNumber: player.jerseyNumber,
+    position: player.position,
+    phone: player.phone,
+    isActive: player.isActive,
+    deactivatedAt: player.deactivatedAt?.toISOString() ?? null,
+    createdAt: player.createdAt.toISOString(),
+    updatedAt: player.updatedAt.toISOString(),
   }
 }
 

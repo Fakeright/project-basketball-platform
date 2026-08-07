@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest"
 
 import { assertCanApply, transitionRegistration } from "@/features/registrations/domain/registration-policy"
-import type { TeamRosterMember, TeamSummary } from "@/features/team-management/domain/team"
+import type { TeamPlayer, TeamSummary } from "@/features/team-management/domain/team"
 
 const team: TeamSummary = {
   id: "team-1",
@@ -9,14 +9,26 @@ const team: TeamSummary = {
   provinceCode: "10",
   province: "กรุงเทพมหานคร",
   ownerId: "manager-1",
-}
-
-const roster: TeamRosterMember[] = Array.from({ length: 5 }, (_, index) => ({
-  id: `player-${index + 1}`,
-  userId: `user-${index + 1}`,
-  role: "PLAYER",
+  format: "FIVE_V_FIVE",
   isActive: true,
   deactivatedAt: null,
+  version: 0,
+}
+
+const roster: TeamPlayer[] = Array.from({ length: 5 }, (_, index) => ({
+  id: `player-${index + 1}`,
+  teamId: team.id,
+  firstName: "Player",
+  lastName: String(index + 1),
+  nickname: null,
+  birthDate: "2008-01-01",
+  jerseyNumber: index + 1,
+  position: null,
+  phone: null,
+  isActive: true,
+  deactivatedAt: null,
+  createdAt: "2026-08-07T00:00:00.000Z",
+  updatedAt: "2026-08-07T00:00:00.000Z",
 }))
 
 const eligibleApplication = {

@@ -1,11 +1,11 @@
-import type { TeamRosterMember, TeamSummary } from "@/features/team-management/domain/team"
+import type { TeamPlayer, TeamSummary } from "@/features/team-management/domain/team"
 import type { RosterFormat } from "@/features/team-management/domain/team-policy"
 import type { RegistrationTournamentStatus } from "@/features/registrations/domain/registration-policy"
 import type { TournamentRegistration } from "@/features/registrations/domain/registration"
 
 export interface RegistrationApplicationContext {
   team: TeamSummary
-  roster: TeamRosterMember[]
+  roster: TeamPlayer[]
   tournament: {
     id: string
     format: RosterFormat

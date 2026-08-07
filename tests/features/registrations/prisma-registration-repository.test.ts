@@ -143,11 +143,26 @@ describe("PrismaRegistrationRepository transactions", () => {
       createdAt: new Date(),
       updatedAt: new Date(),
     }
+    const player = {
+      id: "team-player-1",
+      teamId: "team-1",
+      firstName: "Player",
+      lastName: "One",
+      nickname: null,
+      birthDate: new Date("2008-01-01T00:00:00.000Z"),
+      jerseyNumber: 1,
+      position: "PG" as const,
+      phone: null,
+      isActive: true,
+      deactivatedAt: null,
+      createdAt: new Date("2026-08-07T00:00:00.000Z"),
+      updatedAt: new Date("2026-08-07T00:00:00.000Z"),
+    }
     const count = vi.fn(async () => 7)
     const { repository } = repositoryWithTransactionClient({
       $queryRaw: queryRaw,
       team: { findUnique: vi.fn(async () => team) },
-      teamMember: { findMany: vi.fn(async () => []) },
+      teamPlayer: { findMany: vi.fn(async () => [player]) },
       registration: { count },
     })
 
@@ -158,6 +173,24 @@ describe("PrismaRegistrationRepository transactions", () => {
     expect(queryRaw).toHaveBeenCalledTimes(2)
     expect(queryRaw.mock.calls[0][0].text).toMatch(/\bFOR\s+UPDATE\b/i)
     expect(queryRaw.mock.calls[1][0].text).toMatch(/\bFOR\s+UPDATE\b/i)
+    expect(queryRaw.mock.calls[1][0].text).toContain('FROM "TeamPlayer"')
+    expect(context?.roster).toEqual([
+      {
+        id: "team-player-1",
+        teamId: "team-1",
+        firstName: "Player",
+        lastName: "One",
+        nickname: null,
+        birthDate: "2008-01-01T00:00:00.000Z",
+        jerseyNumber: 1,
+        position: "PG",
+        phone: null,
+        isActive: true,
+        deactivatedAt: null,
+        createdAt: "2026-08-07T00:00:00.000Z",
+        updatedAt: "2026-08-07T00:00:00.000Z",
+      },
+    ])
     expect(count).toHaveBeenCalledWith({
       where: { tournamentId: "tournament-1", status: "APPROVED" },
     })

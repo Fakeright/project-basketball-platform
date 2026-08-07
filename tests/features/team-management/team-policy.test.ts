@@ -2,10 +2,8 @@ import { describe, expect, it } from "vitest"
 
 import type {
   TeamPlayer,
-  TeamRosterMember,
 } from "@/features/team-management/domain/team"
 import {
-  assertLegacyRegistrationRosterEligibility,
   assertRosterEligibility,
 } from "@/features/team-management/domain/team-policy"
 
@@ -24,19 +22,6 @@ function player(id: string, isActive = true): TeamPlayer {
     deactivatedAt: null,
     createdAt: "2026-08-07T00:00:00.000Z",
     updatedAt: "2026-08-07T00:00:00.000Z",
-  }
-}
-
-function legacyMember(
-  id: string,
-  role: TeamRosterMember["role"],
-): TeamRosterMember {
-  return {
-    id,
-    userId: `user-${id}`,
-    role,
-    isActive: true,
-    deactivatedAt: null,
   }
 }
 
@@ -68,18 +53,6 @@ describe("assertRosterEligibility", () => {
       assertRosterEligibility("FIVE_V_FIVE", [
         ...[1, 2, 3, 4].map(String).map((id) => player(id)),
         player("5", false),
-      ]),
-    ).toThrow("ROSTER_INCOMPLETE")
-  })
-})
-
-describe("assertLegacyRegistrationRosterEligibility", () => {
-  it("does not count legacy coaches as players", () => {
-    expect(() =>
-      assertLegacyRegistrationRosterEligibility("THREE_V_THREE", [
-        legacyMember("player-1", "PLAYER"),
-        legacyMember("player-2", "PLAYER"),
-        legacyMember("coach-1", "COACH"),
       ]),
     ).toThrow("ROSTER_INCOMPLETE")
   })

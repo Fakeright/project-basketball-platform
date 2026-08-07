@@ -12,16 +12,28 @@ const team = {
   provinceCode: "10",
   province: "กรุงเทพมหานคร",
   ownerId: teamManager.id,
+  format: "FIVE_V_FIVE" as const,
+  isActive: true,
+  deactivatedAt: null,
+  version: 0,
 }
 
 const context = {
   team,
   roster: Array.from({ length: 5 }, (_, index) => ({
-    id: `member-${index}`,
-    userId: `player-${index}`,
-    role: "PLAYER" as const,
+    id: `player-${index}`,
+    teamId: team.id,
+    firstName: "Player",
+    lastName: String(index + 1),
+    nickname: null,
+    birthDate: "2008-01-01",
+    jerseyNumber: index + 1,
+    position: null,
+    phone: null,
     isActive: true,
     deactivatedAt: null,
+    createdAt: "2026-08-07T00:00:00.000Z",
+    updatedAt: "2026-08-07T00:00:00.000Z",
   })),
   tournament: {
     id: "tournament-1",
