@@ -30,7 +30,7 @@ const input = {
   supabaseUserId: "auth-user-1",
   email: "manager@example.com",
   displayName: "May",
-  role: "TEAM_MANAGER",
+  role: "TEAM_MANAGER_COACH",
 } as const
 
 describe("provisionAuthProfile", () => {
@@ -39,7 +39,7 @@ describe("provisionAuthProfile", () => {
 
     await expect(provisionAuthProfile(input, repository)).resolves.toMatchObject({
       supabaseUserId: "auth-user-1",
-      role: "TEAM_MANAGER",
+      role: "TEAM_MANAGER_COACH",
     })
   })
 

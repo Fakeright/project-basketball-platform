@@ -2,8 +2,7 @@ import type { Actor, Role } from "@/features/identity/domain/actor"
 
 export const selfAssignableRoles = [
   "PLAYER",
-  "COACH",
-  "TEAM_MANAGER",
+  "TEAM_MANAGER_COACH",
   "TOURNAMENT_ORGANIZER",
 ] as const satisfies readonly Role[]
 

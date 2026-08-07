@@ -53,10 +53,24 @@ const validRegistration = {
   email: "manager@example.com",
   password: "secure-pass-123",
   passwordConfirmation: "secure-pass-123",
-  role: "TEAM_MANAGER",
+  role: "TEAM_MANAGER_COACH",
 }
 
 describe("auth handlers", () => {
+  it.each(["TEAM_MANAGER", "COACH"])(
+    "rejects legacy self-registration role %s before creating an Auth user",
+    async (role) => {
+      const dependencies = createDependencies()
+
+      const response = await createAuthHandlers(dependencies).register(
+        jsonRequest("/api/auth/register", { ...validRegistration, role }),
+      )
+
+      expect(response.status).toBe(422)
+      expect(dependencies.auth.signUp).not.toHaveBeenCalled()
+    },
+  )
+
   it("rejects Platform Admin before creating an Auth user", async () => {
     const dependencies = createDependencies()
     const handlers = createAuthHandlers(dependencies)
@@ -119,7 +133,7 @@ describe("auth handlers", () => {
       supabaseUserId: "auth-user-1",
       email: validRegistration.email,
       displayName: validRegistration.displayName,
-      role: "TEAM_MANAGER",
+      role: "TEAM_MANAGER_COACH",
     })
 
     const response = await createAuthHandlers(dependencies).register(
@@ -243,7 +257,7 @@ describe("auth handlers", () => {
       supabaseUserId: "auth-user-1",
       email: "manager@example.com",
       displayName: "Manager",
-      role: "TEAM_MANAGER",
+      role: "TEAM_MANAGER_COACH",
     })
     vi.mocked(dependencies.recoveryGrant.consume).mockResolvedValue(false)
     const handlers = createAuthHandlers(dependencies)
@@ -275,7 +289,7 @@ describe("auth handlers", () => {
       supabaseUserId: "auth-user-1",
       email: "manager@example.com",
       displayName: "Manager",
-      role: "TEAM_MANAGER",
+      role: "TEAM_MANAGER_COACH",
     })
     vi.mocked(dependencies.recoveryGrant.consume).mockResolvedValue(true)
     vi.mocked(dependencies.auth.updatePassword).mockRejectedValue(

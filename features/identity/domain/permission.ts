@@ -45,7 +45,7 @@ export const permissionsByRole: Readonly<Record<Role, ReadonlySet<Permission>>> 
   {
     PLATFORM_ADMIN: new Set(permissions),
     TOURNAMENT_ORGANIZER: new Set(organizerPermissions),
-    TEAM_MANAGER: new Set([
+    TEAM_MANAGER_COACH: new Set([
       "team.create",
       "team.update",
       "team.roster.manage",
@@ -53,6 +53,5 @@ export const permissionsByRole: Readonly<Record<Role, ReadonlySet<Permission>>> 
       "registration.read",
       "registration.cancel",
     ]),
-    COACH: new Set(),
     PLAYER: new Set(),
   };

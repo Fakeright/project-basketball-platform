@@ -38,7 +38,7 @@ describe("SiteHeader account session", () => {
       ),
     )
     const user = userEvent.setup()
-    const actor = createTestActor("manager-1", "TEAM_MANAGER", {
+    const actor = createTestActor("manager-1", "TEAM_MANAGER_COACH", {
       displayName: "เมย์",
       email: "may@example.com",
     })
@@ -47,7 +47,7 @@ describe("SiteHeader account session", () => {
 
     expect(screen.getByText("เมย์")).toBeTruthy()
     expect(screen.getByText("may@example.com")).toBeTruthy()
-    expect(screen.getByText("กำลังใช้งาน: ผู้จัดการทีม")).toBeTruthy()
+    expect(screen.getByText("กำลังใช้งาน: ผู้จัดการ/โค้ช")).toBeTruthy()
     expect(
       screen.getByRole("link", { name: "จัดการทีม" }).getAttribute("href"),
     ).toBe("/team")

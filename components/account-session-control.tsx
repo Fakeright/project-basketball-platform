@@ -17,15 +17,10 @@ const accountDestination: Record<
     label: "ค้นหารายการแข่งขัน",
     roleLabel: "ผู้เล่น",
   },
-  COACH: {
-    href: "/tournaments",
-    label: "ค้นหารายการแข่งขัน",
-    roleLabel: "โค้ช",
-  },
-  TEAM_MANAGER: {
+  TEAM_MANAGER_COACH: {
     href: "/team",
     label: "จัดการทีม",
-    roleLabel: "ผู้จัดการทีม",
+    roleLabel: "ผู้จัดการ/โค้ช",
   },
   TOURNAMENT_ORGANIZER: {
     href: "/organizer",

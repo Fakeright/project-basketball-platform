@@ -8,7 +8,7 @@ import {
 import { createTestActor } from "@/tests/fixtures/actor"
 
 const anonymous = { getCurrentActor: vi.fn(async () => null) }
-const teamManager = createTestActor("manager-1", "TEAM_MANAGER")
+const teamManager = createTestActor("manager-1", "TEAM_MANAGER_COACH")
 
 function jsonRequest(body: unknown): Request {
   return new Request("http://localhost/api/teams", {

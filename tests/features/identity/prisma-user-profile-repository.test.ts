@@ -8,7 +8,7 @@ const databaseUser = {
   supabaseUserId: "auth-user-1",
   email: "manager@example.com",
   displayName: "May",
-  role: "TEAM_MANAGER",
+  role: "TEAM_MANAGER_COACH",
 }
 
 describe("PrismaUserProfileRepository", () => {
@@ -44,7 +44,7 @@ describe("PrismaUserProfileRepository", () => {
         supabaseUserId: "auth-user-1",
         email: "manager@example.com",
         displayName: "May",
-        role: "TEAM_MANAGER",
+        role: "TEAM_MANAGER_COACH",
       }),
     ).resolves.toEqual(databaseUser)
     expect(create).toHaveBeenCalledWith({
@@ -52,7 +52,7 @@ describe("PrismaUserProfileRepository", () => {
         supabaseUserId: "auth-user-1",
         email: "manager@example.com",
         displayName: "May",
-        role: "TEAM_MANAGER",
+        role: "TEAM_MANAGER_COACH",
       },
       select: {
         id: true,
@@ -79,7 +79,7 @@ describe("PrismaUserProfileRepository", () => {
         supabaseUserId: "auth-user-1",
         email: "manager@example.com",
         displayName: "May",
-        role: "TEAM_MANAGER",
+        role: "TEAM_MANAGER_COACH",
       }),
     ).resolves.toEqual(databaseUser)
     expect(findUnique).toHaveBeenCalledWith({
@@ -109,7 +109,7 @@ describe("PrismaUserProfileRepository", () => {
         supabaseUserId: "auth-user-1",
         email: "manager@example.com",
         displayName: "May",
-        role: "TEAM_MANAGER",
+        role: "TEAM_MANAGER_COACH",
       }),
     ).resolves.toEqual(databaseUser)
     expect(findUnique).toHaveBeenCalledWith({
@@ -138,7 +138,7 @@ describe("PrismaUserProfileRepository", () => {
       supabaseUserId: "auth-user-2",
       email: "manager@example.com",
       displayName: "Another Manager",
-      role: "TEAM_MANAGER",
+      role: "TEAM_MANAGER_COACH",
     })
 
     await expect(result).rejects.toEqual(

@@ -6,7 +6,6 @@ import { RosterManager } from "@/components/team/roster-manager"
 
 const candidates = [
   { id: "player-1", displayName: "Player One", role: "PLAYER" as const },
-  { id: "coach-1", displayName: "Coach One", role: "COACH" as const },
 ]
 
 afterEach(() => {
@@ -21,6 +20,7 @@ describe("RosterManager", () => {
     expect(screen.getByText("ยังไม่มีผู้เล่นในทีม")).toBeTruthy()
     expect(screen.getByLabelText("สมาชิก")).toBeTruthy()
     expect(screen.getByLabelText("หน้าที่ในทีม")).toBeTruthy()
+    expect(screen.queryByRole("option", { name: "โค้ช" })).toBeNull()
   })
 
   it("adds the selected member with the selected team role", async () => {

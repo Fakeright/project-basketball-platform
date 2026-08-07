@@ -10,7 +10,7 @@ import type { TeamRepository } from "@/features/team-management/application/port
 import { updateTeam } from "@/features/team-management/application/update-team"
 import { createTestActor } from "@/tests/fixtures/actor"
 
-const teamManager = createTestActor("manager-1", "TEAM_MANAGER")
+const teamManager = createTestActor("manager-1", "TEAM_MANAGER_COACH")
 const platformAdmin = createTestActor("admin-1", "PLATFORM_ADMIN")
 
 const team = {
@@ -38,7 +38,6 @@ function createRepository(
     })),
     listUsersByRoles: vi.fn(async () => [
       { id: "player-1", displayName: "Player One", role: "PLAYER" },
-      { id: "coach-1", displayName: "Coach One", role: "COACH" },
     ]),
     listActiveMembers: vi.fn(async () => []),
     addMember: vi.fn(async (input) => ({
@@ -207,7 +206,7 @@ describe("team use cases", () => {
     })
   })
 
-  it("lists only player and coach candidates for an owned roster", async () => {
+  it("lists only player candidates for an owned roster", async () => {
     const repository = createRepository()
 
     const candidates = await listTeamMemberCandidates(team.id, teamManager, {
@@ -216,9 +215,8 @@ describe("team use cases", () => {
 
     expect(candidates).toEqual([
       { id: "player-1", displayName: "Player One", role: "PLAYER" },
-      { id: "coach-1", displayName: "Coach One", role: "COACH" },
     ])
-    expect(repository.listUsersByRoles).toHaveBeenCalledWith(["PLAYER", "COACH"])
+    expect(repository.listUsersByRoles).toHaveBeenCalledWith(["PLAYER"])
   })
 
   it("performs each team mutation in a repository transaction", async () => {

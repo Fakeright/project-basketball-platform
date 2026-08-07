@@ -2,7 +2,10 @@ import { describe, expect, it } from "vitest";
 
 import { authorize } from "@/features/identity/application/authorize";
 import type { Actor } from "@/features/identity/domain/actor";
-import type { Permission } from "@/features/identity/domain/permission";
+import {
+  permissionsByRole,
+  type Permission,
+} from "@/features/identity/domain/permission";
 
 const organizer: Actor = {
   id: "org-1",
@@ -45,6 +48,19 @@ const allPermissions: Permission[] = [
 ];
 
 describe("authorize", () => {
+  it("grants the combined team manager and coach permissions", () => {
+    expect(permissionsByRole.TEAM_MANAGER_COACH).toEqual(
+      new Set([
+        "team.create",
+        "team.update",
+        "team.roster.manage",
+        "registration.create",
+        "registration.read",
+        "registration.cancel",
+      ]),
+    );
+  });
+
   it("allows an organizer to edit an owned tournament", () => {
     expect(() =>
       authorize(organizer, "tournament.update", { organizerId: "org-1" }),
@@ -87,7 +103,7 @@ describe("authorize", () => {
     ).not.toThrow();
   });
 
-  it.each<Actor["role"]>(["TEAM_MANAGER", "COACH", "PLAYER"])(
+  it.each<Actor["role"]>(["TEAM_MANAGER_COACH", "PLAYER"])(
     "rejects tournament operations for %s",
     (role) => {
       expect(() =>

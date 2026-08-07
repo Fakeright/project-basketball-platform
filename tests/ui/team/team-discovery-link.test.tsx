@@ -7,7 +7,7 @@ afterEach(cleanup)
 
 describe("TeamWorkspaceHeader", () => {
   it("offers Team Managers a prominent link to persisted tournament discovery", () => {
-    render(<TeamWorkspaceHeader actorRole="TEAM_MANAGER" />)
+    render(<TeamWorkspaceHeader actorRole="TEAM_MANAGER_COACH" />)
 
     const discoveryLink = screen.getByRole("link", {
       name: "ค้นหารายการแข่งขัน",

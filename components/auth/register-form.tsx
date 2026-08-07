@@ -13,8 +13,7 @@ import { Input } from "@/components/ui/input"
 
 const roles = [
   { value: "PLAYER", label: "ผู้เล่น" },
-  { value: "COACH", label: "โค้ช" },
-  { value: "TEAM_MANAGER", label: "ผู้จัดการทีม" },
+  { value: "TEAM_MANAGER_COACH", label: "ผู้จัดการ/โค้ช" },
   { value: "TOURNAMENT_ORGANIZER", label: "ผู้จัดการแข่งขัน" },
 ] as const
 

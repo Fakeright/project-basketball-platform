@@ -4,7 +4,7 @@ import { applyToTournament } from "@/features/registrations/application/apply-to
 import type { RegistrationRepository } from "@/features/registrations/application/ports/registration-repository"
 import { createTestActor } from "@/tests/fixtures/actor"
 
-const teamManager = createTestActor("manager-1", "TEAM_MANAGER")
+const teamManager = createTestActor("manager-1", "TEAM_MANAGER_COACH")
 const platformAdmin = createTestActor("admin-1", "PLATFORM_ADMIN")
 const team = {
   id: "team-1",

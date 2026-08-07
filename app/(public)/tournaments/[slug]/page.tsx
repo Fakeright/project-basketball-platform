@@ -152,7 +152,7 @@ async function loadRegistrationAvailability(
   state: TournamentRegistrationAvailability
   teams: Array<{ id: string; name: string }>
 }> {
-  if (actor?.role !== "TEAM_MANAGER") {
+  if (actor?.role !== "TEAM_MANAGER_COACH") {
     return { state: "HIDDEN", teams: [] }
   }
   if (!process.env.DATABASE_URL) {

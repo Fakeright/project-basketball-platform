@@ -4,8 +4,8 @@ import { cancelRegistration } from "@/features/registrations/application/cancel-
 import type { RegistrationRepository } from "@/features/registrations/application/ports/registration-repository"
 import { createTestActor } from "@/tests/fixtures/actor"
 
-const owner = createTestActor("manager-1", "TEAM_MANAGER")
-const anotherManager = createTestActor("manager-2", "TEAM_MANAGER")
+const owner = createTestActor("manager-1", "TEAM_MANAGER_COACH")
+const anotherManager = createTestActor("manager-2", "TEAM_MANAGER_COACH")
 const platformAdmin = createTestActor("admin-1", "PLATFORM_ADMIN")
 
 function createRepository(ownerId = owner.id): RegistrationRepository {

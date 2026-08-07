@@ -9,7 +9,7 @@ import {
 const profile = {
   id: "user-1",
   supabaseUserId: "auth-user-1",
-  role: "TEAM_MANAGER",
+  role: "TEAM_MANAGER_COACH",
   email: "manager@example.com",
   displayName: "May",
 } as const
@@ -46,7 +46,7 @@ describe("SupabaseCurrentActorProvider", () => {
 
     await expect(provider.getCurrentActor()).resolves.toEqual({
       id: "user-1",
-      role: "TEAM_MANAGER",
+      role: "TEAM_MANAGER_COACH",
       email: "manager@example.com",
       displayName: "May",
     })

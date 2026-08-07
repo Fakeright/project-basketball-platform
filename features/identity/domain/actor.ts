@@ -1,8 +1,7 @@
 export const roles = [
   "PLATFORM_ADMIN",
   "TOURNAMENT_ORGANIZER",
-  "TEAM_MANAGER",
-  "COACH",
+  "TEAM_MANAGER_COACH",
   "PLAYER",
 ] as const;
 

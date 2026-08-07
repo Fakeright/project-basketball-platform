@@ -7,7 +7,7 @@ const navigationClassName =
 
 export function AdminSidebar({ actor }: { actor: Actor }) {
   const isPlatformAdmin = actor.role === "PLATFORM_ADMIN"
-  const isTeamManager = actor.role === "TEAM_MANAGER"
+  const isTeamManager = actor.role === "TEAM_MANAGER_COACH"
   const isOrganizer = actor.role === "TOURNAMENT_ORGANIZER"
 
   return (

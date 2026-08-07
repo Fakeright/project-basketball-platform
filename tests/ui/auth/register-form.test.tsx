@@ -29,6 +29,13 @@ describe("RegisterForm", () => {
     expect(
       screen.queryByRole("option", { name: "ผู้ดูแลแพลตฟอร์ม" }),
     ).toBeNull()
+    expect(
+      screen.getByRole("option", { name: "ผู้จัดการ/โค้ช" }),
+    ).toBeTruthy()
+    expect(screen.queryByRole("option", { name: "โค้ช" })).toBeNull()
+    expect(
+      screen.queryByRole("option", { name: "ผู้จัดการทีม" }),
+    ).toBeNull()
     await user.type(screen.getByLabelText("ชื่อที่ใช้แสดง"), "เมย์")
     await user.type(screen.getByLabelText("อีเมล"), "may@example.com")
     await user.type(screen.getByLabelText("รหัสผ่าน"), "password123")
@@ -36,7 +43,10 @@ describe("RegisterForm", () => {
       screen.getByLabelText("ยืนยันรหัสผ่าน"),
       "password123",
     )
-    await user.selectOptions(screen.getByLabelText("บทบาท"), "TEAM_MANAGER")
+    await user.selectOptions(
+      screen.getByLabelText("บทบาท"),
+      "TEAM_MANAGER_COACH",
+    )
     await user.click(screen.getByRole("button", { name: "สมัครสมาชิก" }))
 
     expect(fetchMock).toHaveBeenCalledWith(
@@ -46,7 +56,7 @@ describe("RegisterForm", () => {
     expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toMatchObject({
       displayName: "เมย์",
       email: "may@example.com",
-      role: "TEAM_MANAGER",
+      role: "TEAM_MANAGER_COACH",
     })
     expect(
       await screen.findByText("หากสมัครได้สำเร็จ กรุณาเข้าสู่ระบบ"),

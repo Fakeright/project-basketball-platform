@@ -49,7 +49,7 @@ const registration = {
   email: "manager@example.com",
   password: "secure-pass-123",
   passwordConfirmation: "secure-pass-123",
-  role: "TEAM_MANAGER",
+  role: "TEAM_MANAGER_COACH",
 }
 
 describe("auth route behavior", () => {
@@ -66,7 +66,7 @@ describe("auth route behavior", () => {
       supabaseUserId: "auth-user-1",
       email: registration.email,
       displayName: registration.displayName,
-      role: "TEAM_MANAGER",
+      role: "TEAM_MANAGER_COACH",
     })
     const handlers = createAuthHandlers(dependencies)
 
@@ -79,7 +79,7 @@ describe("auth route behavior", () => {
       supabaseUserId: "auth-user-1",
       email: registration.email,
       displayName: registration.displayName,
-      role: "TEAM_MANAGER",
+      role: "TEAM_MANAGER_COACH",
     })
     expect(await response.json()).toEqual({
       message: "สมัครสมาชิกสำเร็จ กรุณาเข้าสู่ระบบ",
@@ -174,7 +174,7 @@ describe("auth route behavior", () => {
       supabaseUserId: "auth-user-1",
       email: registration.email,
       displayName: registration.displayName,
-      role: "TEAM_MANAGER",
+      role: "TEAM_MANAGER_COACH",
     })
     vi.mocked(dependencies.auth.signOut).mockRejectedValue(
       new AuthDependencyUnavailableError(),
@@ -242,7 +242,7 @@ describe("auth route behavior", () => {
         supabaseUserId: "auth-user-1",
         email: registration.email,
         displayName: registration.displayName,
-        role: "TEAM_MANAGER",
+        role: "TEAM_MANAGER_COACH",
       })
     const handlers = createAuthHandlers(dependencies)
 
@@ -284,7 +284,7 @@ describe("auth route behavior", () => {
       supabaseUserId: "auth-user-1",
       email: registration.email,
       displayName: registration.displayName,
-      role: "TEAM_MANAGER",
+      role: "TEAM_MANAGER_COACH",
     })
     vi.mocked(dependencies.recoveryGrant.consume).mockResolvedValue(true)
     const handlers = createAuthHandlers(dependencies)
@@ -325,7 +325,7 @@ describe("auth route behavior", () => {
       supabaseUserId: "auth-user-1",
       email: registration.email,
       displayName: registration.displayName,
-      role: "TEAM_MANAGER",
+      role: "TEAM_MANAGER_COACH",
     })
     const handlers = createAuthHandlers(dependencies)
 

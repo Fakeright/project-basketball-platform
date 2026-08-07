@@ -24,7 +24,7 @@ const developmentActors: Readonly<Record<string, Actor>> = {
   },
   "team-manager-1": {
     id: "team-manager-1",
-    role: "TEAM_MANAGER",
+    role: "TEAM_MANAGER_COACH",
     email: "team-manager-1@courtside.local",
     displayName: "Team Manager",
   },
@@ -34,7 +34,7 @@ export const developmentActorIds = Object.keys(developmentActors)
 
 export function getDevelopmentSessionDestination(actorId: string) {
   const role = developmentActors[actorId]?.role
-  if (role === "TEAM_MANAGER") return "/team"
+  if (role === "TEAM_MANAGER_COACH") return "/team"
   if (role === "TOURNAMENT_ORGANIZER") return "/organizer"
   return "/admin"
 }

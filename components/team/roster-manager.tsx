@@ -20,7 +20,7 @@ export function RosterManager({
 }) {
   const [members, setMembers] = useState(initialMembers)
   const [candidateId, setCandidateId] = useState("")
-  const [role, setRole] = useState<"PLAYER" | "COACH">("PLAYER")
+  const [role, setRole] = useState<"PLAYER">("PLAYER")
   const [message, setMessage] = useState<string | null>(null)
   const [pendingMemberId, setPendingMemberId] = useState<string | null>(null)
   const availableCandidates = candidates.filter(
@@ -112,11 +112,10 @@ export function RosterManager({
           <span>หน้าที่ในทีม</span>
           <select
             className={fieldClassName}
-            onChange={(event) => setRole(event.target.value as "PLAYER" | "COACH")}
+            onChange={(event) => setRole(event.target.value as "PLAYER")}
             value={role}
           >
             <option value="PLAYER">ผู้เล่น</option>
-            <option value="COACH">โค้ช</option>
           </select>
         </label>
         <button

@@ -46,7 +46,7 @@ export async function getTournamentRegistrationAvailability(
     registrations: Pick<RegistrationRepository, "findActive">
   },
 ): Promise<RegistrationAvailability> {
-  if (actor?.role !== "TEAM_MANAGER") {
+  if (actor?.role !== "TEAM_MANAGER_COACH") {
     return { state: "HIDDEN", teams: [] }
   }
   if (tournament.status !== "OPEN") {

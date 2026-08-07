@@ -6,7 +6,7 @@ import {
 } from "@/features/registrations/presentation/registration-handler"
 import { createTestActor } from "@/tests/fixtures/actor"
 
-const teamManager = createTestActor("manager-1", "TEAM_MANAGER")
+const teamManager = createTestActor("manager-1", "TEAM_MANAGER_COACH")
 
 function request(method: string, body: unknown) {
   return new Request("http://localhost/api/registrations", {

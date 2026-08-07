@@ -25,8 +25,7 @@ const registerSchema = z
     passwordConfirmation: z.string().min(8).max(72),
     role: z.enum([
       "PLAYER",
-      "COACH",
-      "TEAM_MANAGER",
+      "TEAM_MANAGER_COACH",
       "TOURNAMENT_ORGANIZER",
     ]),
   })
@@ -545,8 +544,7 @@ function getDefaultPathForRole(role: Role) {
   const destinations: Record<Role, string> = {
     PLATFORM_ADMIN: "/admin",
     TOURNAMENT_ORGANIZER: "/organizer",
-    TEAM_MANAGER: "/team",
-    COACH: "/tournaments",
+    TEAM_MANAGER_COACH: "/team",
     PLAYER: "/tournaments",
   }
   return destinations[role]

@@ -61,7 +61,7 @@ describe("getTournamentRegistrationOptions", () => {
   it("returns owned teams only for a team manager viewing an open tournament", async () => {
     const teams = teamRepository()
     const registrations = registrationRepository()
-    const actor = createTestActor("team-manager-1", "TEAM_MANAGER")
+    const actor = createTestActor("team-manager-1", "TEAM_MANAGER_COACH")
 
     const options = await getTournamentRegistrationOptions(
       openTournament,
@@ -82,7 +82,7 @@ describe("getTournamentRegistrationOptions", () => {
       status: "OPEN" as const,
     },
     {
-      actor: createTestActor("team-manager-1", "TEAM_MANAGER"),
+      actor: createTestActor("team-manager-1", "TEAM_MANAGER_COACH"),
       status: "CLOSED" as const,
     },
   ])(
@@ -121,7 +121,7 @@ describe("getTournamentRegistrationOptions", () => {
 
     const options = await getTournamentRegistrationOptions(
       openTournament,
-      createTestActor("team-manager-1", "TEAM_MANAGER"),
+      createTestActor("team-manager-1", "TEAM_MANAGER_COACH"),
       { teams, registrations },
     )
 
@@ -140,7 +140,7 @@ describe("getTournamentRegistrationOptions", () => {
     await expect(
       getTournamentRegistrationAvailability(
         openTournament,
-        createTestActor("team-manager-1", "TEAM_MANAGER"),
+        createTestActor("team-manager-1", "TEAM_MANAGER_COACH"),
         { teams, registrations },
       ),
     ).resolves.toEqual({ state: "NO_TEAMS", teams: [] })
@@ -171,7 +171,7 @@ describe("getTournamentRegistrationOptions", () => {
     await expect(
       getTournamentRegistrationAvailability(
         openTournament,
-        createTestActor("team-manager-1", "TEAM_MANAGER"),
+        createTestActor("team-manager-1", "TEAM_MANAGER_COACH"),
         { teams, registrations },
       ),
     ).resolves.toEqual({ state: "ALREADY_APPLIED", teams: [] })
@@ -181,7 +181,7 @@ describe("getTournamentRegistrationOptions", () => {
     await expect(
       getTournamentRegistrationAvailability(
         { ...openTournament, status: "CLOSED" },
-        createTestActor("team-manager-1", "TEAM_MANAGER"),
+        createTestActor("team-manager-1", "TEAM_MANAGER_COACH"),
         {
           teams: teamRepository(),
           registrations: registrationRepository(),

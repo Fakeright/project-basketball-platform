@@ -13,7 +13,7 @@ export function TeamWorkspaceHeader({ actorRole }: { actorRole: Role }) {
         </p>
       </div>
       <div className="flex flex-col gap-2 sm:flex-row">
-        {actorRole === "TEAM_MANAGER" ? (
+        {actorRole === "TEAM_MANAGER_COACH" ? (
           <Link
             className="inline-flex min-h-11 items-center justify-center border border-court px-5 text-sm font-medium text-court hover:bg-court hover:text-white"
             href="/tournaments"
