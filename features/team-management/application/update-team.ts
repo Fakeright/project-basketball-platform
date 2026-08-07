@@ -17,11 +17,13 @@ export async function updateTeam(
   dependencies: { teams: TeamRepository },
 ): Promise<TeamSummary> {
   assertProvinceCode(input.provinceCode)
-  const team = await dependencies.teams.findById(input.teamId)
-  if (!team) throw new Error("NOT_FOUND")
-
-  const isOverride = authorizeTeamAccess(actor, "team.update", team)
   return dependencies.teams.inTransaction(async (teams) => {
+    const team = await teams.findByIdForUpdate(input.teamId)
+    if (!team) throw new Error("NOT_FOUND")
+
+    const isOverride = authorizeTeamAccess(actor, "team.update", team)
+    if (team.version !== input.expectedVersion) throw new Error("CONFLICT")
+
     if (
       team.format !== input.format &&
       (await teams.hasActiveRegistration(team.id))

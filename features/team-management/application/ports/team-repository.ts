@@ -8,6 +8,7 @@ import type {
 } from "@/features/team-management/domain/team"
 
 export interface TeamMutationRepository {
+  findByIdForUpdate(id: string): Promise<TeamSummary | null>
   create(input: {
     name: string
     provinceCode: string

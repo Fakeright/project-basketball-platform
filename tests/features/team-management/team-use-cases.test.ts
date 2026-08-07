@@ -65,6 +65,7 @@ function createRepository(
   const repository: TransactionalTeamRepository = {
     create: vi.fn(async (input) => ({ id: "team-new", ...input })),
     findById: vi.fn(async () => team),
+    findByIdForUpdate: vi.fn(async () => team),
     listByOwner: vi.fn(async () => [team]),
     update: vi.fn(async (id, input) => ({ ...team, id, ...input })),
     findUser: vi.fn(async () => ({
@@ -328,7 +329,7 @@ describe("team use cases", () => {
 
   it("hides another manager's team when updating it", async () => {
     const repository = createRepository({
-      findById: vi.fn(async () => ({ ...team, ownerId: "manager-2" })),
+      findByIdForUpdate: vi.fn(async () => ({ ...team, ownerId: "manager-2" })),
     })
 
     await expect(
@@ -348,7 +349,7 @@ describe("team use cases", () => {
 
   it("audits an admin override separately from the team update", async () => {
     const repository = createRepository({
-      findById: vi.fn(async () => ({ ...team, ownerId: "manager-2" })),
+      findByIdForUpdate: vi.fn(async () => ({ ...team, ownerId: "manager-2" })),
     })
 
     await updateTeam(
@@ -392,8 +393,34 @@ describe("team use cases", () => {
     expect(repository.update).not.toHaveBeenCalled()
   })
 
+  it("returns a stale-version conflict before checking active registrations", async () => {
+    const hasActiveRegistration = vi.fn(async () => true)
+    const repository = createRepository({
+      findByIdForUpdate: vi.fn(async () => ({ ...team, version: 2 })),
+      hasActiveRegistration,
+    })
+
+    await expect(
+      updateTeam(
+        {
+          teamId: team.id,
+          name: team.name,
+          provinceCode: team.provinceCode,
+          format: "THREE_V_THREE",
+          expectedVersion: 1,
+        },
+        teamManager,
+        { teams: repository },
+      ),
+    ).rejects.toThrow("CONFLICT")
+    expect(hasActiveRegistration).not.toHaveBeenCalled()
+    expect(repository.update).not.toHaveBeenCalled()
+  })
+
   it("updates with the expected version and skips registration reads when format is unchanged", async () => {
-    const repository = createRepository()
+    const repository = createRepository({
+      findByIdForUpdate: vi.fn(async () => ({ ...team, version: 2 })),
+    })
 
     await updateTeam(
       {
@@ -408,6 +435,8 @@ describe("team use cases", () => {
     )
 
     expect(repository.hasActiveRegistration).not.toHaveBeenCalled()
+    expect(repository.findById).not.toHaveBeenCalled()
+    expect(repository.findByIdForUpdate).toHaveBeenCalledWith(team.id)
     expect(repository.update).toHaveBeenCalledWith(team.id, {
       name: "Changed",
       provinceCode: team.provinceCode,
@@ -573,7 +602,7 @@ describe("team use cases", () => {
   it("does not commit a team update when its audit write fails", async () => {
     let persistedTeam = { ...team }
     const repository = createRepository({
-      findById: vi.fn(async () => persistedTeam),
+      findByIdForUpdate: vi.fn(async () => persistedTeam),
       update: vi.fn(async (_id, input) => {
         persistedTeam = { ...persistedTeam, ...input }
         return persistedTeam

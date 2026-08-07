@@ -4,7 +4,10 @@ import {
   handleApplyToTournament,
   handleCancelRegistration,
 } from "@/features/registrations/presentation/registration-handler"
-import { PlayerAgeIneligibleError } from "@/features/registrations/domain/player-age-policy"
+import {
+  PlayerAgeIneligibleError,
+  TournamentAgeGroupUnsupportedError,
+} from "@/features/registrations/domain/player-age-policy"
 import { createTestActor } from "@/tests/fixtures/actor"
 
 const teamManager = createTestActor("manager-1", "TEAM_MANAGER_COACH")
@@ -84,5 +87,26 @@ describe("registration route handlers", () => {
       details: { playerIds: ["player-2"] },
     })
     expect(JSON.stringify(body)).not.toContain("birthDate")
+  })
+
+  it("maps an unknown persisted age group to a safe 422 response", async () => {
+    const response = await handleApplyToTournament(
+      "tournament-1",
+      request("POST", { teamId: "team-1" }),
+      {
+        actorProvider: { getCurrentActor: vi.fn(async () => teamManager) },
+        apply: vi.fn(async () => {
+          throw new TournamentAgeGroupUnsupportedError()
+        }),
+      },
+    )
+
+    expect(response.status).toBe(422)
+    const body = await response.json()
+    expect(body).toEqual({
+      message: "รุ่นอายุของการแข่งขันไม่รองรับ กรุณาติดต่อผู้จัดการแข่งขัน",
+    })
+    expect(JSON.stringify(body)).not.toContain("birthDate")
+    expect(JSON.stringify(body)).not.toContain("U20")
   })
 })

@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest"
 import {
   assertRosterAgeEligibility,
   PlayerAgeIneligibleError,
+  TournamentAgeGroupUnsupportedError,
 } from "@/features/registrations/domain/player-age-policy"
 import type { TeamPlayer } from "@/features/team-management/domain/team"
 
@@ -69,5 +70,16 @@ describe("assertRosterAgeEligibility", () => {
         player("adult", "1980-01-01"),
       ]),
     ).not.toThrow()
+  })
+
+  it("fails closed for an unknown persisted age group", () => {
+    expect(() =>
+      assertRosterAgeEligibility("U20", "2026-11-15T02:00:00.000Z", [
+        player("player-1", "2010-01-01"),
+      ]),
+    ).toThrow(TournamentAgeGroupUnsupportedError)
+    expect(() =>
+      assertRosterAgeEligibility("U20", "2026-11-15T02:00:00.000Z", []),
+    ).toThrow("TOURNAMENT_AGE_GROUP_UNSUPPORTED")
   })
 })

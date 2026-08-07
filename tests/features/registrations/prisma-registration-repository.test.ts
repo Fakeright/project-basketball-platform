@@ -125,6 +125,7 @@ describe("PrismaRegistrationRepository transactions", () => {
   it("locks application eligibility and counts approved teams in the same transaction", async () => {
     const queryRaw = vi
       .fn()
+      .mockResolvedValueOnce([{ id: "team-1" }])
       .mockResolvedValueOnce([
         {
           id: "tournament-1",
@@ -164,10 +165,13 @@ describe("PrismaRegistrationRepository transactions", () => {
       registrations.getApplicationContext("tournament-1", "team-1"),
     )
 
-    expect(queryRaw).toHaveBeenCalledTimes(2)
+    expect(queryRaw).toHaveBeenCalledTimes(3)
     expect(queryRaw.mock.calls[0][0].text).toMatch(/\bFOR\s+UPDATE\b/i)
+    expect(queryRaw.mock.calls[0][0].text).toContain('FROM "Team"')
     expect(queryRaw.mock.calls[1][0].text).toMatch(/\bFOR\s+UPDATE\b/i)
-    expect(queryRaw.mock.calls[1][0].text).toContain('FROM "TeamPlayer"')
+    expect(queryRaw.mock.calls[1][0].text).toContain('FROM "Tournament"')
+    expect(queryRaw.mock.calls[2][0].text).toMatch(/\bFOR\s+UPDATE\b/i)
+    expect(queryRaw.mock.calls[2][0].text).toContain('FROM "TeamPlayer"')
     expect(context?.roster).toEqual([
       {
         id: "team-player-1",

@@ -117,6 +117,24 @@ describe("applyToTournament", () => {
     expect(repository.createPending).not.toHaveBeenCalled()
   })
 
+  it("fails closed when the persisted tournament age group is unknown", async () => {
+    const repository = createRepository({
+      getApplicationContext: vi.fn(async () => ({
+        ...context,
+        tournament: { ...context.tournament, ageGroup: "U20" },
+      })),
+    })
+
+    await expect(
+      applyToTournament(
+        { tournamentId: "tournament-1", teamId: "team-1" },
+        teamManager,
+        { registrations: repository, now: () => new Date("2026-10-01T00:00:00Z") },
+      ),
+    ).rejects.toThrow("TOURNAMENT_AGE_GROUP_UNSUPPORTED")
+    expect(repository.createPending).not.toHaveBeenCalled()
+  })
+
   it("rejects an application after the registration deadline", async () => {
     const repository = createRepository()
 

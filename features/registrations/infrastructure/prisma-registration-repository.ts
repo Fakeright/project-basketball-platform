@@ -180,6 +180,16 @@ class PrismaRegistrationOperations implements RegistrationRepositoryTransaction 
     tournamentId: string,
     teamId: string,
   ): Promise<RegistrationApplicationContext | null> {
+    const lockedTeams = await this.prisma.$queryRaw<Array<{ id: string }>>(
+      Prisma.sql`
+        SELECT "id"
+        FROM "Team"
+        WHERE "id" = ${teamId}
+        FOR UPDATE
+      `,
+    )
+    if (!lockedTeams[0]) return null
+
     const lockedTournaments = await this.prisma.$queryRaw<
       Array<{
         id: string

@@ -1,9 +1,9 @@
-import type {
+import {
   Prisma,
-  PrismaClient,
-  Team,
-  TeamMember,
-  TeamPlayer as PrismaTeamPlayer,
+  type PrismaClient,
+  type Team,
+  type TeamMember,
+  type TeamPlayer as PrismaTeamPlayer,
 } from "@/lib/generated/prisma/client"
 import type {
   TeamMutationRepository,
@@ -24,7 +24,7 @@ const teamWithProvinceInclude = {
 type TeamDatabaseClient = Pick<
   PrismaClient,
   "team" | "teamMember" | "teamPlayer" | "auditLog"
-  | "registration"
+  | "registration" | "$queryRaw"
 >
 
 export class PrismaTeamRepository implements TeamRepository {
@@ -44,6 +44,10 @@ export class PrismaTeamRepository implements TeamRepository {
 
   create(input: Parameters<TeamMutationRepository["create"]>[0]) {
     return this.mutations.create(input)
+  }
+
+  findByIdForUpdate(id: string) {
+    return this.mutations.findByIdForUpdate(id)
   }
 
   async findById(id: string) {
@@ -161,6 +165,24 @@ export class PrismaTeamRepository implements TeamRepository {
 
 class PrismaTeamMutationRepository implements TeamMutationRepository {
   constructor(private readonly prisma: TeamDatabaseClient) {}
+
+  async findByIdForUpdate(id: string) {
+    const lockedTeams = await this.prisma.$queryRaw<Array<{ id: string }>>(
+      Prisma.sql`
+        SELECT "id"
+        FROM "Team"
+        WHERE "id" = ${id}
+        FOR UPDATE
+      `,
+    )
+    if (!lockedTeams[0]) return null
+
+    const team = await this.prisma.team.findUnique({
+      where: { id },
+      include: teamWithProvinceInclude,
+    })
+    return team ? mapTeam(team) : null
+  }
 
   async create(input: Parameters<TeamMutationRepository["create"]>[0]) {
     const team = await this.prisma.team.create({

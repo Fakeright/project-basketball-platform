@@ -6,7 +6,6 @@ import {
 
 import type { RegistrationAction, RegistrationStatus } from "./registration"
 import { assertRosterAgeEligibility } from "./player-age-policy"
-import type { TournamentAgeGroup } from "@/features/tournament-operations/domain/tournament-age-group"
 
 export type RegistrationTournamentStatus =
   | "DRAFT"
@@ -27,7 +26,7 @@ export interface RegistrationApplicationEligibility {
   roster: readonly TeamPlayer[]
   tournament: {
     format: RosterFormat
-    ageGroup: TournamentAgeGroup
+    ageGroup: string
     startsAt: string
     status: RegistrationTournamentStatus
     registrationDeadline: string

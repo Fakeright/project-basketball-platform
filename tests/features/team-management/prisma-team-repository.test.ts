@@ -53,6 +53,7 @@ const playerDraft = {
 
 function createPrismaMock() {
   const prisma = {
+    $queryRaw: vi.fn(),
     team: {
       create: vi.fn(),
       findUnique: vi.fn(),
@@ -85,6 +86,26 @@ function createPrismaMock() {
 }
 
 describe("PrismaTeamRepository", () => {
+  it("locks the team row before reading the update snapshot", async () => {
+    const prisma = createPrismaMock()
+    prisma.$queryRaw.mockResolvedValue([{ id: "team-1" }])
+    prisma.team.findUnique.mockResolvedValue(teamRow)
+    const repository = new PrismaTeamRepository(prisma as unknown as PrismaClient)
+
+    const lockedTeam = await repository.inTransaction((teams) =>
+      teams.findByIdForUpdate("team-1"),
+    )
+
+    expect(prisma.$queryRaw).toHaveBeenCalledOnce()
+    expect(prisma.$queryRaw.mock.calls[0][0].text).toContain('FROM "Team"')
+    expect(prisma.$queryRaw.mock.calls[0][0].text).toMatch(/\bFOR\s+UPDATE\b/i)
+    expect(prisma.team.findUnique).toHaveBeenCalledWith({
+      where: { id: "team-1" },
+      include: { province: true },
+    })
+    expect(lockedTeam).toMatchObject({ id: "team-1", version: 2 })
+  })
+
   it("maps active players with date-only birth dates", async () => {
     const prisma = createPrismaMock()
     prisma.teamPlayer.findMany.mockResolvedValue([playerRow])

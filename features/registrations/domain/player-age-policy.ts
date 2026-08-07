@@ -1,5 +1,8 @@
 import type { TeamPlayer } from "@/features/team-management/domain/team"
-import type { TournamentAgeGroup } from "@/features/tournament-operations/domain/tournament-age-group"
+import {
+  TOURNAMENT_AGE_GROUPS,
+  type TournamentAgeGroup,
+} from "@/features/tournament-operations/domain/tournament-age-group"
 import { toBangkokCalendarDate } from "@/features/tournaments/domain/tournament-calendar"
 
 export interface PlayerAgeIneligibleDetails {
@@ -16,7 +19,14 @@ export class PlayerAgeIneligibleError extends Error {
   }
 }
 
-const maximumAgeByGroup: Partial<Record<TournamentAgeGroup, number>> = {
+export class TournamentAgeGroupUnsupportedError extends Error {
+  constructor() {
+    super("TOURNAMENT_AGE_GROUP_UNSUPPORTED")
+    this.name = "TournamentAgeGroupUnsupportedError"
+  }
+}
+
+const maximumAgeByGroup: Record<Exclude<TournamentAgeGroup, "Open">, number> = {
   U12: 12,
   U14: 14,
   U16: 16,
@@ -25,12 +35,13 @@ const maximumAgeByGroup: Partial<Record<TournamentAgeGroup, number>> = {
 }
 
 export function assertRosterAgeEligibility(
-  ageGroup: TournamentAgeGroup,
+  ageGroup: string,
   startsAt: string,
   roster: readonly TeamPlayer[],
 ): void {
-  const maximumAge = maximumAgeByGroup[ageGroup]
-  if (maximumAge === undefined) return
+  const parsedAgeGroup = parseTournamentAgeGroup(ageGroup)
+  if (parsedAgeGroup === "Open") return
+  const maximumAge = maximumAgeByGroup[parsedAgeGroup]
 
   const startDate = dateOnlyToUtc(toBangkokCalendarDate(startsAt))
   const playerIds = roster
@@ -38,6 +49,12 @@ export function assertRosterAgeEligibility(
     .map((player) => player.id)
 
   if (playerIds.length > 0) throw new PlayerAgeIneligibleError(playerIds)
+}
+
+function parseTournamentAgeGroup(value: string): TournamentAgeGroup {
+  const ageGroup = TOURNAMENT_AGE_GROUPS.find((candidate) => candidate === value)
+  if (!ageGroup) throw new TournamentAgeGroupUnsupportedError()
+  return ageGroup
 }
 
 function completedCalendarYears(birthDate: string, onDate: Date): number {

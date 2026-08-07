@@ -8,7 +8,10 @@ import type { CancelRegistrationInput } from "@/features/registrations/applicati
 import type { DecideRegistrationInput } from "@/features/registrations/application/decide-registration"
 import type { WithdrawRegistrationInput } from "@/features/registrations/application/withdraw-registration"
 import type { TournamentRegistration } from "@/features/registrations/domain/registration"
-import { PlayerAgeIneligibleError } from "@/features/registrations/domain/player-age-policy"
+import {
+  PlayerAgeIneligibleError,
+  TournamentAgeGroupUnsupportedError,
+} from "@/features/registrations/domain/player-age-policy"
 
 const applySchema = z.object({ teamId: z.string().min(1) })
 const cancelSchema = z.object({ version: z.number().int().nonnegative() })
@@ -192,6 +195,12 @@ function registrationFailureResponse(
         message: "มีผู้เล่นอายุเกินเกณฑ์ของรุ่นการแข่งขัน",
         details: error.details,
       },
+      { status: 422 },
+    )
+  }
+  if (error instanceof TournamentAgeGroupUnsupportedError) {
+    return Response.json(
+      { message: "รุ่นอายุของการแข่งขันไม่รองรับ กรุณาติดต่อผู้จัดการแข่งขัน" },
       { status: 422 },
     )
   }

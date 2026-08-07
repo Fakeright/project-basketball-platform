@@ -37,6 +37,8 @@ const eligibleApplication = {
   roster,
   tournament: {
     format: "FIVE_V_FIVE" as const,
+    ageGroup: "Open",
+    startsAt: "2026-11-15T02:00:00.000Z",
     status: "PUBLISHED",
     registrationDeadline: "2026-07-26T12:00:00.000Z",
     capacity: 8,
