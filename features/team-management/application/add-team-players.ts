@@ -27,10 +27,14 @@ export async function addTeamPlayers(
   if (!team.isActive) throw new Error("TEAM_INACTIVE")
 
   return dependencies.teams.inTransaction(async (teams) => {
-    const players = await teams.addPlayers(team.id, input.players)
-    const reactivatedPlayerIds = players
-      .filter((player) => player.createdAt !== player.updatedAt)
+    const existingPlayers = await teams.findExistingPlayersByIdentities(
+      team.id,
+      input.players,
+    )
+    const reactivatedPlayerIds = existingPlayers
+      .filter((player) => !player.isActive)
       .map((player) => player.id)
+    const players = await teams.addPlayers(team.id, input.players)
 
     await teams.appendAuditEvent({
       actorId: actor.id,

@@ -121,6 +121,13 @@ export class PrismaTeamRepository implements TeamRepository {
     return this.mutations.deactivateMember(teamId, memberId, at)
   }
 
+  findExistingPlayersByIdentities(
+    teamId: string,
+    players: readonly TeamPlayerDraft[],
+  ) {
+    return this.mutations.findExistingPlayersByIdentities(teamId, players)
+  }
+
   addPlayers(
     teamId: string,
     players: readonly TeamPlayerDraft[],
@@ -210,6 +217,26 @@ class PrismaTeamMutationRepository implements TeamMutationRepository {
       data: { isActive: false, deactivatedAt: new Date(at) },
     })
     if (updated.count !== 1) throw new Error("MEMBER_NOT_FOUND")
+  }
+
+  async findExistingPlayersByIdentities(
+    teamId: string,
+    players: readonly TeamPlayerDraft[],
+  ) {
+    if (players.length === 0) return []
+
+    const existingPlayers = await this.prisma.teamPlayer.findMany({
+      where: {
+        teamId,
+        OR: players.map((player) => ({
+          firstName: player.firstName,
+          lastName: player.lastName,
+          birthDate: new Date(player.birthDate),
+        })),
+      },
+      orderBy: { createdAt: "asc" },
+    })
+    return existingPlayers.map(mapPlayer)
   }
 
   async addPlayers(teamId: string, players: readonly TeamPlayerDraft[]) {

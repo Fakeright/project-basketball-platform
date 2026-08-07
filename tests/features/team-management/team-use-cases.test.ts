@@ -77,6 +77,7 @@ function createRepository(
     ]),
     listActiveMembers: vi.fn(async () => []),
     listActivePlayers: vi.fn(async () => []),
+    findExistingPlayersByIdentities: vi.fn(async () => []),
     addMember: vi.fn(async (input) => ({
       id: "membership-1",
       ...input,
@@ -86,7 +87,11 @@ function createRepository(
     deactivateMember: vi.fn(async () => undefined),
     addPlayers: vi.fn(async (teamId, players) =>
       players.map((player, index) =>
-        playerFromDraft(player, { id: `player-${index + 1}`, teamId }),
+        playerFromDraft(player, {
+          id: `player-${index + 1}`,
+          teamId,
+          updatedAt: "2026-08-07T00:00:01.000Z",
+        }),
       ),
     ),
     updatePlayer: vi.fn(async (teamId, playerId, input) =>
@@ -179,13 +184,38 @@ describe("team use cases", () => {
     ).rejects.toThrow("TEAM_INACTIVE")
   })
 
-  it("records reactivated player ids in the batch audit event", async () => {
+  it("does not classify a fresh player with different timestamps as reactivated", async () => {
+    const freshPlayer = playerFromDraft(draftPlayer("one", 4), {
+      createdAt: "2026-08-07T00:00:00.000Z",
+      updatedAt: "2026-08-07T00:00:01.000Z",
+    })
+    const repository = createRepository({ addPlayers: vi.fn(async () => [freshPlayer]) })
+
+    await addTeamPlayers(
+      { teamId: team.id, players: [draftPlayer("one", 4)] },
+      teamManager,
+      { teams: repository },
+    )
+
+    expect(repository.appendAuditEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        after: expect.objectContaining({ reactivatedPlayerIds: [] }),
+      }),
+    )
+  })
+
+  it("records inactive identity matches as reactivated player ids in the batch audit event", async () => {
     const reactivated = playerFromDraft(draftPlayer("one", 4), {
       id: "player-old",
       createdAt: "2025-08-07T00:00:00.000Z",
       updatedAt: "2026-08-07T00:00:00.000Z",
     })
-    const repository = createRepository({ addPlayers: vi.fn(async () => [reactivated]) })
+    const repository = createRepository({
+      findExistingPlayersByIdentities: vi.fn(async () => [
+        { ...reactivated, isActive: false, deactivatedAt: "2026-08-06T00:00:00.000Z" },
+      ]),
+      addPlayers: vi.fn(async () => [reactivated]),
+    })
 
     await addTeamPlayers(
       { teamId: team.id, players: [draftPlayer("one", 4)] },
@@ -197,6 +227,10 @@ describe("team use cases", () => {
       expect.objectContaining({
         after: expect.objectContaining({ reactivatedPlayerIds: ["player-old"] }),
       }),
+    )
+    expect(repository.findExistingPlayersByIdentities).toHaveBeenCalledWith(
+      team.id,
+      [draftPlayer("one", 4)],
     )
   })
 

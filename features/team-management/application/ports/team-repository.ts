@@ -19,6 +19,10 @@ export interface TeamMutationRepository {
     role: TeamMemberRole
   }): Promise<TeamRosterMember>
   deactivateMember(teamId: string, memberId: string, at: string): Promise<void>
+  findExistingPlayersByIdentities(
+    teamId: string,
+    players: readonly TeamPlayerDraft[],
+  ): Promise<TeamPlayer[]>
   addPlayers(teamId: string, players: readonly TeamPlayerDraft[]): Promise<TeamPlayer[]>
   updatePlayer(
     teamId: string,

@@ -107,6 +107,34 @@ describe("PrismaTeamRepository", () => {
     ])
   })
 
+  it("finds matching player identities regardless of active status", async () => {
+    const prisma = createPrismaMock()
+    const inactivePlayer = {
+      ...playerRow,
+      isActive: false,
+      deactivatedAt: new Date("2026-07-26T00:00:00.000Z"),
+    }
+    prisma.teamPlayer.findMany.mockResolvedValue([inactivePlayer])
+    const repository = new PrismaTeamRepository(prisma as unknown as PrismaClient)
+
+    await expect(
+      repository.findExistingPlayersByIdentities("team-1", [playerDraft]),
+    ).resolves.toMatchObject([{ id: "player-1", isActive: false }])
+    expect(prisma.teamPlayer.findMany).toHaveBeenCalledWith({
+      where: {
+        teamId: "team-1",
+        OR: [
+          {
+            firstName: "One",
+            lastName: "Player",
+            birthDate: new Date("2010-02-03"),
+          },
+        ],
+      },
+      orderBy: { createdAt: "asc" },
+    })
+  })
+
   it("reactivates an inactive duplicate player instead of inserting another row", async () => {
     const prisma = createPrismaMock()
     prisma.teamPlayer.findUnique
