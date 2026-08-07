@@ -30,7 +30,7 @@ const teamIdentitySchema = z.object({
 
 const teamMemberSchema = z.object({
   userId: z.string().min(1),
-  role: z.enum(["PLAYER", "COACH"]),
+  role: z.enum(["PLAYER"]),
 })
 
 interface CreateTeamHandlerDependencies extends SafeHttpDiagnostics {
