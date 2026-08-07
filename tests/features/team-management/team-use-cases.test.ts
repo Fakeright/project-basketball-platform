@@ -1,13 +1,10 @@
 import { describe, expect, it, vi } from "vitest"
 
-import { addTeamMember } from "@/features/team-management/application/add-team-member"
 import { addTeamPlayers } from "@/features/team-management/application/add-team-players"
 import { createTeam } from "@/features/team-management/application/create-team"
-import { deactivateTeamMember } from "@/features/team-management/application/deactivate-team-member"
 import { deactivateTeamPlayer } from "@/features/team-management/application/deactivate-team-player"
 import { getOwnedTeamWorkspace } from "@/features/team-management/application/get-owned-team-workspace"
 import { listOwnedTeams } from "@/features/team-management/application/list-owned-teams"
-import { listTeamMemberCandidates } from "@/features/team-management/application/list-team-member-candidates"
 import type { TeamRepository } from "@/features/team-management/application/ports/team-repository"
 import { updateTeam } from "@/features/team-management/application/update-team"
 import { updateTeamPlayer } from "@/features/team-management/application/update-team-player"
@@ -68,25 +65,9 @@ function createRepository(
     findByIdForUpdate: vi.fn(async () => team),
     listByOwner: vi.fn(async () => [team]),
     update: vi.fn(async (id, input) => ({ ...team, id, ...input })),
-    findUser: vi.fn(async () => ({
-      id: "player-1",
-      displayName: "Player One",
-      role: "PLAYER",
-    })),
-    listUsersByRoles: vi.fn(async () => [
-      { id: "player-1", displayName: "Player One", role: "PLAYER" },
-    ]),
-    listActiveMembers: vi.fn(async () => []),
     listActivePlayers: vi.fn(async () => []),
     hasActiveRegistration: vi.fn(async () => false),
     findExistingPlayersByIdentities: vi.fn(async () => []),
-    addMember: vi.fn(async (input) => ({
-      id: "membership-1",
-      ...input,
-      isActive: true,
-      deactivatedAt: null,
-    })),
-    deactivateMember: vi.fn(async () => undefined),
     addPlayers: vi.fn(async (teamId, players) =>
       players.map((player, index) =>
         playerFromDraft(player, {
@@ -445,61 +426,6 @@ describe("team use cases", () => {
     })
   })
 
-  it("rejects adding a global player as a coach", async () => {
-    const repository = createRepository()
-
-    await expect(
-      addTeamMember(
-        { teamId: team.id, userId: "player-1", role: "COACH" },
-        teamManager,
-        { teams: repository },
-      ),
-    ).rejects.toThrow("MEMBER_ROLE_MISMATCH")
-  })
-
-  it("audits a roster member addition", async () => {
-    const repository = createRepository()
-
-    await addTeamMember(
-      { teamId: team.id, userId: "player-1", role: "PLAYER" },
-      teamManager,
-      { teams: repository },
-    )
-
-    expect(repository.appendAuditEvent).toHaveBeenCalledWith(
-      expect.objectContaining({ action: "team.member_added", entityId: team.id }),
-    )
-  })
-
-  it("deactivates an active member and audits the mutation", async () => {
-    const repository = createRepository({
-      listActiveMembers: vi.fn(async () => [
-        {
-          id: "membership-1",
-          userId: "player-1",
-          role: "PLAYER",
-          isActive: true,
-          deactivatedAt: null,
-        },
-      ]),
-    })
-
-    await deactivateTeamMember(
-      { teamId: team.id, memberId: "membership-1", at: "2026-07-26T00:00:00.000Z" },
-      teamManager,
-      { teams: repository },
-    )
-
-    expect(repository.deactivateMember).toHaveBeenCalledWith(
-      team.id,
-      "membership-1",
-      "2026-07-26T00:00:00.000Z",
-    )
-    expect(repository.appendAuditEvent).toHaveBeenCalledWith(
-      expect.objectContaining({ action: "team.member_deactivated", entityId: team.id }),
-    )
-  })
-
   it("lists only teams owned by the authorized manager", async () => {
     const repository = createRepository()
 
@@ -509,61 +435,22 @@ describe("team use cases", () => {
     expect(repository.listByOwner).toHaveBeenCalledWith(teamManager.id)
   })
 
-  it("loads only an owned team's active roster for the workspace", async () => {
+  it("loads active players without reading legacy members for the workspace", async () => {
+    const activePlayer = playerFromDraft(draftPlayer("one", 4))
     const repository = createRepository({
-      listActiveMembers: vi.fn(async () => [
-        {
-          id: "membership-1",
-          userId: "player-1",
-          role: "PLAYER",
-          isActive: true,
-          deactivatedAt: null,
-        },
-      ]),
+      listActivePlayers: vi.fn(async () => [activePlayer]),
     })
 
     await expect(
       getOwnedTeamWorkspace(team.id, teamManager, { teams: repository }),
     ).resolves.toEqual({
       team,
-      members: [
-        {
-          id: "membership-1",
-          userId: "player-1",
-          role: "PLAYER",
-          isActive: true,
-          deactivatedAt: null,
-        },
-      ],
-      players: [],
+      players: [activePlayer],
     })
-  })
-
-  it("lists only player candidates for an owned roster", async () => {
-    const repository = createRepository()
-
-    const candidates = await listTeamMemberCandidates(team.id, teamManager, {
-      teams: repository,
-    })
-
-    expect(candidates).toEqual([
-      { id: "player-1", displayName: "Player One", role: "PLAYER" },
-    ])
-    expect(repository.listUsersByRoles).toHaveBeenCalledWith(["PLAYER"])
   })
 
   it("performs each team mutation in a repository transaction", async () => {
-    const repository = createRepository({
-      listActiveMembers: vi.fn(async () => [
-        {
-          id: "membership-1",
-          userId: "player-1",
-          role: "PLAYER",
-          isActive: true,
-          deactivatedAt: null,
-        },
-      ]),
-    })
+    const repository = createRepository()
 
     await createTeam(
       {
@@ -585,18 +472,7 @@ describe("team use cases", () => {
       teamManager,
       { teams: repository },
     )
-    await addTeamMember(
-      { teamId: team.id, userId: "player-1", role: "PLAYER" },
-      teamManager,
-      { teams: repository },
-    )
-    await deactivateTeamMember(
-      { teamId: team.id, memberId: "membership-1", at: "2026-07-26T00:00:00.000Z" },
-      teamManager,
-      { teams: repository },
-    )
-
-    expect(repository.inTransaction).toHaveBeenCalledTimes(4)
+    expect(repository.inTransaction).toHaveBeenCalledTimes(2)
   })
 
   it("does not commit a team update when its audit write fails", async () => {

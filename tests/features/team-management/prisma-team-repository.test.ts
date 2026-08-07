@@ -3,16 +3,6 @@ import { describe, expect, it, vi } from "vitest"
 import type { PrismaClient } from "@/lib/generated/prisma/client"
 import { PrismaTeamRepository } from "@/features/team-management/infrastructure/prisma-team-repository"
 
-const memberRow = {
-  id: "membership-1",
-  teamId: "team-1",
-  userId: "player-1",
-  role: "PLAYER" as const,
-  isActive: false,
-  deactivatedAt: new Date("2026-07-26T00:00:00.000Z"),
-  createdAt: new Date("2026-07-25T00:00:00.000Z"),
-}
-
 const teamRow = {
   id: "team-1",
   name: "Bangkok Ballers",
@@ -62,14 +52,6 @@ function createPrismaMock() {
       updateMany: vi.fn(),
     },
     registration: { findFirst: vi.fn() },
-    user: { findUnique: vi.fn() },
-    teamMember: {
-      findUnique: vi.fn(),
-      findMany: vi.fn(),
-      create: vi.fn(),
-      update: vi.fn(),
-      updateMany: vi.fn(),
-    },
     teamPlayer: {
       findUnique: vi.fn(),
       findMany: vi.fn(),
@@ -298,61 +280,6 @@ describe("PrismaTeamRepository", () => {
       }),
     ).rejects.toThrow("CONFLICT")
     expect(prisma.team.findUnique).not.toHaveBeenCalled()
-  })
-
-  it("reactivates a historical membership instead of inserting a duplicate", async () => {
-    const prisma = createPrismaMock()
-    prisma.teamMember.findUnique
-      .mockResolvedValueOnce(memberRow)
-      .mockResolvedValueOnce({
-        ...memberRow,
-        role: "COACH",
-        isActive: true,
-        deactivatedAt: null,
-      })
-    prisma.teamMember.updateMany.mockResolvedValue({ count: 1 })
-    const repository = new PrismaTeamRepository(prisma as unknown as PrismaClient)
-
-    const member = await repository.addMember({
-      teamId: "team-1",
-      userId: "player-1",
-      role: "COACH",
-    })
-
-    expect(prisma.teamMember.updateMany).toHaveBeenCalledWith({
-      where: { id: "membership-1", teamId: "team-1", userId: "player-1", isActive: false },
-      data: { role: "COACH", isActive: true, deactivatedAt: null },
-    })
-    expect(prisma.teamMember.create).not.toHaveBeenCalled()
-    expect(member).toMatchObject({ id: "membership-1", role: "COACH", isActive: true })
-  })
-
-  it("rejects adding a member that is already active", async () => {
-    const prisma = createPrismaMock()
-    prisma.teamMember.findUnique.mockResolvedValue({ ...memberRow, isActive: true, deactivatedAt: null })
-    const repository = new PrismaTeamRepository(prisma as unknown as PrismaClient)
-
-    await expect(
-      repository.addMember({ teamId: "team-1", userId: "player-1", role: "PLAYER" }),
-    ).rejects.toThrow("MEMBER_ALREADY_ACTIVE")
-  })
-
-  it("returns a conflict to the loser when concurrent reactivation requests race", async () => {
-    const prisma = createPrismaMock()
-    prisma.teamMember.findUnique.mockResolvedValue(memberRow)
-    prisma.teamMember.updateMany
-      .mockResolvedValueOnce({ count: 1 })
-      .mockResolvedValueOnce({ count: 0 })
-    const repository = new PrismaTeamRepository(prisma as unknown as PrismaClient)
-
-    const results = await Promise.allSettled([
-      repository.addMember({ teamId: "team-1", userId: "player-1", role: "PLAYER" }),
-      repository.addMember({ teamId: "team-1", userId: "player-1", role: "PLAYER" }),
-    ])
-
-    expect(results.map((result) => result.status)).toEqual(["fulfilled", "rejected"])
-    expect(results[1]).toMatchObject({ reason: expect.objectContaining({ message: "MEMBER_ALREADY_ACTIVE" }) })
-    expect(prisma.teamMember.updateMany).toHaveBeenCalledTimes(2)
   })
 
   it("rolls back a team update when its audit write fails inside a transaction", async () => {

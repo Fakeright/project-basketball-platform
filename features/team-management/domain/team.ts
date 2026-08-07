@@ -1,5 +1,3 @@
-export type TeamMemberRole = "PLAYER" | "COACH"
-
 export type TeamFormat = "FIVE_V_FIVE" | "THREE_V_THREE"
 
 export type TeamPlayerPosition = "PG" | "SG" | "SF" | "PF" | "C"
@@ -33,12 +31,4 @@ export interface TeamPlayer extends TeamPlayerDraft {
   deactivatedAt: string | null
   createdAt: string
   updatedAt: string
-}
-
-export interface TeamRosterMember {
-  id: string
-  userId: string
-  role: TeamMemberRole
-  isActive: boolean
-  deactivatedAt: string | null
 }

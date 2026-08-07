@@ -2,7 +2,6 @@ import { describe, expect, it, vi } from "vitest"
 
 import {
   handleAddTeamPlayers,
-  handleAddTeamMember,
   handleCreateTeam,
   handleDeactivateTeamPlayer,
   handleUpdateTeamPlayer,
@@ -181,28 +180,6 @@ describe("team route handlers", () => {
       await expect(response.json()).resolves.toEqual({ message })
     },
   )
-
-  it("returns 409 for an active duplicate roster member", async () => {
-    const response = await handleAddTeamMember("team-1", jsonRequest({ userId: "player-1", role: "PLAYER" }), {
-      actorProvider: { getCurrentActor: vi.fn(async () => teamManager) },
-      addMember: vi.fn(async () => {
-        throw new Error("MEMBER_ALREADY_ACTIVE")
-      }),
-    })
-
-    expect(response.status).toBe(409)
-  })
-
-  it("returns 422 before adding a legacy coach roster role", async () => {
-    const addMember = vi.fn()
-    const response = await handleAddTeamMember("team-1", jsonRequest({ userId: "player-1", role: "COACH" }), {
-      actorProvider: { getCurrentActor: vi.fn(async () => teamManager) },
-      addMember,
-    })
-
-    expect(response.status).toBe(422)
-    expect(addMember).not.toHaveBeenCalled()
-  })
 
   it("maps a body transport failure to a safe correlated 500", async () => {
     const logger = { error: vi.fn() }

@@ -34,17 +34,12 @@ function teamRepository(): TeamRepository {
         version: 0,
       },
     ]),
-    findUser: vi.fn(),
-    listUsersByRoles: vi.fn(),
-    listActiveMembers: vi.fn(),
     listActivePlayers: vi.fn(),
     findExistingPlayersByIdentities: vi.fn(),
-    addMember: vi.fn(),
     addPlayers: vi.fn(),
     updatePlayer: vi.fn(),
     deactivatePlayer: vi.fn(),
     hasActiveRegistration: vi.fn(),
-    deactivateMember: vi.fn(),
     appendAuditEvent: vi.fn(),
   }
 }

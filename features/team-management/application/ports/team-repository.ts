@@ -1,9 +1,7 @@
 import type {
-  TeamMemberRole,
   TeamFormat,
   TeamPlayer,
   TeamPlayerDraft,
-  TeamRosterMember,
   TeamSummary,
 } from "@/features/team-management/domain/team"
 
@@ -25,12 +23,6 @@ export interface TeamMutationRepository {
     },
   ): Promise<TeamSummary>
   hasActiveRegistration(teamId: string): Promise<boolean>
-  addMember(input: {
-    teamId: string
-    userId: string
-    role: TeamMemberRole
-  }): Promise<TeamRosterMember>
-  deactivateMember(teamId: string, memberId: string, at: string): Promise<void>
   findExistingPlayersByIdentities(
     teamId: string,
     players: readonly TeamPlayerDraft[],
@@ -57,21 +49,5 @@ export interface TeamRepository extends TeamMutationRepository {
   ): Promise<T>
   findById(id: string): Promise<TeamSummary | null>
   listByOwner(ownerId: string): Promise<TeamSummary[]>
-  listActiveMembers(teamId: string): Promise<TeamRosterMember[]>
   listActivePlayers(teamId: string): Promise<TeamPlayer[]>
-}
-
-export interface LegacyTeamMemberRepository extends TeamRepository {
-  findUser(id: string): Promise<{
-    id: string
-    displayName: string
-    role: import("@/features/identity/domain/actor").Role
-  } | null>
-  listUsersByRoles(roles: readonly import("@/features/identity/domain/actor").Role[]): Promise<
-    Array<{
-      id: string
-      displayName: string
-      role: import("@/features/identity/domain/actor").Role
-    }>
-  >
 }

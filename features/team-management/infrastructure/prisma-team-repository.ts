@@ -2,16 +2,13 @@ import {
   Prisma,
   type PrismaClient,
   type Team,
-  type TeamMember,
   type TeamPlayer as PrismaTeamPlayer,
 } from "@/lib/generated/prisma/client"
 import type {
   TeamMutationRepository,
   TeamRepository,
 } from "@/features/team-management/application/ports/team-repository"
-import type { Role } from "@/features/identity/domain/actor"
 import type {
-  TeamRosterMember,
   TeamPlayer,
   TeamPlayerDraft,
   TeamSummary,
@@ -23,7 +20,7 @@ const teamWithProvinceInclude = {
 
 type TeamDatabaseClient = Pick<
   PrismaClient,
-  "team" | "teamMember" | "teamPlayer" | "auditLog"
+  "team" | "teamPlayer" | "auditLog"
   | "registration" | "$queryRaw"
 >
 
@@ -78,56 +75,12 @@ export class PrismaTeamRepository implements TeamRepository {
     return this.mutations.hasActiveRegistration(teamId)
   }
 
-  async findUser(id: string) {
-    const user = await this.prisma.user.findUnique({
-      where: { id },
-      select: { id: true, displayName: true, role: true },
-    })
-    return user
-      ? { id: user.id, displayName: user.displayName, role: user.role as Role }
-      : null
-  }
-
-  async listUsersByRoles(roles: readonly Role[]) {
-    const users = await this.prisma.user.findMany({
-      where: { role: { in: [...roles] } },
-      select: { id: true, displayName: true, role: true },
-      orderBy: { displayName: "asc" },
-    })
-
-    return users.map((user) => ({
-      id: user.id,
-      displayName: user.displayName,
-      role: user.role as Role,
-    }))
-  }
-
-  async listActiveMembers(teamId: string) {
-    const members = await this.prisma.teamMember.findMany({
-      where: { teamId, isActive: true },
-      orderBy: { createdAt: "asc" },
-    })
-    return members.map(mapMember)
-  }
-
   async listActivePlayers(teamId: string) {
     const players = await this.prisma.teamPlayer.findMany({
       where: { teamId, isActive: true },
       orderBy: { createdAt: "asc" },
     })
     return players.map(mapPlayer)
-  }
-
-  addMember(input: Parameters<TeamMutationRepository["addMember"]>[0]) {
-    return this.mutations.addMember(input)
-  }
-
-  deactivateMember(
-    teamId: string,
-    memberId: string,
-    at: string,
-  ) {
-    return this.mutations.deactivateMember(teamId, memberId, at)
   }
 
   findExistingPlayersByIdentities(
@@ -217,48 +170,6 @@ class PrismaTeamMutationRepository implements TeamMutationRepository {
       select: { id: true },
     })
     return registration !== null
-  }
-
-  async addMember(input: Parameters<TeamMutationRepository["addMember"]>[0]) {
-    const existing = await this.prisma.teamMember.findUnique({
-      where: { teamId_userId: { teamId: input.teamId, userId: input.userId } },
-    })
-    if (existing?.isActive) throw new Error("MEMBER_ALREADY_ACTIVE")
-
-    if (existing) {
-      const updated = await this.prisma.teamMember.updateMany({
-        where: {
-          id: existing.id,
-          teamId: input.teamId,
-          userId: input.userId,
-          isActive: false,
-        },
-        data: { role: input.role, isActive: true, deactivatedAt: null },
-      })
-      if (updated.count !== 1) throw new Error("MEMBER_ALREADY_ACTIVE")
-
-      const member = await this.prisma.teamMember.findUnique({
-        where: { teamId_userId: { teamId: input.teamId, userId: input.userId } },
-      })
-      if (!member) throw new Error("MEMBER_NOT_FOUND")
-      return mapMember(member)
-    }
-
-    try {
-      const member = await this.prisma.teamMember.create({ data: input })
-      return mapMember(member)
-    } catch (error) {
-      if (isPrismaUniqueError(error)) throw new Error("MEMBER_ALREADY_ACTIVE")
-      throw error
-    }
-  }
-
-  async deactivateMember(teamId: string, memberId: string, at: string) {
-    const updated = await this.prisma.teamMember.updateMany({
-      where: { id: memberId, teamId, isActive: true },
-      data: { isActive: false, deactivatedAt: new Date(at) },
-    })
-    if (updated.count !== 1) throw new Error("MEMBER_NOT_FOUND")
   }
 
   async findExistingPlayersByIdentities(
@@ -386,16 +297,6 @@ function mapTeam(team: Team & { province: { nameTh: string } }): TeamSummary {
     isActive: team.isActive,
     deactivatedAt: team.deactivatedAt?.toISOString() ?? null,
     version: team.version,
-  }
-}
-
-function mapMember(member: TeamMember): TeamRosterMember {
-  return {
-    id: member.id,
-    userId: member.userId,
-    role: member.role,
-    isActive: member.isActive,
-    deactivatedAt: member.deactivatedAt?.toISOString() ?? null,
   }
 }
 

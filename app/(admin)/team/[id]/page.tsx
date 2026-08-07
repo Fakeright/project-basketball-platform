@@ -1,12 +1,11 @@
 import { notFound } from "next/navigation"
 
-import { RosterManager } from "@/components/team/roster-manager"
 import { TeamEditor } from "@/components/team/team-editor"
+import { TeamPlayerRoster } from "@/components/team/team-player-roster"
 import { TeamRegistrationList } from "@/components/team/team-registration-list"
 import type { Actor } from "@/features/identity/domain/actor"
 import { createNextCookieCurrentActorProvider } from "@/features/identity/infrastructure/next-cookie-current-actor-provider"
 import { getOwnedTeamWorkspace } from "@/features/team-management/application/get-owned-team-workspace"
-import { listTeamMemberCandidates } from "@/features/team-management/application/list-team-member-candidates"
 import { getTeamRepository } from "@/features/team-management/infrastructure/get-team-repository"
 import { listOwnedTeamRegistrations } from "@/features/registrations/application/list-owned-team-registrations"
 import { getRegistrationRepository } from "@/features/registrations/infrastructure/get-registration-repository"
@@ -20,7 +19,7 @@ export default async function TeamDetailPage({
   if (!actor) notFound()
 
   const { id } = await params
-  const [workspace, candidates, registrations] = await loadTeamDetail(id, actor)
+  const [workspace, registrations] = await loadTeamDetail(id, actor)
 
   return (
     <section>
@@ -33,9 +32,9 @@ export default async function TeamDetailPage({
           adminOverride={actor.role === "PLATFORM_ADMIN"}
           initialTeam={workspace.team}
         />
-        <RosterManager
-          candidates={candidates}
-          members={workspace.members}
+        <TeamPlayerRoster
+          format={workspace.team.format}
+          initialPlayers={workspace.players}
           teamId={workspace.team.id}
         />
         <TeamRegistrationList registrations={registrations} />
@@ -52,7 +51,6 @@ async function loadTeamDetail(
     const repository = getTeamRepository()
     return await Promise.all([
       getOwnedTeamWorkspace(id, actor, { teams: repository }),
-      listTeamMemberCandidates(id, actor, { teams: repository }),
       listOwnedTeamRegistrations(id, actor, { registrations: getRegistrationRepository() }),
     ])
   } catch (error) {
