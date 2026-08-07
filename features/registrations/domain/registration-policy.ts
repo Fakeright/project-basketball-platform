@@ -1,5 +1,8 @@
 import type { TeamRosterMember, TeamSummary } from "@/features/team-management/domain/team"
-import { assertRosterEligibility, type RosterFormat } from "@/features/team-management/domain/team-policy"
+import {
+  assertLegacyRegistrationRosterEligibility,
+  type RosterFormat,
+} from "@/features/team-management/domain/team-policy"
 
 import type { RegistrationAction, RegistrationStatus } from "./registration"
 
@@ -65,7 +68,7 @@ export function assertCanApply(input: RegistrationApplicationEligibility): void 
     throw new Error("TEAM_NOT_OWNED")
   }
 
-  assertRosterEligibility(input.tournament.format, input.roster)
+  assertLegacyRegistrationRosterEligibility(input.tournament.format, input.roster)
 
   if (input.hasActiveRegistration) {
     throw new Error("REGISTRATION_ALREADY_ACTIVE")

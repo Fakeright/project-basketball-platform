@@ -22,6 +22,18 @@ const pendingRegistration: TournamentRegistration = {
   updatedAt: "2026-10-01T00:00:00.000Z",
 }
 
+const teamRow = {
+  id: "team-1",
+  name: "Bangkok Hoops",
+  provinceCode: "10",
+  province: { nameTh: "Bangkok" },
+  ownerId: "manager-1",
+  format: "THREE_V_THREE" as const,
+  isActive: false,
+  deactivatedAt: new Date("2026-10-03T00:00:00.000Z"),
+  version: 4,
+}
+
 function registrationRow(
   status: "PENDING" | "APPROVED" | "REJECTED" | "WITHDRAWN",
   version: number,
@@ -56,6 +68,24 @@ function repositoryWithTransactionClient(client: object) {
 }
 
 describe("PrismaRegistrationRepository transactions", () => {
+  it("maps team compatibility fields for registration reads", async () => {
+    const repository = new PrismaRegistrationRepository({
+      team: { findUnique: vi.fn(async () => teamRow) },
+    } as unknown as PrismaClient)
+
+    await expect(repository.findTeam("team-1")).resolves.toEqual({
+      id: "team-1",
+      name: "Bangkok Hoops",
+      provinceCode: "10",
+      province: "Bangkok",
+      ownerId: "manager-1",
+      format: "THREE_V_THREE",
+      isActive: false,
+      deactivatedAt: "2026-10-03T00:00:00.000Z",
+      version: 4,
+    })
+  })
+
   it("retries a serializable registration transaction after a PostgreSQL serialization conflict", async () => {
     let attempts = 0
     const transaction = vi.fn(async (

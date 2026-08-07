@@ -522,6 +522,10 @@ function mapTeam(team: Team & { province: { nameTh: string } }): TeamSummary {
     provinceCode: team.provinceCode,
     province: team.province.nameTh,
     ownerId: team.ownerId,
+    format: team.format,
+    isActive: team.isActive,
+    deactivatedAt: team.deactivatedAt?.toISOString() ?? null,
+    version: team.version,
   }
 }
 

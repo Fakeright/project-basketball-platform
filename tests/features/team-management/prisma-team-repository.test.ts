@@ -19,6 +19,10 @@ const teamRow = {
   provinceCode: "10",
   province: { nameTh: "กรุงเทพมหานคร" },
   ownerId: "manager-1",
+  format: "THREE_V_THREE" as const,
+  isActive: false,
+  deactivatedAt: new Date("2026-07-26T00:00:00.000Z"),
+  version: 2,
 }
 
 function createPrismaMock() {
@@ -46,6 +50,24 @@ function createPrismaMock() {
 }
 
 describe("PrismaTeamRepository", () => {
+  it("maps team compatibility fields for team reads", async () => {
+    const prisma = createPrismaMock()
+    prisma.team.findUnique.mockResolvedValue(teamRow)
+    const repository = new PrismaTeamRepository(prisma as unknown as PrismaClient)
+
+    await expect(repository.findById("team-1")).resolves.toEqual({
+      id: "team-1",
+      name: "Bangkok Ballers",
+      provinceCode: "10",
+      province: teamRow.province.nameTh,
+      ownerId: "manager-1",
+      format: "THREE_V_THREE",
+      isActive: false,
+      deactivatedAt: "2026-07-26T00:00:00.000Z",
+      version: 2,
+    })
+  })
+
   it("reactivates a historical membership instead of inserting a duplicate", async () => {
     const prisma = createPrismaMock()
     prisma.teamMember.findUnique

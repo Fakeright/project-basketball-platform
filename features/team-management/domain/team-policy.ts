@@ -1,4 +1,4 @@
-import type { TeamFormat, TeamPlayer } from "./team"
+import type { TeamFormat, TeamPlayer, TeamRosterMember } from "./team"
 
 export type RosterFormat = TeamFormat
 
@@ -11,8 +11,26 @@ export function assertRosterEligibility(
   format: TeamFormat,
   players: readonly TeamPlayer[],
 ): void {
-  const activePlayerCount = players.filter((player) => player.isActive).length
+  assertMinimumActivePlayerCount(
+    format,
+    players.filter((player) => player.isActive).length,
+  )
+}
 
+export function assertLegacyRegistrationRosterEligibility(
+  format: TeamFormat,
+  members: readonly TeamRosterMember[],
+): void {
+  assertMinimumActivePlayerCount(
+    format,
+    members.filter((member) => member.isActive && member.role === "PLAYER").length,
+  )
+}
+
+function assertMinimumActivePlayerCount(
+  format: TeamFormat,
+  activePlayerCount: number,
+): void {
   if (activePlayerCount < minimumPlayersByFormat[format]) {
     throw new Error("ROSTER_INCOMPLETE")
   }
