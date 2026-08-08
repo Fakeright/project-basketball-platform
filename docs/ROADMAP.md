@@ -1,6 +1,6 @@
 # COURTSIDE Roadmap
 
-อัปเดตล่าสุด: 6 สิงหาคม 2026
+อัปเดตล่าสุด: 9 สิงหาคม 2026
 
 ## ความหมายของสถานะ
 
@@ -16,7 +16,10 @@
 - การตรวจ permission และ ownership ของ server-side actions
 - การสร้างและแก้ไข tournament แบบร่าง, การส่งตรวจ, การตรวจโดย admin, การเผยแพร่, การปิดรับสมัคร, age groups มาตรฐาน, ความจุที่เป็นจำนวนคู่, reference จังหวัดทั้ง 77 จังหวัด, audit และ concurrency checks
 - Home สาธารณะ, รายการ tournament, รายละเอียด tournament, search filters ที่ผูกกับ URL, การแสดง poster และเอกสาร, responsive layouts, dark mode และ loading/empty/error states ที่ใช้ร่วมกัน
-- การสร้างและแก้ไขทีม, การดูแล roster ของ player/coach, การสมัคร tournament, การยกเลิก, การอนุมัติ, การปฏิเสธ, การถอนตัว, การตรวจ eligibility และ capacity checks
+- บทบาทบัญชี `TEAM_MANAGER_COACH` สำหรับผู้จัดการ/โค้ช พร้อมการสมัครสมาชิก session permission และ Team Dashboard ที่สอดคล้องกัน
+- การสร้างและแก้ไขทีม `5v5`/`3v3`, การเพิ่มผู้เล่นหลายคนแบบ atomic, การแก้ไขและนำผู้เล่นออกโดยรักษาประวัติ โดยผู้เล่นเป็นข้อมูล `TeamPlayer` และไม่จำเป็นต้องมีบัญชีผู้ใช้
+- การสมัคร tournament, การยกเลิก, การอนุมัติ, การปฏิเสธ, การถอนตัว และการตรวจรูปแบบทีม สถานะทีม จำนวนผู้เล่นขั้นต่ำ รุ่นอายุ และ capacity บน server
+- การลบทีมที่ไม่มีประวัติอย่างถาวร หรือปิดใช้งานทีมที่ต้องรักษาประวัติ พร้อม optimistic concurrency, การยืนยันชื่อทีม และ audit log
 - การ upload และ delete poster กับเอกสาร tournament ผ่าน Supabase Storage
 - จำนวนสรุปเชิงปฏิบัติการของ admin, review queue และกิจกรรม audit ล่าสุด
 - Prisma migrations, seed/reset tooling และ automated Vitest/RTL coverage
@@ -24,7 +27,7 @@
 ## กำลังพัฒนา
 
 - การส่งอีเมลยืนยันและการทำ callback ให้แข็งแรงขึ้น รวมถึง production SMTP และ redirect configuration
-- ประสบการณ์ของ Player และ Coach เพราะมี role แล้ว แต่ยังไม่มี permission/workspace เฉพาะสำหรับแต่ละ role
+- ประสบการณ์แบบบริการตนเองของบัญชี `PLAYER` ซึ่งยังไม่มี permission/workspace เฉพาะ และไม่ใช่เงื่อนไขสำหรับการอยู่ในรายชื่อทีม
 - การจัดการ profile, การยืนยัน organizer และการบริหาร platform role
 - ช่องว่างด้าน governance ของ tournament: delete/remove, suspend, archive และการเปิดรับสมัครอีกครั้ง
 - หน้าจออ่านข้อมูล bracket และ schedule สาธารณะ ซึ่งแสดง match data ที่เผยแพร่แล้วได้ แต่ยังสร้างหรือแก้ไขการดำเนินการแข่งขันไม่ได้
@@ -38,6 +41,8 @@
 - การ upload team-logo, tournament banners และ galleries
 - Email notifications และ announcements สำหรับผลการสมัคร, การเปลี่ยนตาราง และผลการแข่งขัน
 - Visitor analytics, monthly charts, popular provinces, conversion metrics, monitoring, CI/CD และ production deployment
+- การนำเข้ารายชื่อผู้เล่นด้วย CSV ซึ่งไม่รวมอยู่ใน workflow ปัจจุบัน
+- migration ที่ผ่านการอนุมัติเพื่อลบ `TeamMember` เดิม หลังตรวจผล audit แบบอ่านอย่างเดียวและยืนยันว่าไม่มีข้อมูลที่ต้องรักษา
 
 ## ลำดับการส่งมอบถัดไป
 
