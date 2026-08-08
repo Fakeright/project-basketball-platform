@@ -1,32 +1,19 @@
 import { cleanup, render, screen } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
-const mocks = vi.hoisted(() => ({
-  getOwnedTeamWorkspace: vi.fn(),
-  listOwnedTeams: vi.fn(),
+import { TeamList } from "@/components/team/team-list"
+import { TeamWorkspaceManager } from "@/components/team/team-workspace-manager"
+import { TeamRegistrationList } from "@/components/team/team-registration-list"
+
+const router = {
+  refresh: vi.fn(),
+}
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => router,
 }))
 
-vi.mock("@/components/team/team-workspace-header", () => ({
-  TeamWorkspaceHeader: () => <div>Team header</div>,
-}))
-vi.mock("@/features/identity/infrastructure/next-cookie-current-actor-provider", () => ({
-  createNextCookieCurrentActorProvider: () => ({
-    getCurrentActor: vi.fn(async () => ({ id: "manager-1", role: "TEAM_MANAGER_COACH" })),
-  }),
-}))
-vi.mock("@/features/team-management/application/get-owned-team-workspace", () => ({
-  getOwnedTeamWorkspace: mocks.getOwnedTeamWorkspace,
-}))
-vi.mock("@/features/team-management/application/list-owned-teams", () => ({
-  listOwnedTeams: mocks.listOwnedTeams,
-}))
-vi.mock("@/features/team-management/infrastructure/get-team-repository", () => ({
-  getTeamRepository: () => ({}),
-}))
-
-import TeamPage from "@/app/(admin)/team/page"
-
-const team = {
+const activeTeam = {
   id: "team-1",
   name: "Bangkok Ballers",
   provinceCode: "10",
@@ -38,29 +25,92 @@ const team = {
   version: 0,
 }
 
+const inactiveTeam = {
+  ...activeTeam,
+  id: "team-2",
+  name: "Historic Hoops",
+  isActive: false,
+  deactivatedAt: "2026-08-09T12:00:00.000Z",
+  version: 3,
+}
+
 afterEach(() => {
   cleanup()
-  vi.clearAllMocks()
+  router.refresh.mockReset()
 })
 
-describe("team list", () => {
-  it("shows team format and active player count without a coach count", async () => {
-    mocks.listOwnedTeams.mockResolvedValue([team])
-    mocks.getOwnedTeamWorkspace.mockResolvedValue({
-      team,
-      members: [
-        { id: "member-1", userId: "coach-1", role: "COACH", isActive: true, deactivatedAt: null },
-      ],
-      players: [
-        { id: "player-1", isActive: true },
-        { id: "player-2", isActive: true },
-      ],
-    })
+describe("TeamList", () => {
+  it("keeps inactive teams visible with a clear Thai status", () => {
+    render(
+      <TeamList
+        workspaces={[
+          { team: activeTeam, players: [{ id: "player-1" }, { id: "player-2" }] },
+          { team: inactiveTeam, players: [{ id: "player-old" }] },
+        ]}
+      />,
+    )
 
-    render(await TeamPage())
-
-    expect(screen.getByText("3v3")).toBeTruthy()
+    expect(screen.getByRole("link", { name: "Bangkok Ballers" })).toBeTruthy()
+    expect(screen.getByRole("link", { name: "Historic Hoops" })).toBeTruthy()
+    expect(screen.getByText("ปิดใช้งาน")).toBeTruthy()
+    expect(screen.getAllByText("3v3")).toHaveLength(2)
     expect(screen.getByText("ผู้เล่น 2 คน")).toBeTruthy()
-    expect(screen.queryByText(/โค้ช/)).toBeNull()
+  })
+})
+
+describe("inactive team detail", () => {
+  it("renders identity, roster, and registration history without mutation commands", () => {
+    render(
+      <>
+        <p>ปิดใช้งาน</p>
+        <TeamWorkspaceManager
+          adminOverride={false}
+          initialPlayers={[
+            {
+              id: "player-1",
+              teamId: inactiveTeam.id,
+              firstName: "สมชาย",
+              lastName: "ใจดี",
+              nickname: null,
+              birthDate: "2010-02-03",
+              jerseyNumber: 8,
+              position: "PG",
+              phone: null,
+              isActive: true,
+              deactivatedAt: null,
+              createdAt: "2026-08-07T00:00:00.000Z",
+              updatedAt: "2026-08-07T00:00:00.000Z",
+            },
+          ]}
+          initialTeam={inactiveTeam}
+          readOnly
+        />
+        <TeamRegistrationList
+          readOnly
+          registrations={[
+            {
+              id: "registration-1",
+              tournamentName: "Bangkok Open",
+              submittedAt: "1 Oct 2026",
+              status: "REJECTED",
+              organizerNote: "เก็บเป็นประวัติ",
+              version: 1,
+            },
+          ]}
+        />
+      </>,
+    )
+
+    expect(screen.getByText("Historic Hoops")).toBeTruthy()
+    expect(screen.getByText("สมชาย ใจดี")).toBeTruthy()
+    expect(screen.getByText("Bangkok Open")).toBeTruthy()
+    expect(screen.queryByRole("button", { name: "บันทึกทีม" })).toBeNull()
+    expect(screen.queryByRole("button", { name: "เพิ่มผู้เล่น" })).toBeNull()
+    expect(screen.queryByRole("button", { name: /แก้ไขผู้เล่น/ })).toBeNull()
+    expect(screen.queryByRole("button", { name: /นำผู้เล่น.*ออกจากทีม/ })).toBeNull()
+    expect(screen.queryByRole("button", { name: /ยกเลิกการสมัคร/ })).toBeNull()
+    expect(
+      screen.queryByRole("button", { name: "ลบหรือปิดใช้งานทีม" }),
+    ).toBeNull()
   })
 })

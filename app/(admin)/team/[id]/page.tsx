@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation"
 
 import { TeamRegistrationList } from "@/components/team/team-registration-list"
+import { TeamDeleteDialog } from "@/components/team/team-delete-dialog"
 import { TeamWorkspaceManager } from "@/components/team/team-workspace-manager"
 import type { Actor } from "@/features/identity/domain/actor"
 import { createNextCookieCurrentActorProvider } from "@/features/identity/infrastructure/next-cookie-current-actor-provider"
@@ -25,14 +26,24 @@ export default async function TeamDetailPage({
       <header className="border-b border-border pb-5">
         <p className="text-xs font-semibold text-court">TEAM WORKSPACE</p>
         <h1 className="mt-2 text-2xl font-semibold">{workspace.team.name}</h1>
+        {!workspace.team.isActive ? (
+          <p className="mt-3 w-fit border border-border px-2 py-1 text-xs font-semibold">
+            ปิดใช้งาน
+          </p>
+        ) : null}
       </header>
       <div className="pt-8">
         <TeamWorkspaceManager
           adminOverride={actor.role === "PLATFORM_ADMIN"}
           initialPlayers={workspace.players}
           initialTeam={workspace.team}
+          readOnly={!workspace.team.isActive}
         />
-        <TeamRegistrationList registrations={registrations} />
+        {workspace.team.isActive ? <TeamDeleteDialog team={workspace.team} /> : null}
+        <TeamRegistrationList
+          readOnly={!workspace.team.isActive}
+          registrations={registrations}
+        />
       </div>
     </section>
   )

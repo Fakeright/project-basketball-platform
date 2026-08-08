@@ -10,10 +10,12 @@ export function TeamWorkspaceManager({
   adminOverride,
   initialPlayers,
   initialTeam,
+  readOnly = false,
 }: {
   adminOverride: boolean
   initialPlayers: TeamPlayer[]
   initialTeam: EditableTeam
+  readOnly?: boolean
 }) {
   const [team, setTeam] = useState(initialTeam)
 
@@ -23,11 +25,13 @@ export function TeamWorkspaceManager({
         adminOverride={adminOverride}
         initialTeam={team}
         onTeamUpdated={setTeam}
+        readOnly={readOnly}
       />
       <TeamPlayerRoster
         format={team.format}
         initialPlayers={initialPlayers}
         teamId={team.id}
+        readOnly={readOnly}
       />
     </>
   )

@@ -29,10 +29,12 @@ export function TeamPlayerRoster({
   format,
   initialPlayers,
   teamId,
+  readOnly = false,
 }: {
   format: TeamFormat
   initialPlayers: TeamPlayer[]
   teamId: string
+  readOnly?: boolean
 }) {
   const [players, setPlayers] = useState(() => initialPlayers.filter((player) => player.isActive))
   const [editingPlayerId, setEditingPlayerId] = useState<string | null>(null)
@@ -147,16 +149,18 @@ export function TeamPlayerRoster({
         <p className="text-sm font-medium">ผู้เล่นที่ใช้งาน {players.length} คน</p>
       </div>
 
-      {players.length < minimumPlayers ? (
+      {!readOnly && players.length < minimumPlayers ? (
         <p className="mt-4 border-l-4 border-court px-3 py-2 text-sm">
           ทีม {formatLabel} ต้องมีผู้เล่นอย่างน้อย {minimumPlayers} คนก่อนสมัครแข่งขัน
         </p>
       ) : null}
 
-      <TeamPlayerBatchForm
-        onPlayersAdded={(addedPlayers) => setPlayers((current) => [...current, ...addedPlayers])}
-        teamId={teamId}
-      />
+      {!readOnly ? (
+        <TeamPlayerBatchForm
+          onPlayersAdded={(addedPlayers) => setPlayers((current) => [...current, ...addedPlayers])}
+          teamId={teamId}
+        />
+      ) : null}
 
       <p aria-live="polite" className="min-h-10 py-3 text-sm text-muted-foreground">
         {message}
@@ -204,7 +208,13 @@ export function TeamPlayerRoster({
                     </div>
                   </fieldset>
                 ) : (
-                  <div className="grid min-w-0 gap-3 text-sm md:grid-cols-[minmax(0,1.4fr)_minmax(0,0.8fr)_minmax(0,0.7fr)_minmax(0,0.7fr)_auto] md:items-center">
+                  <div
+                    className={`grid min-w-0 gap-3 text-sm md:items-center ${
+                      readOnly
+                        ? "md:grid-cols-[minmax(0,1.4fr)_minmax(0,0.8fr)_minmax(0,0.7fr)_minmax(0,0.7fr)]"
+                        : "md:grid-cols-[minmax(0,1.4fr)_minmax(0,0.8fr)_minmax(0,0.7fr)_minmax(0,0.7fr)_auto]"
+                    }`}
+                  >
                     <div className="min-w-0">
                       <p className="truncate font-medium">{name}</p>
                       {player.nickname ? <p className="mt-1 text-muted-foreground">ชื่อเล่น {player.nickname}</p> : null}
@@ -212,7 +222,7 @@ export function TeamPlayerRoster({
                     <p><span className="text-muted-foreground">วันเกิด </span>{player.birthDate}</p>
                     <p><span className="text-muted-foreground">เบอร์เสื้อ </span>{player.jerseyNumber ?? "-"}</p>
                     <p><span className="text-muted-foreground">ตำแหน่ง </span>{player.position ?? "-"}</p>
-                    <div className="flex min-w-20 justify-end gap-1">
+                    {!readOnly ? <div className="flex min-w-20 justify-end gap-1">
                       <Tooltip>
                         <TooltipTrigger
                           render={
@@ -249,7 +259,7 @@ export function TeamPlayerRoster({
                         />
                         <TooltipContent>นำผู้เล่นออกจากทีม</TooltipContent>
                       </Tooltip>
-                    </div>
+                    </div> : null}
                   </div>
                 )}
               </li>

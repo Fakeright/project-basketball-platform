@@ -6,6 +6,7 @@ import { deactivateTeamPlayer } from "@/features/team-management/application/dea
 import { getOwnedTeamWorkspace } from "@/features/team-management/application/get-owned-team-workspace"
 import { listOwnedTeams } from "@/features/team-management/application/list-owned-teams"
 import type { TeamRepository } from "@/features/team-management/application/ports/team-repository"
+import { removeOrDeactivateTeam } from "@/features/team-management/application/remove-or-deactivate-team"
 import { updateTeam } from "@/features/team-management/application/update-team"
 import { updateTeamPlayer } from "@/features/team-management/application/update-team-player"
 import type { TeamPlayer, TeamPlayerDraft } from "@/features/team-management/domain/team"
@@ -67,6 +68,17 @@ function createRepository(
     update: vi.fn(async (id, input) => ({ ...team, id, ...input })),
     listActivePlayers: vi.fn(async () => []),
     hasActiveRegistration: vi.fn(async () => false),
+    getRemovalContextForUpdate: vi.fn(async () => ({
+      team,
+      registrationStatuses: [],
+    })),
+    deleteTeam: vi.fn(async () => undefined),
+    deactivateTeam: vi.fn(async (_id, expectedVersion, at) => ({
+      ...team,
+      isActive: false,
+      deactivatedAt: at,
+      version: expectedVersion + 1,
+    })),
     findExistingPlayersByIdentities: vi.fn(async () => []),
     addPlayers: vi.fn(async (teamId, players) =>
       players.map((player, index) =>
@@ -396,6 +408,221 @@ describe("team use cases", () => {
     ).rejects.toThrow("CONFLICT")
     expect(hasActiveRegistration).not.toHaveBeenCalled()
     expect(repository.update).not.toHaveBeenCalled()
+  })
+
+  it("permanently deletes a team with no registration history and audits it", async () => {
+    const repository = createRepository()
+    const at = "2026-08-09T12:00:00.000Z"
+
+    await expect(
+      removeOrDeactivateTeam(
+        {
+          teamId: team.id,
+          confirmationName: `  ${team.name}  `,
+          expectedVersion: team.version,
+          at,
+        },
+        teamManager,
+        { teams: repository },
+      ),
+    ).resolves.toEqual({ outcome: "DELETED" })
+
+    expect(repository.deleteTeam).toHaveBeenCalledWith(team.id)
+    expect(repository.deactivateTeam).not.toHaveBeenCalled()
+    expect(repository.appendAuditEvent).toHaveBeenCalledWith({
+      actorId: teamManager.id,
+      action: "team.deleted",
+      entityId: team.id,
+      before: team,
+      after: null,
+    })
+    expect(repository.inTransaction).toHaveBeenCalledOnce()
+  })
+
+  it("deactivates a team with terminal registration history and increments version", async () => {
+    const at = "2026-08-09T12:00:00.000Z"
+    const repository = createRepository({
+      getRemovalContextForUpdate: vi.fn(async () => ({
+        team,
+        registrationStatuses: ["REJECTED", "CANCELLED", "WITHDRAWN"],
+      })),
+    })
+
+    await expect(
+      removeOrDeactivateTeam(
+        {
+          teamId: team.id,
+          confirmationName: team.name,
+          expectedVersion: team.version,
+          at,
+        },
+        teamManager,
+        { teams: repository },
+      ),
+    ).resolves.toEqual({ outcome: "DEACTIVATED" })
+
+    expect(repository.deactivateTeam).toHaveBeenCalledWith(
+      team.id,
+      team.version,
+      at,
+    )
+    expect(repository.deleteTeam).not.toHaveBeenCalled()
+    expect(repository.appendAuditEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "team.deactivated",
+        before: team,
+        after: expect.objectContaining({
+          isActive: false,
+          deactivatedAt: at,
+          version: team.version + 1,
+        }),
+      }),
+    )
+  })
+
+  it.each(["PENDING", "APPROVED"] as const)(
+    "blocks removal while a registration is %s",
+    async (status) => {
+      const repository = createRepository({
+        getRemovalContextForUpdate: vi.fn(async () => ({
+          team,
+          registrationStatuses: [status],
+        })),
+      })
+
+      await expect(
+        removeOrDeactivateTeam(
+          {
+            teamId: team.id,
+            confirmationName: team.name,
+            expectedVersion: team.version,
+            at: "2026-08-09T12:00:00.000Z",
+          },
+          teamManager,
+          { teams: repository },
+        ),
+      ).rejects.toThrow("TEAM_REMOVAL_BLOCKED")
+
+      expect(repository.deleteTeam).not.toHaveBeenCalled()
+      expect(repository.deactivateTeam).not.toHaveBeenCalled()
+      expect(repository.appendAuditEvent).not.toHaveBeenCalled()
+    },
+  )
+
+  it("returns a stale conflict before the active-registration lifecycle guard", async () => {
+    const repository = createRepository({
+      getRemovalContextForUpdate: vi.fn(async () => ({
+        team: { ...team, version: 2 },
+        registrationStatuses: ["APPROVED"],
+      })),
+    })
+
+    await expect(
+      removeOrDeactivateTeam(
+        {
+          teamId: team.id,
+          confirmationName: team.name,
+          expectedVersion: 1,
+          at: "2026-08-09T12:00:00.000Z",
+        },
+        teamManager,
+        { teams: repository },
+      ),
+    ).rejects.toThrow("CONFLICT")
+  })
+
+  it("rejects removal when the team is already inactive", async () => {
+    const repository = createRepository({
+      getRemovalContextForUpdate: vi.fn(async () => ({
+        team: { ...team, isActive: false },
+        registrationStatuses: ["REJECTED"],
+      })),
+    })
+
+    await expect(
+      removeOrDeactivateTeam(
+        {
+          teamId: team.id,
+          confirmationName: team.name,
+          expectedVersion: team.version,
+          at: "2026-08-09T12:00:00.000Z",
+        },
+        teamManager,
+        { teams: repository },
+      ),
+    ).rejects.toThrow("TEAM_INACTIVE")
+  })
+
+  it("requires the trimmed confirmation to match the team name exactly", async () => {
+    const repository = createRepository()
+
+    await expect(
+      removeOrDeactivateTeam(
+        {
+          teamId: team.id,
+          confirmationName: team.name.toLowerCase(),
+          expectedVersion: team.version,
+          at: "2026-08-09T12:00:00.000Z",
+        },
+        teamManager,
+        { teams: repository },
+      ),
+    ).rejects.toThrow("TEAM_NAME_CONFIRMATION_MISMATCH")
+
+    expect(repository.deleteTeam).not.toHaveBeenCalled()
+    expect(repository.deactivateTeam).not.toHaveBeenCalled()
+  })
+
+  it("hides another manager's team when removing it", async () => {
+    const repository = createRepository({
+      getRemovalContextForUpdate: vi.fn(async () => ({
+        team: { ...team, ownerId: "manager-2" },
+        registrationStatuses: [],
+      })),
+    })
+
+    await expect(
+      removeOrDeactivateTeam(
+        {
+          teamId: team.id,
+          confirmationName: team.name,
+          expectedVersion: team.version,
+          at: "2026-08-09T12:00:00.000Z",
+        },
+        teamManager,
+        { teams: repository },
+      ),
+    ).rejects.toThrow("NOT_FOUND")
+  })
+
+  it("audits an admin team removal override as a second event", async () => {
+    const otherOwnerTeam = { ...team, ownerId: "manager-2" }
+    const repository = createRepository({
+      getRemovalContextForUpdate: vi.fn(async () => ({
+        team: otherOwnerTeam,
+        registrationStatuses: ["REJECTED"],
+      })),
+    })
+
+    await removeOrDeactivateTeam(
+      {
+        teamId: team.id,
+        confirmationName: team.name,
+        expectedVersion: team.version,
+        at: "2026-08-09T12:00:00.000Z",
+      },
+      platformAdmin,
+      { teams: repository },
+    )
+
+    expect(repository.appendAuditEvent).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({ action: "team.deactivated", entityId: team.id }),
+    )
+    expect(repository.appendAuditEvent).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ action: "team.admin_override", entityId: team.id }),
+    )
   })
 
   it("updates with the expected version and skips registration reads when format is unchanged", async () => {

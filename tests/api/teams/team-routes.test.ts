@@ -4,6 +4,7 @@ import {
   handleAddTeamPlayers,
   handleCreateTeam,
   handleDeactivateTeamPlayer,
+  handleRemoveOrDeactivateTeam,
   handleUpdateTeamPlayer,
   handleUpdateTeam,
 } from "@/features/team-management/presentation/team-handler"
@@ -389,4 +390,87 @@ describe("team route handlers", () => {
       teamManager,
     )
   })
+
+  it.each([
+    ["DELETED", "ลบทีมถาวรแล้ว"],
+    ["DEACTIVATED", "ปิดใช้งานทีมแล้วและเก็บประวัติการแข่งขันไว้"],
+  ] as const)(
+    "returns the server-selected %s team removal outcome",
+    async (outcome, message) => {
+      const remove = vi.fn(async () => ({ outcome }))
+      const response = await handleRemoveOrDeactivateTeam(
+        "team-1",
+        jsonRequest({ confirmationName: "Bangkok Ballers", expectedVersion: 2 }),
+        {
+          actorProvider: { getCurrentActor: vi.fn(async () => teamManager) },
+          remove,
+        },
+      )
+
+      expect(response.status).toBe(200)
+      await expect(response.json()).resolves.toEqual({ outcome, message })
+      expect(remove).toHaveBeenCalledWith(
+        {
+          teamId: "team-1",
+          confirmationName: "Bangkok Ballers",
+          expectedVersion: 2,
+          at: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T/),
+        },
+        teamManager,
+      )
+    },
+  )
+
+  it("returns 422 for an invalid team removal body", async () => {
+    const remove = vi.fn()
+    const response = await handleRemoveOrDeactivateTeam(
+      "team-1",
+      jsonRequest({ confirmationName: "Bangkok Ballers", expectedVersion: -1 }),
+      {
+        actorProvider: { getCurrentActor: vi.fn(async () => teamManager) },
+        remove,
+      },
+    )
+
+    expect(response.status).toBe(422)
+    await expect(response.json()).resolves.toEqual({
+      message: "ข้อมูลยืนยันการลบทีมไม่ถูกต้อง",
+    })
+    expect(remove).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    [
+      "TEAM_NAME_CONFIRMATION_MISMATCH",
+      422,
+      "ชื่อทีมที่ยืนยันไม่ตรงกัน กรุณาพิมพ์ชื่อทีมให้ตรงทุกตัวอักษร",
+    ],
+    [
+      "TEAM_REMOVAL_BLOCKED",
+      409,
+      "ไม่สามารถลบหรือปิดใช้งานทีมได้ กรุณายกเลิกหรือถอนใบสมัครที่รอดำเนินการหรืออนุมัติแล้วก่อน",
+    ],
+    [
+      "CONFLICT",
+      409,
+      "ข้อมูลทีมมีการเปลี่ยนแปลง กรุณาโหลดหน้าใหม่แล้วลองอีกครั้ง",
+    ],
+  ] as const)(
+    "maps %s to an actionable team removal response",
+    async (code, status, message) => {
+      const response = await handleRemoveOrDeactivateTeam(
+        "team-1",
+        jsonRequest({ confirmationName: "Bangkok Ballers", expectedVersion: 2 }),
+        {
+          actorProvider: { getCurrentActor: vi.fn(async () => teamManager) },
+          remove: vi.fn(async () => {
+            throw new Error(code)
+          }),
+        },
+      )
+
+      expect(response.status).toBe(status)
+      await expect(response.json()).resolves.toEqual({ message })
+    },
+  )
 })

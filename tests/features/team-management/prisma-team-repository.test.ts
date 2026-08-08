@@ -46,12 +46,13 @@ function createPrismaMock() {
     $queryRaw: vi.fn(),
     team: {
       create: vi.fn(),
+      delete: vi.fn(),
       findUnique: vi.fn(),
       findMany: vi.fn(),
       update: vi.fn(),
       updateMany: vi.fn(),
     },
-    registration: { findFirst: vi.fn() },
+    registration: { findFirst: vi.fn(), findMany: vi.fn() },
     teamPlayer: {
       findUnique: vi.fn(),
       findMany: vi.fn(),
@@ -86,6 +87,81 @@ describe("PrismaTeamRepository", () => {
       include: { province: true },
     })
     expect(lockedTeam).toMatchObject({ id: "team-1", version: 2 })
+  })
+
+  it("loads registration statuses with the locked team removal snapshot", async () => {
+    const prisma = createPrismaMock()
+    prisma.$queryRaw.mockResolvedValue([{ id: "team-1" }])
+    prisma.team.findUnique.mockResolvedValue(teamRow)
+    prisma.registration.findMany.mockResolvedValue([
+      { status: "REJECTED" },
+      { status: "WITHDRAWN" },
+    ])
+    const repository = new PrismaTeamRepository(prisma as unknown as PrismaClient)
+
+    await expect(
+      repository.inTransaction((teams) =>
+        teams.getRemovalContextForUpdate("team-1"),
+      ),
+    ).resolves.toEqual({
+      team: {
+        id: "team-1",
+        name: "Bangkok Ballers",
+        provinceCode: "10",
+        province: teamRow.province.nameTh,
+        ownerId: "manager-1",
+        format: "THREE_V_THREE",
+        isActive: false,
+        deactivatedAt: "2026-07-26T00:00:00.000Z",
+        version: 2,
+      },
+      registrationStatuses: ["REJECTED", "WITHDRAWN"],
+    })
+    expect(prisma.$queryRaw).toHaveBeenCalledOnce()
+    expect(prisma.$queryRaw.mock.calls[0][0].text).toMatch(/FOR\s+UPDATE/i)
+    expect(prisma.registration.findMany).toHaveBeenCalledWith({
+      where: { teamId: "team-1" },
+      select: { status: true },
+    })
+  })
+
+  it("permanently deletes a team inside the transaction repository", async () => {
+    const prisma = createPrismaMock()
+    prisma.team.delete.mockResolvedValue(teamRow)
+    const repository = new PrismaTeamRepository(prisma as unknown as PrismaClient)
+
+    await repository.inTransaction((teams) => teams.deleteTeam("team-1"))
+
+    expect(prisma.team.delete).toHaveBeenCalledWith({ where: { id: "team-1" } })
+  })
+
+  it("deactivates a team at the expected version and increments it", async () => {
+    const prisma = createPrismaMock()
+    const at = "2026-08-09T12:00:00.000Z"
+    prisma.team.updateMany.mockResolvedValue({ count: 1 })
+    prisma.team.findUnique.mockResolvedValue({
+      ...teamRow,
+      isActive: false,
+      deactivatedAt: new Date(at),
+      version: 3,
+    })
+    const repository = new PrismaTeamRepository(prisma as unknown as PrismaClient)
+
+    await expect(
+      repository.deactivateTeam("team-1", 2, at),
+    ).resolves.toMatchObject({
+      isActive: false,
+      deactivatedAt: at,
+      version: 3,
+    })
+    expect(prisma.team.updateMany).toHaveBeenCalledWith({
+      where: { id: "team-1", version: 2, isActive: true },
+      data: {
+        isActive: false,
+        deactivatedAt: new Date(at),
+        version: { increment: 1 },
+      },
+    })
   })
 
   it("maps active players with date-only birth dates", async () => {

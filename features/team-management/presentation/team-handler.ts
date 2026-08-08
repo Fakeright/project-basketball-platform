@@ -14,6 +14,10 @@ import type {
 import type { AddTeamPlayersInput } from "@/features/team-management/application/add-team-players"
 import type { CreateTeamInput } from "@/features/team-management/application/create-team"
 import type { DeactivateTeamPlayerInput } from "@/features/team-management/application/deactivate-team-player"
+import type {
+  RemoveOrDeactivateTeamInput,
+  RemoveOrDeactivateTeamResult,
+} from "@/features/team-management/application/remove-or-deactivate-team"
 import type { UpdateTeamInput } from "@/features/team-management/application/update-team"
 import type { UpdateTeamPlayerInput } from "@/features/team-management/application/update-team-player"
 import { assertProvinceCode } from "@/features/provinces/application/assert-province-code"
@@ -35,6 +39,11 @@ const teamIdentitySchema = z.object({
 })
 
 const teamUpdateSchema = teamIdentitySchema.extend({
+  expectedVersion: z.number().int().nonnegative(),
+})
+
+const teamRemovalSchema = z.object({
+  confirmationName: z.string().min(1).max(160),
   expectedVersion: z.number().int().nonnegative(),
 })
 
@@ -98,6 +107,14 @@ interface UpdateTeamPlayerHandlerDependencies extends SafeHttpDiagnostics {
 interface DeactivateTeamPlayerHandlerDependencies extends SafeHttpDiagnostics {
   actorProvider: CurrentActorProvider
   deactivatePlayer: (input: DeactivateTeamPlayerInput, actor: Actor) => Promise<TeamPlayer>
+}
+
+interface RemoveOrDeactivateTeamHandlerDependencies extends SafeHttpDiagnostics {
+  actorProvider: CurrentActorProvider
+  remove: (
+    input: RemoveOrDeactivateTeamInput,
+    actor: Actor,
+  ) => Promise<RemoveOrDeactivateTeamResult>
 }
 
 export async function handleCreateTeam(
@@ -225,12 +242,50 @@ export async function handleDeactivateTeamPlayer(
   }
 }
 
+export async function handleRemoveOrDeactivateTeam(
+  teamId: string,
+  request: Request,
+  dependencies: RemoveOrDeactivateTeamHandlerDependencies,
+) {
+  try {
+    const actor = await dependencies.actorProvider.getCurrentActor()
+    if (!actor) return unauthorizedResponse()
+
+    const payload = await parseJsonRequest(request)
+    if (!payload.ok) return teamRemovalValidationResponse()
+
+    const parsed = teamRemovalSchema.safeParse(payload.value)
+    if (!parsed.success) return teamRemovalValidationResponse()
+
+    const result = await dependencies.remove(
+      { teamId, ...parsed.data, at: new Date().toISOString() },
+      actor,
+    )
+    const message = result.outcome === "DELETED"
+      ? "ลบทีมถาวรแล้ว"
+      : "ปิดใช้งานทีมแล้วและเก็บประวัติการแข่งขันไว้"
+    return Response.json({ ...result, message })
+  } catch (error) {
+    return (
+      teamFailureResponse(error) ??
+      unexpectedFailureResponse(error, "team.remove", dependencies)
+    )
+  }
+}
+
 function unauthorizedResponse() {
   return Response.json({ message: "กรุณาเข้าสู่ระบบ" }, { status: 401 })
 }
 
 function validationResponse() {
   return Response.json({ message: "ข้อมูลทีมไม่ถูกต้อง" }, { status: 422 })
+}
+
+function teamRemovalValidationResponse() {
+  return Response.json(
+    { message: "ข้อมูลยืนยันการลบทีมไม่ถูกต้อง" },
+    { status: 422 },
+  )
 }
 
 function playerValidationResponse(
@@ -294,6 +349,15 @@ function teamFailureResponse(error: unknown): Response | null {
     JERSEY_ALREADY_IN_USE: { status: 409, message: "เบอร์เสื้อนี้ถูกใช้แล้ว" },
     PLAYER_BATCH_INVALID: { status: 422, message: "รายชื่อผู้เล่นไม่ถูกต้อง" },
     TEAM_INACTIVE: { status: 409, message: "ทีมนี้ปิดใช้งานแล้ว" },
+    TEAM_NAME_CONFIRMATION_MISMATCH: {
+      status: 422,
+      message: "ชื่อทีมที่ยืนยันไม่ตรงกัน กรุณาพิมพ์ชื่อทีมให้ตรงทุกตัวอักษร",
+    },
+    TEAM_REMOVAL_BLOCKED: {
+      status: 409,
+      message:
+        "ไม่สามารถลบหรือปิดใช้งานทีมได้ กรุณายกเลิกหรือถอนใบสมัครที่รอดำเนินการหรืออนุมัติแล้วก่อน",
+    },
     CONFLICT: {
       status: 409,
       message: "ข้อมูลทีมมีการเปลี่ยนแปลง กรุณาโหลดหน้าใหม่แล้วลองอีกครั้ง",

@@ -18,8 +18,10 @@ export interface TeamRegistrationListItem {
 
 export function TeamRegistrationList({
   registrations,
+  readOnly = false,
 }: {
   registrations: TeamRegistrationListItem[]
+  readOnly?: boolean
 }) {
   const router = useRouter()
   const serverSignature = registrations
@@ -102,7 +104,7 @@ export function TeamRegistrationList({
               <span>{registration.submittedAt}</span>
               <span>{statusLabels[registration.status]}</span>
               <span>{registration.organizerNote ?? "-"}</span>
-              {registration.status === "PENDING" ? (
+              {!readOnly && registration.status === "PENDING" ? (
                 <button
                   aria-label={`ยกเลิกการสมัคร ${registration.tournamentName}`}
                   className="w-fit border border-border px-3 py-1.5 text-xs font-medium disabled:opacity-60"

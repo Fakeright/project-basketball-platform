@@ -22,15 +22,44 @@ export function TeamEditor({
   initialTeam,
   adminOverride = false,
   onTeamUpdated,
+  readOnly = false,
 }: {
   initialTeam: EditableTeam | null
   adminOverride?: boolean
   onTeamUpdated?: (team: EditableTeam) => void
+  readOnly?: boolean
 }) {
   const router = useRouter()
   const [message, setMessage] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
   const [version, setVersion] = useState(initialTeam?.version ?? 0)
+
+  if (readOnly && initialTeam) {
+    return (
+      <section aria-label="ข้อมูลทีม" className="space-y-5">
+        <div>
+          <p className="text-xs font-semibold text-court">TEAM IDENTITY</p>
+          <h2 className="mt-2 text-xl font-semibold">ข้อมูลทีม</h2>
+        </div>
+        <dl className="grid gap-x-8 gap-y-4 border-y border-border py-5 text-sm sm:grid-cols-3">
+          <div>
+            <dt className="text-muted-foreground">ชื่อทีม</dt>
+            <dd className="mt-1 font-medium">{initialTeam.name}</dd>
+          </div>
+          <div>
+            <dt className="text-muted-foreground">จังหวัด</dt>
+            <dd className="mt-1 font-medium">{initialTeam.province}</dd>
+          </div>
+          <div>
+            <dt className="text-muted-foreground">รูปแบบทีม</dt>
+            <dd className="mt-1 font-medium">
+              {initialTeam.format === "FIVE_V_FIVE" ? "5v5" : "3v3"}
+            </dd>
+          </div>
+        </dl>
+      </section>
+    )
+  }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()

@@ -75,6 +75,18 @@ export class PrismaTeamRepository implements TeamRepository {
     return this.mutations.hasActiveRegistration(teamId)
   }
 
+  getRemovalContextForUpdate(teamId: string) {
+    return this.mutations.getRemovalContextForUpdate(teamId)
+  }
+
+  deleteTeam(teamId: string) {
+    return this.mutations.deleteTeam(teamId)
+  }
+
+  deactivateTeam(teamId: string, expectedVersion: number, at: string) {
+    return this.mutations.deactivateTeam(teamId, expectedVersion, at)
+  }
+
   async listActivePlayers(teamId: string) {
     const players = await this.prisma.teamPlayer.findMany({
       where: { teamId, isActive: true },
@@ -170,6 +182,43 @@ class PrismaTeamMutationRepository implements TeamMutationRepository {
       select: { id: true },
     })
     return registration !== null
+  }
+
+  async getRemovalContextForUpdate(teamId: string) {
+    const team = await this.findByIdForUpdate(teamId)
+    if (!team) return null
+
+    const registrations = await this.prisma.registration.findMany({
+      where: { teamId },
+      select: { status: true },
+    })
+    return {
+      team,
+      registrationStatuses: registrations.map(({ status }) => status),
+    }
+  }
+
+  async deleteTeam(teamId: string) {
+    await this.prisma.team.delete({ where: { id: teamId } })
+  }
+
+  async deactivateTeam(teamId: string, expectedVersion: number, at: string) {
+    const updated = await this.prisma.team.updateMany({
+      where: { id: teamId, version: expectedVersion, isActive: true },
+      data: {
+        isActive: false,
+        deactivatedAt: new Date(at),
+        version: { increment: 1 },
+      },
+    })
+    if (updated.count !== 1) throw new Error("CONFLICT")
+
+    const team = await this.prisma.team.findUnique({
+      where: { id: teamId },
+      include: teamWithProvinceInclude,
+    })
+    if (!team) throw new Error("NOT_FOUND")
+    return mapTeam(team)
   }
 
   async findExistingPlayersByIdentities(

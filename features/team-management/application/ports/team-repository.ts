@@ -4,6 +4,12 @@ import type {
   TeamPlayerDraft,
   TeamSummary,
 } from "@/features/team-management/domain/team"
+import type { RegistrationStatus } from "@/features/registrations/domain/registration"
+
+export interface TeamRemovalContext {
+  team: TeamSummary
+  registrationStatuses: RegistrationStatus[]
+}
 
 export interface TeamMutationRepository {
   findByIdForUpdate(id: string): Promise<TeamSummary | null>
@@ -23,6 +29,13 @@ export interface TeamMutationRepository {
     },
   ): Promise<TeamSummary>
   hasActiveRegistration(teamId: string): Promise<boolean>
+  getRemovalContextForUpdate(teamId: string): Promise<TeamRemovalContext | null>
+  deleteTeam(teamId: string): Promise<void>
+  deactivateTeam(
+    teamId: string,
+    expectedVersion: number,
+    at: string,
+  ): Promise<TeamSummary>
   findExistingPlayersByIdentities(
     teamId: string,
     players: readonly TeamPlayerDraft[],
