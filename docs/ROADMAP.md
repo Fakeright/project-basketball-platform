@@ -33,6 +33,8 @@
 - หน้าจออ่านข้อมูล bracket และ schedule สาธารณะ ซึ่งแสดง match data ที่เผยแพร่แล้วได้ แต่ยังสร้างหรือแก้ไขการดำเนินการแข่งขันไม่ได้
 - Admin analytics ซึ่งปัจจุบันมี counts และ audits แต่ยังไม่มี visitor tracking, province popularity, trends หรือ charts
 - การตรวจสอบ browser แบบ responsive สำหรับทุก protected workflow และ production observability
+- การ reconcile `TeamMember` เดิมก่อน production cutover: audit แบบอ่านอย่างเดียวเมื่อ 9 สิงหาคม 2026 พบ 5 ทีมที่ยังมี active legacy rows แต่ข้อมูลเดิมไม่มีวันเกิด/ข้อมูลตัวตนเพียงพอสำหรับ backfill ที่ปลอดภัย ต้องยืนยันรูปแบบ `5v5`/`3v3`, กรอก `TeamPlayer` จากข้อมูลที่ตรวจสอบได้ และทบทวนประวัติการสมัครรายทีม โดยไม่ลบข้อมูลเดิมหรือสร้างวันเกิดขึ้นแทน
+- การกำกับ retention ของ TeamPlayer audit เดิม: event ใหม่เก็บเฉพาะ metadata ที่ไม่ใช่ PII และฐาน development ปัจจุบันไม่พบ event เดิมในขอบเขต read-only audit หากฐานเป้าหมายอื่นพบข้อมูล ต้องอนุมัติ redaction/retention แยกต่างหากและห้าม rewrite production audit โดยอัตโนมัติ
 
 ## วางแผนไว้
 
@@ -42,7 +44,7 @@
 - Email notifications และ announcements สำหรับผลการสมัคร, การเปลี่ยนตาราง และผลการแข่งขัน
 - Visitor analytics, monthly charts, popular provinces, conversion metrics, monitoring, CI/CD และ production deployment
 - การนำเข้ารายชื่อผู้เล่นด้วย CSV ซึ่งไม่รวมอยู่ใน workflow ปัจจุบัน
-- migration ที่ผ่านการอนุมัติเพื่อลบ `TeamMember` เดิม หลังตรวจผล audit แบบอ่านอย่างเดียวและยืนยันว่าไม่มีข้อมูลที่ต้องรักษา
+- migration ที่ผ่านการอนุมัติเพื่อลบ `TeamMember` เดิม หลัง audit/reconciliation รายทีมเสร็จสมบูรณ์และยืนยันว่าไม่มีข้อมูลที่ต้องรักษา โดย production cutover ห้ามนับ legacy members เป็น roster และห้ามสร้างข้อมูลผู้เล่นที่ขาดหายขึ้นเอง
 
 ## ลำดับการส่งมอบถัดไป
 

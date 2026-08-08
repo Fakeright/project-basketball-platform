@@ -1,6 +1,7 @@
 import { authorize } from "@/features/identity/application/authorize"
 import type { Actor } from "@/features/identity/domain/actor"
 import type { TeamPlayer, TeamPlayerDraft } from "@/features/team-management/domain/team"
+import { projectTeamPlayerBatchAuditSnapshot } from "@/features/team-management/domain/team-player-audit"
 
 import type { TeamRepository } from "./ports/team-repository"
 
@@ -35,23 +36,23 @@ export async function addTeamPlayers(
       .filter((player) => !player.isActive)
       .map((player) => player.id)
     const players = await teams.addPlayers(team.id, input.players)
+    const auditSnapshot = projectTeamPlayerBatchAuditSnapshot(
+      players,
+      reactivatedPlayerIds,
+    )
 
     await teams.appendAuditEvent({
       actorId: actor.id,
       action: "team.players_added",
       entityId: team.id,
-      after: {
-        playerIds: players.map((player) => player.id),
-        reactivatedPlayerIds,
-        count: players.length,
-      },
+      after: auditSnapshot,
     })
     if (isOverride) {
       await teams.appendAuditEvent({
         actorId: actor.id,
         action: "team.admin_override",
         entityId: team.id,
-        after: { playerIds: players.map((player) => player.id), count: players.length },
+        after: auditSnapshot,
       })
     }
 

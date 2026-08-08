@@ -20,6 +20,53 @@ afterEach(() => {
 })
 
 describe("TeamWorkspaceManager", () => {
+  it("shows a read-only Thai reconciliation notice for active legacy members", () => {
+    render(
+      <TeamWorkspaceManager
+        adminOverride={false}
+        initialPlayers={[]}
+        initialTeam={{
+          id: "team-legacy",
+          name: "Legacy Ballers",
+          provinceCode: "10",
+          province: "Bangkok",
+          format: "FIVE_V_FIVE",
+          version: 0,
+        }}
+        legacyReconciliation={{
+          teamId: "team-legacy",
+          format: "FIVE_V_FIVE",
+          activeLegacyPlayerCount: 2,
+          activeLegacyCoachCount: 1,
+          activeLegacyMemberCount: 3,
+          activeTeamPlayerCount: 0,
+          registrationHistoryCount: 1,
+          registrationStatusCounts: {
+            PENDING: 0,
+            APPROVED: 0,
+            REJECTED: 1,
+            CANCELLED: 0,
+            WITHDRAWN: 0,
+          },
+          readyForLegacyRemoval: false,
+          issues: [
+            "LEGACY_PLAYERS_REQUIRE_MANUAL_REENTRY",
+            "LEGACY_COACHES_REQUIRE_REVIEW",
+            "TEAM_FORMAT_REQUIRES_REVIEW",
+          ],
+        }}
+      />,
+    )
+
+    expect(screen.getByText("ข้อมูลทีมเดิมต้องตรวจสอบ")).toBeTruthy()
+    expect(screen.getByText("สมาชิกเดิมที่ยังใช้งาน: ผู้เล่น 2 คน, โค้ช 1 คน")).toBeTruthy()
+    expect(screen.getByText(/สมาชิกเดิมไม่ถูกนับเป็นรายชื่อสำหรับสมัครแข่งขัน/)).toBeTruthy()
+    expect(screen.getByText(/ตรวจสอบรูปแบบทีมว่าเป็น 5v5 หรือ 3v3/)).toBeTruthy()
+    expect(
+      screen.getByText(/ตรวจสอบผู้เล่นเดิม 2 คนและกรอกเป็น TeamPlayer จากข้อมูลที่ยืนยันได้/),
+    ).toBeTruthy()
+  })
+
   it("refreshes and immediately reconciles the roster minimum after a format update", async () => {
     const team = {
       id: "team-1",

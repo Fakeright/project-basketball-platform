@@ -1,6 +1,8 @@
 import { PrismaPg } from "@prisma/adapter-pg"
 import { config } from "dotenv"
 import { PrismaClient } from "../lib/generated/prisma/client"
+import { listLegacyTeamReconciliations } from "../features/team-management/application/legacy-team-reconciliation"
+import { PrismaTeamRepository } from "../features/team-management/infrastructure/prisma-team-repository"
 
 config({ path: ".env.local" })
 config()
@@ -15,12 +17,17 @@ const prisma = new PrismaClient({
 
 async function main() {
   try {
-    const counts = await prisma.teamMember.groupBy({
-      by: ["role", "isActive"],
-      _count: { _all: true },
+    const teams = await listLegacyTeamReconciliations({
+      teams: new PrismaTeamRepository(prisma),
     })
 
-    console.log(JSON.stringify({ legacyTeamMembers: counts }, null, 2))
+    console.log(JSON.stringify({
+      legacyTeamReconciliation: {
+        teamCount: teams.length,
+        readyForLegacyRemoval: teams.length === 0,
+        teams,
+      },
+    }, null, 2))
   } finally {
     await prisma.$disconnect()
   }

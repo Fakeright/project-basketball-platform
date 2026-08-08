@@ -58,6 +58,41 @@ function playerFromDraft(
   }
 }
 
+const playerPiiKeys = new Set([
+  "firstName",
+  "lastName",
+  "nickname",
+  "birthDate",
+  "phone",
+])
+
+function playerAuditSnapshot(player: TeamPlayer) {
+  return {
+    playerId: player.id,
+    teamId: player.teamId,
+    jerseyNumber: player.jerseyNumber,
+    position: player.position,
+    isActive: player.isActive,
+  }
+}
+
+function expectPlayerAuditPayloadsToOmitPii(repository: TeamRepository) {
+  for (const [event] of vi.mocked(repository.appendAuditEvent).mock.calls) {
+    expect(findPlayerPiiKeys(event.before)).toEqual([])
+    expect(findPlayerPiiKeys(event.after)).toEqual([])
+  }
+}
+
+function findPlayerPiiKeys(value: unknown): string[] {
+  if (Array.isArray(value)) return value.flatMap(findPlayerPiiKeys)
+  if (typeof value !== "object" || value === null) return []
+
+  return Object.entries(value).flatMap(([key, nestedValue]) => [
+    ...(playerPiiKeys.has(key) ? [key] : []),
+    ...findPlayerPiiKeys(nestedValue),
+  ])
+}
+
 type TransactionalTeamRepository = TeamRepository
 const transactionLifetimeError = "TRANSACTION_REPOSITORY_OUTSIDE_CALLBACK"
 
@@ -69,6 +104,7 @@ function createRepository(
     findById: vi.fn(async () => team),
     findByIdForUpdate: vi.fn(async () => team),
     listByOwner: vi.fn(async () => [team]),
+    listLegacyReconciliationContexts: vi.fn(async () => []),
     update: vi.fn(async (id, input) => ({ ...team, id, ...input })),
     listActivePlayers: vi.fn(async () => []),
     hasActiveRegistration: vi.fn(async () => false),
@@ -374,12 +410,13 @@ describe("team use cases", () => {
         action: "team.players_added",
         entityId: team.id,
         after: {
-          playerIds: ["player-1", "player-2"],
+          players: players.map(playerAuditSnapshot),
           reactivatedPlayerIds: [],
           count: 2,
         },
       }),
     )
+    expectPlayerAuditPayloadsToOmitPii(repository)
     expect(repository.findById).not.toHaveBeenCalled()
     expect(repository.findByIdForUpdate).toHaveBeenCalledWith(team.id)
     expect(vi.mocked(repository.findByIdForUpdate).mock.invocationCallOrder[0]).toBeLessThan(
@@ -508,9 +545,14 @@ describe("team use cases", () => {
 
     expect(repository.appendAuditEvent).toHaveBeenCalledWith(
       expect.objectContaining({
-        after: expect.objectContaining({ reactivatedPlayerIds: ["player-old"] }),
+        after: {
+          players: [playerAuditSnapshot(reactivated)],
+          reactivatedPlayerIds: ["player-old"],
+          count: 1,
+        },
       }),
     )
+    expectPlayerAuditPayloadsToOmitPii(repository)
     expect(repository.findExistingPlayersByIdentities).toHaveBeenCalledWith(
       team.id,
       [draftPlayer("one", 4)],
@@ -537,10 +579,11 @@ describe("team use cases", () => {
     expect(repository.appendAuditEvent).toHaveBeenCalledWith(
       expect.objectContaining({
         action: "team.player_updated",
-        before: existingPlayer,
-        after: updated,
+        before: playerAuditSnapshot(existingPlayer),
+        after: playerAuditSnapshot(updated),
       }),
     )
+    expectPlayerAuditPayloadsToOmitPii(repository)
     expect(repository.findById).not.toHaveBeenCalled()
     expect(repository.findByIdForUpdate).toHaveBeenCalledWith(team.id)
     expect(vi.mocked(repository.findByIdForUpdate).mock.invocationCallOrder[0]).toBeLessThan(
@@ -566,8 +609,13 @@ describe("team use cases", () => {
 
     expect(deactivated).toMatchObject({ isActive: false, deactivatedAt: at })
     expect(repository.appendAuditEvent).toHaveBeenCalledWith(
-      expect.objectContaining({ action: "team.player_deactivated", before: existingPlayer }),
+      expect.objectContaining({
+        action: "team.player_deactivated",
+        before: playerAuditSnapshot(existingPlayer),
+        after: playerAuditSnapshot(deactivated),
+      }),
     )
+    expectPlayerAuditPayloadsToOmitPii(repository)
     expect(repository.findById).not.toHaveBeenCalled()
     expect(repository.findByIdForUpdate).toHaveBeenCalledWith(team.id)
     expect(vi.mocked(repository.findByIdForUpdate).mock.invocationCallOrder[0]).toBeLessThan(
@@ -592,6 +640,7 @@ describe("team use cases", () => {
     expect(repository.appendAuditEvent).toHaveBeenCalledWith(
       expect.objectContaining({ action: "team.admin_override", entityId: team.id }),
     )
+    expectPlayerAuditPayloadsToOmitPii(repository)
   })
 
   it("creates a team owned by the team manager and audits the mutation", async () => {
@@ -1019,7 +1068,61 @@ describe("team use cases", () => {
     ).resolves.toEqual({
       team,
       players: [activePlayer],
+      legacyReconciliation: null,
     })
+  })
+
+  it("reports legacy reconciliation readiness while keeping legacy members out of the roster", async () => {
+    const repository = createRepository({
+      listActivePlayers: vi.fn(async () => []),
+      listLegacyReconciliationContexts: vi.fn(async () => [
+        {
+          teamId: team.id,
+          format: team.format,
+          activeLegacyPlayerCount: 2,
+          activeLegacyCoachCount: 1,
+          activeTeamPlayerCount: 0,
+          registrationHistoryCount: 2,
+          registrationStatusCounts: {
+            PENDING: 0,
+            APPROVED: 0,
+            REJECTED: 1,
+            CANCELLED: 0,
+            WITHDRAWN: 1,
+          },
+        },
+      ]),
+    })
+
+    await expect(
+      getOwnedTeamWorkspace(team.id, teamManager, { teams: repository }),
+    ).resolves.toEqual({
+      team,
+      players: [],
+      legacyReconciliation: {
+        teamId: team.id,
+        format: "FIVE_V_FIVE",
+        activeLegacyPlayerCount: 2,
+        activeLegacyCoachCount: 1,
+        activeLegacyMemberCount: 3,
+        activeTeamPlayerCount: 0,
+        registrationHistoryCount: 2,
+        registrationStatusCounts: {
+          PENDING: 0,
+          APPROVED: 0,
+          REJECTED: 1,
+          CANCELLED: 0,
+          WITHDRAWN: 1,
+        },
+        readyForLegacyRemoval: false,
+        issues: [
+          "LEGACY_PLAYERS_REQUIRE_MANUAL_REENTRY",
+          "LEGACY_COACHES_REQUIRE_REVIEW",
+          "TEAM_FORMAT_REQUIRES_REVIEW",
+        ],
+      },
+    })
+    expect(repository.listActivePlayers).toHaveBeenCalledWith(team.id)
   })
 
   it("performs each team mutation in a repository transaction", async () => {

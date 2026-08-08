@@ -81,6 +81,25 @@ function createRepository(overrides: Partial<RegistrationRepository> = {}): Regi
 }
 
 describe("applyToTournament", () => {
+  it("does not count active legacy members toward TeamPlayer eligibility", async () => {
+    const repository = createRepository({
+      getApplicationContext: vi.fn(async () => ({
+        ...context,
+        roster: [],
+        legacyMemberCounts: { player: 5, coach: 1 },
+      })),
+    })
+
+    await expect(
+      applyToTournament(
+        { tournamentId: "tournament-1", teamId: "team-1" },
+        teamManager,
+        { registrations: repository, now: () => new Date("2026-10-01T00:00:00Z") },
+      ),
+    ).rejects.toThrow("ROSTER_INCOMPLETE")
+    expect(repository.createPending).not.toHaveBeenCalled()
+  })
+
   it("rejects an inactive team", async () => {
     const repository = createRepository({
       getApplicationContext: vi.fn(async () => ({

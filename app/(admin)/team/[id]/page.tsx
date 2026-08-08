@@ -37,6 +37,7 @@ export default async function TeamDetailPage({
           adminOverride={actor.role === "PLATFORM_ADMIN"}
           initialPlayers={workspace.players}
           initialTeam={workspace.team}
+          legacyReconciliation={workspace.legacyReconciliation}
           readOnly={!workspace.team.isActive}
         />
         {workspace.team.isActive ? <TeamDeleteDialog team={workspace.team} /> : null}

@@ -5,9 +5,11 @@ import {
   type TeamPlayer as PrismaTeamPlayer,
 } from "@/lib/generated/prisma/client"
 import type {
+  LegacyTeamReconciliationContext,
   TeamMutationRepository,
   TeamRepository,
 } from "@/features/team-management/application/ports/team-repository"
+import type { RegistrationStatus } from "@/features/registrations/domain/registration"
 import type {
   TeamPlayer,
   TeamPlayerDraft,
@@ -20,9 +22,17 @@ const teamWithProvinceInclude = {
 
 type TeamDatabaseClient = Pick<
   PrismaClient,
-  "team" | "teamPlayer" | "auditLog"
+  "team" | "teamMember" | "teamPlayer" | "auditLog"
   | "registration" | "$queryRaw"
 >
+
+const registrationStatuses: RegistrationStatus[] = [
+  "PENDING",
+  "APPROVED",
+  "REJECTED",
+  "CANCELLED",
+  "WITHDRAWN",
+]
 
 export class PrismaTeamRepository implements TeamRepository {
   private readonly mutations: PrismaTeamMutationRepository
@@ -62,6 +72,62 @@ export class PrismaTeamRepository implements TeamRepository {
       include: teamWithProvinceInclude,
     })
     return teams.map(mapTeam)
+  }
+
+  async listLegacyReconciliationContexts(teamId?: string) {
+    const legacyCounts = await this.prisma.teamMember.groupBy({
+      by: ["teamId", "role"],
+      where: teamId ? { isActive: true, teamId } : { isActive: true },
+      _count: { _all: true },
+      orderBy: [{ teamId: "asc" }, { role: "asc" }],
+    })
+    const teamIds = [...new Set(legacyCounts.map((count) => count.teamId))]
+    if (teamIds.length === 0) return []
+
+    const [teams, activePlayerCounts, registrationCounts] = await Promise.all([
+      this.prisma.team.findMany({
+        where: { id: { in: teamIds } },
+        select: { id: true, format: true },
+        orderBy: { id: "asc" },
+      }),
+      this.prisma.teamPlayer.groupBy({
+        by: ["teamId"],
+        where: { teamId: { in: teamIds }, isActive: true },
+        _count: { _all: true },
+      }),
+      this.prisma.registration.groupBy({
+        by: ["teamId", "status"],
+        where: { teamId: { in: teamIds } },
+        _count: { _all: true },
+      }),
+    ])
+
+    return teams.map((team): LegacyTeamReconciliationContext => {
+      const teamLegacyCounts = legacyCounts.filter((count) => count.teamId === team.id)
+      const teamRegistrationCounts = registrationCounts.filter(
+        (count) => count.teamId === team.id,
+      )
+      const registrationStatusCounts = createRegistrationStatusCounts()
+      for (const count of teamRegistrationCounts) {
+        registrationStatusCounts[count.status] = count._count._all
+      }
+
+      return {
+        teamId: team.id,
+        format: team.format,
+        activeLegacyPlayerCount:
+          teamLegacyCounts.find((count) => count.role === "PLAYER")?._count._all ?? 0,
+        activeLegacyCoachCount:
+          teamLegacyCounts.find((count) => count.role === "COACH")?._count._all ?? 0,
+        activeTeamPlayerCount:
+          activePlayerCounts.find((count) => count.teamId === team.id)?._count._all ?? 0,
+        registrationHistoryCount: teamRegistrationCounts.reduce(
+          (total, count) => total + count._count._all,
+          0,
+        ),
+        registrationStatusCounts,
+      }
+    })
   }
 
   update(
@@ -391,6 +457,12 @@ function optionalPlayerData(input: TeamPlayerDraft) {
 
 function toDateOnly(value: Date): string {
   return value.toISOString().slice(0, 10)
+}
+
+function createRegistrationStatusCounts(): Record<RegistrationStatus, number> {
+  return Object.fromEntries(
+    registrationStatuses.map((status) => [status, 0]),
+  ) as Record<RegistrationStatus, number>
 }
 
 function toJsonValue(value: unknown): Prisma.InputJsonValue | undefined {

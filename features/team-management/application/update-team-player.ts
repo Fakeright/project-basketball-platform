@@ -1,6 +1,7 @@
 import { authorize } from "@/features/identity/application/authorize"
 import type { Actor } from "@/features/identity/domain/actor"
 import type { TeamPlayer, TeamPlayerDraft } from "@/features/team-management/domain/team"
+import { projectTeamPlayerAuditSnapshot } from "@/features/team-management/domain/team-player-audit"
 
 import type { TeamRepository } from "./ports/team-repository"
 
@@ -28,20 +29,22 @@ export async function updateTeamPlayer(
     if (!player) throw new Error("PLAYER_NOT_FOUND")
 
     const updated = await teams.updatePlayer(team.id, player.id, input.player)
+    const beforeAudit = projectTeamPlayerAuditSnapshot(player)
+    const afterAudit = projectTeamPlayerAuditSnapshot(updated)
     await teams.appendAuditEvent({
       actorId: actor.id,
       action: "team.player_updated",
       entityId: team.id,
-      before: player,
-      after: updated,
+      before: beforeAudit,
+      after: afterAudit,
     })
     if (isOverride) {
       await teams.appendAuditEvent({
         actorId: actor.id,
         action: "team.admin_override",
         entityId: team.id,
-        before: player,
-        after: updated,
+        before: beforeAudit,
+        after: afterAudit,
       })
     }
 

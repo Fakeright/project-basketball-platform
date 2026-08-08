@@ -11,6 +11,16 @@ export interface TeamRemovalContext {
   registrationStatuses: RegistrationStatus[]
 }
 
+export interface LegacyTeamReconciliationContext {
+  teamId: string
+  format: TeamFormat
+  activeLegacyPlayerCount: number
+  activeLegacyCoachCount: number
+  activeTeamPlayerCount: number
+  registrationHistoryCount: number
+  registrationStatusCounts: Record<RegistrationStatus, number>
+}
+
 export interface TeamMutationRepository {
   findByIdForUpdate(id: string): Promise<TeamSummary | null>
   create(input: {
@@ -63,4 +73,7 @@ export interface TeamRepository extends TeamMutationRepository {
   ): Promise<T>
   findById(id: string): Promise<TeamSummary | null>
   listByOwner(ownerId: string): Promise<TeamSummary[]>
+  listLegacyReconciliationContexts(
+    teamId?: string,
+  ): Promise<LegacyTeamReconciliationContext[]>
 }

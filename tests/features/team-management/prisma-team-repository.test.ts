@@ -52,10 +52,12 @@ function createPrismaMock() {
       update: vi.fn(),
       updateMany: vi.fn(),
     },
-    registration: { findFirst: vi.fn(), findMany: vi.fn() },
+    registration: { findFirst: vi.fn(), findMany: vi.fn(), groupBy: vi.fn() },
+    teamMember: { groupBy: vi.fn() },
     teamPlayer: {
       findUnique: vi.fn(),
       findMany: vi.fn(),
+      groupBy: vi.fn(),
       create: vi.fn(),
       update: vi.fn(),
       updateMany: vi.fn(),
@@ -69,6 +71,68 @@ function createPrismaMock() {
 }
 
 describe("PrismaTeamRepository", () => {
+  it("reports legacy reconciliation counts and registration statuses without selecting PII", async () => {
+    const prisma = createPrismaMock()
+    prisma.teamMember.groupBy.mockResolvedValue([
+      { teamId: "team-1", role: "PLAYER", _count: { _all: 2 } },
+      { teamId: "team-1", role: "COACH", _count: { _all: 1 } },
+    ])
+    prisma.team.findMany.mockResolvedValue([teamRow])
+    prisma.teamPlayer.groupBy.mockResolvedValue([
+      { teamId: "team-1", _count: { _all: 1 } },
+    ])
+    prisma.registration.groupBy.mockResolvedValue([
+      { teamId: "team-1", status: "REJECTED", _count: { _all: 1 } },
+      { teamId: "team-1", status: "WITHDRAWN", _count: { _all: 2 } },
+    ])
+    const repository = new PrismaTeamRepository(prisma as unknown as PrismaClient)
+    const compatibilityRepository = repository as unknown as {
+      listLegacyReconciliationContexts(teamId?: string): Promise<unknown>
+    }
+
+    expect(typeof compatibilityRepository.listLegacyReconciliationContexts).toBe("function")
+    await expect(
+      compatibilityRepository.listLegacyReconciliationContexts("team-1"),
+    ).resolves.toEqual([
+      {
+        teamId: "team-1",
+        format: "THREE_V_THREE",
+        activeLegacyPlayerCount: 2,
+        activeLegacyCoachCount: 1,
+        activeTeamPlayerCount: 1,
+        registrationHistoryCount: 3,
+        registrationStatusCounts: {
+          PENDING: 0,
+          APPROVED: 0,
+          REJECTED: 1,
+          CANCELLED: 0,
+          WITHDRAWN: 2,
+        },
+      },
+    ])
+    expect(prisma.teamMember.groupBy).toHaveBeenCalledWith({
+      by: ["teamId", "role"],
+      where: { isActive: true, teamId: "team-1" },
+      _count: { _all: true },
+      orderBy: [{ teamId: "asc" }, { role: "asc" }],
+    })
+    expect(prisma.team.findMany).toHaveBeenCalledWith({
+      where: { id: { in: ["team-1"] } },
+      select: { id: true, format: true },
+      orderBy: { id: "asc" },
+    })
+    expect(prisma.teamPlayer.groupBy).toHaveBeenCalledWith({
+      by: ["teamId"],
+      where: { teamId: { in: ["team-1"] }, isActive: true },
+      _count: { _all: true },
+    })
+    expect(prisma.registration.groupBy).toHaveBeenCalledWith({
+      by: ["teamId", "status"],
+      where: { teamId: { in: ["team-1"] } },
+      _count: { _all: true },
+    })
+  })
+
   it("locks the team row before reading the update snapshot", async () => {
     const prisma = createPrismaMock()
     prisma.$queryRaw.mockResolvedValue([{ id: "team-1" }])
