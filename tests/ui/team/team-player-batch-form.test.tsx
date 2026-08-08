@@ -1,4 +1,4 @@
-import { cleanup, render, screen, waitFor, within } from "@testing-library/react"
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
@@ -60,12 +60,12 @@ describe("TeamPlayerBatchForm", () => {
     render(<TeamPlayerBatchForm onPlayersAdded={vi.fn()} teamId="team-1" />)
 
     const rows = screen.getAllByRole("group", { name: /ผู้เล่นคนที่/ })
-    await fillRequiredFields(user, rows[0], "สมชาย", "ใจดี", "2010-02-03")
-    await user.type(within(rows[0]).getByLabelText("ชื่อเล่น"), "ชาย")
-    await user.type(within(rows[0]).getByLabelText("เบอร์เสื้อ"), "4")
+    fillRequiredFields(rows[0], "สมชาย", "ใจดี", "2010-02-03")
+    fireEvent.change(within(rows[0]).getByLabelText("ชื่อเล่น"), { target: { value: "ชาย" } })
+    fireEvent.change(within(rows[0]).getByLabelText("เบอร์เสื้อ"), { target: { value: "4" } })
     await user.selectOptions(within(rows[0]).getByLabelText("ตำแหน่ง"), "PG")
-    await user.type(within(rows[0]).getByLabelText("เบอร์โทรศัพท์"), "0812345678")
-    await fillRequiredFields(user, rows[2], "สุดา", "แข็งแรง", "2011-04-05")
+    fireEvent.change(within(rows[0]).getByLabelText("เบอร์โทรศัพท์"), { target: { value: "0812345678" } })
+    fillRequiredFields(rows[2], "สุดา", "แข็งแรง", "2011-04-05")
 
     await user.click(screen.getByRole("button", { name: "บันทึกผู้เล่นทั้งหมด" }))
 
@@ -132,8 +132,8 @@ describe("TeamPlayerBatchForm", () => {
     render(<TeamPlayerBatchForm onPlayersAdded={vi.fn()} teamId="team-1" />)
 
     const rows = screen.getAllByRole("group", { name: /ผู้เล่นคนที่/ })
-    await fillRequiredFields(user, rows[0], "สมชาย", "ใจดี", "2010-02-03")
-    await fillRequiredFields(user, rows[2], "สุดา", "แข็งแรง", "2011-04-05")
+    fillRequiredFields(rows[0], "สมชาย", "ใจดี", "2010-02-03")
+    fillRequiredFields(rows[2], "สุดา", "แข็งแรง", "2011-04-05")
     await user.type(within(rows[2]).getByLabelText("เบอร์เสื้อ"), "4")
     await user.click(screen.getByRole("button", { name: "บันทึกผู้เล่นทั้งหมด" }))
 
@@ -156,7 +156,7 @@ describe("TeamPlayerBatchForm", () => {
     render(<TeamPlayerBatchForm onPlayersAdded={vi.fn()} teamId="team-1" />)
 
     const firstRow = screen.getAllByRole("group", { name: /ผู้เล่นคนที่/ })[0]
-    await fillRequiredFields(user, firstRow, "สมชาย", "ใจดี", "2010-02-03")
+    fillRequiredFields(firstRow, "สมชาย", "ใจดี", "2010-02-03")
     await user.click(screen.getByRole("button", { name: "บันทึกผู้เล่นทั้งหมด" }))
 
     const pendingButton = screen.getByRole("button", { name: "กำลังบันทึกผู้เล่น" })
@@ -170,14 +170,13 @@ describe("TeamPlayerBatchForm", () => {
   })
 })
 
-async function fillRequiredFields(
-  user: ReturnType<typeof userEvent.setup>,
+function fillRequiredFields(
   row: HTMLElement,
   firstName: string,
   lastName: string,
   birthDate: string,
 ) {
-  await user.type(within(row).getByLabelText("ชื่อ"), firstName)
-  await user.type(within(row).getByLabelText("นามสกุล"), lastName)
-  await user.type(within(row).getByLabelText("วันเกิด"), birthDate)
+  fireEvent.change(within(row).getByLabelText("ชื่อ"), { target: { value: firstName } })
+  fireEvent.change(within(row).getByLabelText("นามสกุล"), { target: { value: lastName } })
+  fireEvent.change(within(row).getByLabelText("วันเกิด"), { target: { value: birthDate } })
 }
