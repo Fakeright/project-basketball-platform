@@ -44,7 +44,7 @@
 - Email notifications และ announcements สำหรับผลการสมัคร, การเปลี่ยนตาราง และผลการแข่งขัน
 - Visitor analytics, monthly charts, popular provinces, conversion metrics, monitoring, CI/CD และ production deployment
 - การนำเข้ารายชื่อผู้เล่นด้วย CSV ซึ่งไม่รวมอยู่ใน workflow ปัจจุบัน
-- migration ที่ผ่านการอนุมัติเพื่อลบ `TeamMember` เดิม หลัง audit/reconciliation รายทีมเสร็จสมบูรณ์และยืนยันว่าไม่มี active หรือ inactive history ที่ต้องรักษา ระหว่างนี้ใบสมัครสถานะ `PENDING`/`APPROVED` จะบล็อกการลบหรือปิดใช้งานก่อน เมื่อผ่าน guard นี้แล้ว hard delete ทีมถูกห้ามหากมี `TeamMember` ใด ๆ และระบบจะเลือกปิดใช้งานเพื่อป้องกัน cascade โดย production cutover ห้ามนับ legacy members เป็น roster และห้ามสร้างข้อมูลผู้เล่นที่ขาดหายขึ้นเอง
+- migration ที่ผ่านการอนุมัติเพื่อลบ `TeamMember` เดิม หลัง audit/reconciliation รายทีมเสร็จสมบูรณ์และยืนยันว่าไม่มี active หรือ inactive history ที่ต้องรักษา ระหว่างนี้ใบสมัครสถานะ `PENDING`/`APPROVED` จะบล็อกการลบหรือปิดใช้งานก่อน เมื่อผ่าน guard นี้แล้ว ประวัติการสมัครสถานะสิ้นสุดหรือการมี `TeamMember` ใด ๆ จะทำให้ระบบเลือกปิดใช้งานแทน hard delete เพื่อรักษาประวัติและป้องกัน cascade โดย production cutover ห้ามนับ legacy members เป็น roster และห้ามสร้างข้อมูลผู้เล่นที่ขาดหายขึ้นเอง
 
 ## ลำดับการส่งมอบถัดไป
 
