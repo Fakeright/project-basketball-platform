@@ -4,9 +4,18 @@ import { afterEach, describe, expect, it, vi } from "vitest"
 
 import { TeamEditor } from "@/components/team/team-editor"
 
+const router = {
+  refresh: vi.fn(),
+}
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => router,
+}))
+
 afterEach(() => {
   cleanup()
   vi.unstubAllGlobals()
+  router.refresh.mockReset()
 })
 
 describe("TeamEditor", () => {

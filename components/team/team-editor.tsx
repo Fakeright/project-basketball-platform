@@ -2,6 +2,7 @@
 
 import type { FormEvent } from "react"
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 
 import { ProvinceCombobox } from "@/components/province-combobox"
 
@@ -20,10 +21,13 @@ const fieldClassName =
 export function TeamEditor({
   initialTeam,
   adminOverride = false,
+  onTeamUpdated,
 }: {
   initialTeam: EditableTeam | null
   adminOverride?: boolean
+  onTeamUpdated?: (team: EditableTeam) => void
 }) {
+  const router = useRouter()
   const [message, setMessage] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
   const [version, setVersion] = useState(initialTeam?.version ?? 0)
@@ -58,10 +62,14 @@ export function TeamEditor({
       )
       const result = (await response.json()) as {
         message?: string
-        team?: { version: number }
+        team?: EditableTeam
       }
       if (response.ok) {
-        if (initialTeam && result.team) setVersion(result.team.version)
+        if (initialTeam && result.team) {
+          setVersion(result.team.version)
+          onTeamUpdated?.(result.team)
+          router.refresh()
+        }
         setMessage("บันทึกทีมแล้ว")
       } else {
         setMessage(

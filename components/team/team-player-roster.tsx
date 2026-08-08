@@ -20,6 +20,11 @@ import type {
   TeamPlayer,
 } from "@/features/team-management/domain/team"
 
+interface PlayerFieldIssue {
+  field: string
+  message: string
+}
+
 export function TeamPlayerRoster({
   format,
   initialPlayers,
@@ -68,8 +73,20 @@ export function TeamPlayerRoster({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(playerDraftFromValues(editValues)),
       })
-      const result = (await response.json()) as { message?: string; player?: TeamPlayer }
+      const result = (await response.json()) as {
+        issues?: PlayerFieldIssue[]
+        message?: string
+        player?: TeamPlayer
+      }
       if (!response.ok || !result.player) {
+        if (response.status === 422 && result.issues) {
+          setEditErrors(
+            result.issues.reduce<TeamPlayerFieldErrors>((errors, issue) => {
+              if (isPlayerField(issue.field)) errors[issue.field] = issue.message
+              return errors
+            }, {}),
+          )
+        }
         setMessage(result.message ?? "ไม่สามารถแก้ไขผู้เล่นได้")
         return
       }
@@ -89,7 +106,11 @@ export function TeamPlayerRoster({
 
   async function deactivatePlayer(player: TeamPlayer) {
     const name = playerDisplayName(player)
-    if (!window.confirm(`ยืนยันการนำ ${name} ออกจากทีม`)) return
+    const remainingPlayers = players.length - 1
+    const minimumWarning = remainingPlayers < minimumPlayers
+      ? `\nคำเตือน: หลังนำออก ทีม ${formatLabel} จะเหลือผู้เล่น ${remainingPlayers} คน ซึ่งต่ำกว่าขั้นต่ำ ${minimumPlayers} คนสำหรับสมัครแข่งขัน`
+      : ""
+    if (!window.confirm(`ยืนยันการนำ ${name} ออกจากทีม${minimumWarning}`)) return
 
     setPendingPlayerId(player.id)
     setMessage(null)
@@ -242,4 +263,16 @@ export function TeamPlayerRoster({
 
 function playerDisplayName(player: TeamPlayer) {
   return `${player.firstName} ${player.lastName}`
+}
+
+function isPlayerField(field: string): field is TeamPlayerField {
+  return [
+    "firstName",
+    "lastName",
+    "birthDate",
+    "nickname",
+    "jerseyNumber",
+    "position",
+    "phone",
+  ].includes(field)
 }

@@ -171,13 +171,32 @@ export function TeamPlayerBatchForm({
         </div>
       ) : null}
 
-      <div className="mt-5 divide-y divide-border border-t border-border">
+      <div
+        aria-hidden="true"
+        className="mt-5 hidden min-w-0 grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,0.9fr)_minmax(0,0.8fr)_minmax(0,0.65fr)_minmax(0,0.7fr)_minmax(0,1fr)_2.5rem] gap-x-3 border-b border-border pb-2 text-xs font-medium text-muted-foreground xl:grid"
+        data-player-column-header
+      >
+        <span>ชื่อ</span>
+        <span>นามสกุล</span>
+        <span>วันเกิด</span>
+        <span>ชื่อเล่น</span>
+        <span>เบอร์เสื้อ</span>
+        <span>ตำแหน่ง</span>
+        <span>เบอร์โทรศัพท์</span>
+        <span className="text-center">คำสั่ง</span>
+      </div>
+
+      <div className="divide-y divide-border border-t border-border xl:border-t-0">
         {rows.map((row, index) => (
-          <fieldset className="relative min-w-0 pb-5" disabled={pending} key={row.id}>
-            <legend className="pt-5 pr-12 font-medium">ผู้เล่นคนที่ {index + 1}</legend>
+          <fieldset
+            className="relative min-w-0 pb-5 xl:grid xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,0.9fr)_minmax(0,0.8fr)_minmax(0,0.65fr)_minmax(0,0.7fr)_minmax(0,1fr)_2.5rem] xl:gap-x-3"
+            disabled={pending}
+            key={row.id}
+          >
+            <legend className="pt-5 pr-12 font-medium xl:col-span-8 xl:pr-0">ผู้เล่นคนที่ {index + 1}</legend>
             <Button
               aria-label={`ลบผู้เล่นคนที่ ${index + 1}`}
-              className="absolute top-3 right-0"
+              className="absolute top-3 right-0 xl:static xl:col-start-8 xl:row-start-2"
               disabled={pending || rows.length === 1}
               onClick={() => setRows((current) => current.filter((candidate) => candidate.id !== row.id))}
               size="icon"
@@ -187,10 +206,11 @@ export function TeamPlayerBatchForm({
             >
               <Trash2 aria-hidden="true" />
             </Button>
-            <div className="mt-4">
+            <div className="mt-4 min-w-0 xl:col-span-7 xl:row-start-2 xl:mt-0">
               <TeamPlayerFields
                 disabled={pending}
                 errors={row.errors}
+                hideLabelsOnDesktop
                 idPrefix={row.id}
                 onChange={(field, value) => updateRow(row.id, field, value)}
                 values={row.values}

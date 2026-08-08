@@ -331,6 +331,31 @@ describe("team route handlers", () => {
     await expect(response.json()).resolves.toEqual({ player: storedPlayer })
   })
 
+  it("returns actionable field issues for an invalid player update", async () => {
+    const response = await handleUpdateTeamPlayer(
+      "team-1",
+      "player-1",
+      jsonRequest({
+        ...validPlayer,
+        nickname: "น".repeat(41),
+        birthDate: "2999-01-01",
+      }),
+      {
+        actorProvider: { getCurrentActor: vi.fn(async () => teamManager) },
+        updatePlayer: vi.fn(),
+      },
+    )
+
+    expect(response.status).toBe(422)
+    await expect(response.json()).resolves.toMatchObject({
+      message: "ข้อมูลผู้เล่นไม่ถูกต้อง",
+      issues: expect.arrayContaining([
+        { field: "nickname", message: "ชื่อเล่นต้องไม่เกิน 40 ตัวอักษร" },
+        { field: "birthDate", message: "วันเกิดต้องไม่เป็นวันที่ในอนาคต" },
+      ]),
+    })
+  })
+
   it("returns 404 when updating a missing player", async () => {
     const response = await handleUpdateTeamPlayer(
       "team-1",

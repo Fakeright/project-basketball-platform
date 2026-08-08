@@ -28,6 +28,22 @@ describe("TeamPlayerBatchForm", () => {
       expect(within(rows[0]).getByLabelText(label)).toBeTruthy()
     }
 
+    const desktopHeader = document.querySelector("[data-player-column-header]")
+    expect(desktopHeader?.getAttribute("aria-hidden")).toBe("true")
+    expect(desktopHeader?.className).toContain("xl:grid")
+    for (const heading of [
+      "ชื่อ",
+      "นามสกุล",
+      "วันเกิด",
+      "ชื่อเล่น",
+      "เบอร์เสื้อ",
+      "ตำแหน่ง",
+      "เบอร์โทรศัพท์",
+      "คำสั่ง",
+    ]) {
+      expect(within(desktopHeader as HTMLElement).getByText(heading)).toBeTruthy()
+    }
+
     await user.click(screen.getByRole("button", { name: "เพิ่มแถว" }))
     expect(screen.getAllByRole("group", { name: /ผู้เล่นคนที่/ })).toHaveLength(6)
 

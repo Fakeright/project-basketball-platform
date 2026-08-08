@@ -1,8 +1,7 @@
 import { notFound } from "next/navigation"
 
-import { TeamEditor } from "@/components/team/team-editor"
-import { TeamPlayerRoster } from "@/components/team/team-player-roster"
 import { TeamRegistrationList } from "@/components/team/team-registration-list"
+import { TeamWorkspaceManager } from "@/components/team/team-workspace-manager"
 import type { Actor } from "@/features/identity/domain/actor"
 import { createNextCookieCurrentActorProvider } from "@/features/identity/infrastructure/next-cookie-current-actor-provider"
 import { getOwnedTeamWorkspace } from "@/features/team-management/application/get-owned-team-workspace"
@@ -28,14 +27,10 @@ export default async function TeamDetailPage({
         <h1 className="mt-2 text-2xl font-semibold">{workspace.team.name}</h1>
       </header>
       <div className="pt-8">
-        <TeamEditor
+        <TeamWorkspaceManager
           adminOverride={actor.role === "PLATFORM_ADMIN"}
-          initialTeam={workspace.team}
-        />
-        <TeamPlayerRoster
-          format={workspace.team.format}
           initialPlayers={workspace.players}
-          teamId={workspace.team.id}
+          initialTeam={workspace.team}
         />
         <TeamRegistrationList registrations={registrations} />
       </div>

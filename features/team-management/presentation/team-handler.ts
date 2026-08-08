@@ -188,7 +188,7 @@ export async function handleUpdateTeamPlayer(
     if (!payload.ok) return playerValidationResponse()
 
     const parsed = teamPlayerSchema.safeParse(payload.value)
-    if (!parsed.success) return playerValidationResponse()
+    if (!parsed.success) return playerValidationResponse(parsed.error.issues)
 
     const player = await dependencies.updatePlayer(
       { teamId, playerId, player: parsed.data },
@@ -234,25 +234,44 @@ function validationResponse() {
 }
 
 function playerValidationResponse(
-  issues: readonly { path: readonly PropertyKey[] }[] = [],
+  issues: readonly { code?: string; path: readonly PropertyKey[] }[] = [],
 ) {
-  const indexedIssues = issues.flatMap((issue) => {
+  const fieldIssues = issues.flatMap((issue) => {
     const [collection, row, field] = issue.path
-    if (collection !== "players" || typeof row !== "number" || typeof field !== "string") {
-      return []
+    if (collection === "players" && typeof row === "number" && typeof field === "string") {
+      return [{ row, field, message: playerFieldMessage(field, issue.code) }]
     }
-    return [{ row, field, message: playerFieldMessage(field) }]
+    if (typeof collection === "string") {
+      return [{ field: collection, message: playerFieldMessage(collection, issue.code) }]
+    }
+    return []
   })
 
   return Response.json(
-    indexedIssues.length > 0
-      ? { message: "ข้อมูลผู้เล่นไม่ถูกต้อง", issues: indexedIssues }
+    fieldIssues.length > 0
+      ? { message: "ข้อมูลผู้เล่นไม่ถูกต้อง", issues: fieldIssues }
       : { message: "ข้อมูลผู้เล่นไม่ถูกต้อง" },
     { status: 422 },
   )
 }
 
-function playerFieldMessage(field: keyof TeamPlayerDraft | string) {
+function playerFieldMessage(
+  field: keyof TeamPlayerDraft | string,
+  issueCode?: string,
+) {
+  if (issueCode === "too_big") {
+    const maximumMessages: Record<string, string> = {
+      firstName: "ชื่อต้องไม่เกิน 80 ตัวอักษร",
+      lastName: "นามสกุลต้องไม่เกิน 80 ตัวอักษร",
+      nickname: "ชื่อเล่นต้องไม่เกิน 40 ตัวอักษร",
+      phone: "เบอร์โทรศัพท์ต้องไม่เกิน 30 ตัวอักษร",
+    }
+    if (maximumMessages[field]) return maximumMessages[field]
+  }
+  if (field === "birthDate" && issueCode === "custom") {
+    return "วันเกิดต้องไม่เป็นวันที่ในอนาคต"
+  }
+
   const messages: Record<string, string> = {
     firstName: "กรุณาระบุชื่อผู้เล่น",
     lastName: "กรุณาระบุนามสกุลผู้เล่น",

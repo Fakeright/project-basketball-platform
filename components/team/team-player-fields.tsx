@@ -26,12 +26,14 @@ const selectClassName =
 export function TeamPlayerFields({
   disabled = false,
   errors = {},
+  hideLabelsOnDesktop = false,
   idPrefix,
   onChange,
   values,
 }: {
   disabled?: boolean
   errors?: TeamPlayerFieldErrors
+  hideLabelsOnDesktop?: boolean
   idPrefix: string
   onChange: (field: TeamPlayerField, value: string) => void
   values: TeamPlayerFormValues
@@ -56,6 +58,7 @@ export function TeamPlayerFields({
         field="firstName"
         idPrefix={idPrefix}
         label="ชื่อ"
+        labelClassName={hideLabelsOnDesktop ? "xl:sr-only" : undefined}
         props={inputProps("firstName")}
       />
       <PlayerInput
@@ -63,6 +66,7 @@ export function TeamPlayerFields({
         field="lastName"
         idPrefix={idPrefix}
         label="นามสกุล"
+        labelClassName={hideLabelsOnDesktop ? "xl:sr-only" : undefined}
         props={inputProps("lastName")}
       />
       <PlayerInput
@@ -70,6 +74,7 @@ export function TeamPlayerFields({
         field="birthDate"
         idPrefix={idPrefix}
         label="วันเกิด"
+        labelClassName={hideLabelsOnDesktop ? "xl:sr-only" : undefined}
         props={{ ...inputProps("birthDate"), type: "date" }}
       />
       <PlayerInput
@@ -77,6 +82,7 @@ export function TeamPlayerFields({
         field="nickname"
         idPrefix={idPrefix}
         label="ชื่อเล่น"
+        labelClassName={hideLabelsOnDesktop ? "xl:sr-only" : undefined}
         props={inputProps("nickname")}
       />
       <PlayerInput
@@ -84,10 +90,13 @@ export function TeamPlayerFields({
         field="jerseyNumber"
         idPrefix={idPrefix}
         label="เบอร์เสื้อ"
+        labelClassName={hideLabelsOnDesktop ? "xl:sr-only" : undefined}
         props={{ ...inputProps("jerseyNumber"), inputMode: "numeric", min: 1, type: "number" }}
       />
-      <label className="min-w-0 space-y-2 text-sm" htmlFor={`${idPrefix}-position`}>
-        <span className="block font-medium">ตำแหน่ง</span>
+      <div className="min-w-0 space-y-2 text-sm">
+        <label htmlFor={`${idPrefix}-position`}>
+          <span className={`block font-medium${hideLabelsOnDesktop ? " xl:sr-only" : ""}`}>ตำแหน่ง</span>
+        </label>
         <select
           aria-describedby={errors.position ? `${idPrefix}-position-error` : undefined}
           aria-invalid={Boolean(errors.position)}
@@ -105,12 +114,13 @@ export function TeamPlayerFields({
           <option value="C">C</option>
         </select>
         <FieldError error={errors.position} id={`${idPrefix}-position-error`} />
-      </label>
+      </div>
       <PlayerInput
         error={errors.phone}
         field="phone"
         idPrefix={idPrefix}
         label="เบอร์โทรศัพท์"
+        labelClassName={hideLabelsOnDesktop ? "xl:sr-only" : undefined}
         props={{ ...inputProps("phone"), inputMode: "tel", type: "tel" }}
       />
     </div>
@@ -122,20 +132,24 @@ function PlayerInput({
   field,
   idPrefix,
   label,
+  labelClassName,
   props,
 }: {
   error?: string
   field: TeamPlayerField
   idPrefix: string
   label: string
+  labelClassName?: string
   props: React.ComponentProps<"input">
 }) {
   return (
-    <label className="min-w-0 space-y-2 text-sm" htmlFor={`${idPrefix}-${field}`}>
-      <span className="block font-medium">{label}</span>
+    <div className="min-w-0 space-y-2 text-sm">
+      <label htmlFor={`${idPrefix}-${field}`}>
+        <span className={`block font-medium${labelClassName ? ` ${labelClassName}` : ""}`}>{label}</span>
+      </label>
       <Input className={fieldClassName} {...props} />
       <FieldError error={error} id={`${idPrefix}-${field}-error`} />
-    </label>
+    </div>
   )
 }
 
@@ -165,9 +179,21 @@ export function isBlankPlayerValues(values: TeamPlayerFormValues) {
 
 export function validatePlayerValues(values: TeamPlayerFormValues): TeamPlayerFieldErrors {
   const errors: TeamPlayerFieldErrors = {}
-  if (!values.firstName.trim()) errors.firstName = "กรุณาระบุชื่อผู้เล่น"
-  if (!values.lastName.trim()) errors.lastName = "กรุณาระบุนามสกุลผู้เล่น"
+  const firstName = values.firstName.trim()
+  const lastName = values.lastName.trim()
+  const nickname = values.nickname.trim()
+  const phone = values.phone.trim()
+  if (!firstName) errors.firstName = "กรุณาระบุชื่อผู้เล่น"
+  else if (firstName.length > 80) errors.firstName = "ชื่อต้องไม่เกิน 80 ตัวอักษร"
+  if (!lastName) errors.lastName = "กรุณาระบุนามสกุลผู้เล่น"
+  else if (lastName.length > 80) errors.lastName = "นามสกุลต้องไม่เกิน 80 ตัวอักษร"
   if (!values.birthDate) errors.birthDate = "กรุณาระบุวันเกิดผู้เล่น"
+  else if (!isIsoCalendarDate(values.birthDate)) errors.birthDate = "วันเกิดไม่ถูกต้อง"
+  else if (values.birthDate > new Date().toISOString().slice(0, 10)) {
+    errors.birthDate = "วันเกิดต้องไม่เป็นวันที่ในอนาคต"
+  }
+  if (nickname.length > 40) errors.nickname = "ชื่อเล่นต้องไม่เกิน 40 ตัวอักษร"
+  if (phone.length > 30) errors.phone = "เบอร์โทรศัพท์ต้องไม่เกิน 30 ตัวอักษร"
 
   const jerseyNumber = Number(values.jerseyNumber)
   if (
@@ -178,6 +204,12 @@ export function validatePlayerValues(values: TeamPlayerFormValues): TeamPlayerFi
   }
 
   return errors
+}
+
+function isIsoCalendarDate(value: string) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false
+  const date = new Date(`${value}T00:00:00.000Z`)
+  return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value
 }
 
 export function playerDraftFromValues(values: TeamPlayerFormValues): TeamPlayerDraft {
