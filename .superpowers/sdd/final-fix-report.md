@@ -55,3 +55,49 @@ Implemented only the requested P2 fixes:
 - Vitest reports the existing `vite-tsconfig-paths` deprecation warning.
 - Next build reports the existing duplicate-lockfile/workspace-root warning caused by the linked worktree.
 - P3 architecture, heading hierarchy, URL contract, and broader coverage findings were intentionally not changed.
+
+---
+
+## Whole-Branch Fix Wave - 9 August 2026
+
+### Scope
+
+- Added read-only per-team legacy reconciliation contexts and Thai workspace notices without converting or counting `TeamMember` rows as eligible players.
+- Minimized all TeamPlayer add/reactivate/update/deactivate audit snapshots through one typed domain projection.
+- Added a separate read-only audit-PII retention report; no automatic redaction or production rewrite is performed.
+- Displayed phone details in active and read-only roster rows with responsive, overflow-safe grids.
+- Updated README and ROADMAP production-cutover, reconciliation, and retention wording.
+
+### TDD RED Evidence
+
+1. Legacy compatibility
+   - Command: `npm run test -- tests/features/team-management/prisma-team-repository.test.ts tests/features/team-management/team-use-cases.test.ts tests/features/registrations/apply-to-tournament.test.ts tests/ui/team/team-workspace-manager.test.tsx`
+   - RED: repository method was absent, workspace summary was absent, and the Thai notice was not rendered. Registration continued to reject an empty TeamPlayer roster with `ROSTER_INCOMPLETE` even when the compatibility fixture contained legacy-member counts.
+2. Audit minimization
+   - Command: `npm run test -- tests/features/team-management/team-use-cases.test.ts`
+   - RED: four tests exposed full TeamPlayer values in update/deactivate audit payloads and non-projected add/reactivate payloads.
+   - Command: `npm run test -- tests/features/team-management/team-player-audit-retention.test.ts`
+   - RED: the read-only historical PII report did not exist.
+3. Phone display
+   - Command: `npm run test -- tests/ui/team/team-player-roster.test.tsx`
+   - RED: the roster row did not render the stored phone value.
+4. Reconciliation copy refinement
+   - Command: `npm run test -- tests/ui/team/team-workspace-manager.test.tsx`
+   - RED: the notice did not yet require verified data for manual TeamPlayer entry.
+
+### Verification
+
+- Focused regression: `npm run test -- tests/features/team-management tests/features/registrations/apply-to-tournament.test.ts tests/features/registrations/prisma-registration-repository.test.ts tests/api/teams tests/ui/team` - 15 files, 133 tests passed.
+- Full suite: `npm run test` - 97 files, 552 tests passed.
+- Lint: `npm run lint` - exit 0.
+- Production build: `npm run build` - exit 0; compilation, TypeScript, page-data collection, and 25-page static generation completed.
+- Prisma: `npx prisma validate` - schema valid.
+- Legacy audit: `npx tsx scripts/audit-legacy-team-members.ts` - 5 teams reported, `readyForLegacyRemoval=false`; no rows were changed.
+- Audit PII report: `npx tsx scripts/audit-team-player-audit-pii.ts` - 0 events scanned and 0 findings in the current development database; no rows were changed.
+- Responsive browser QA: 375px, 768px, and 1440px - notice and phone visible, phone remained inside its row, and no page-level horizontal overflow was detected. The temporary public QA harness was removed before delivery.
+
+### Remaining Gates
+
+- Production cutover remains blocked on manual reconciliation of the 5 reported legacy teams. Do not delete legacy rows, invent birth dates, or treat legacy members as registration-eligible players.
+- Any future database whose audit PII report contains findings requires a separately approved retention/redaction operation; the report intentionally does not rewrite audit history.
+- Existing Vitest `vite-tsconfig-paths` deprecation and Next linked-worktree root warnings remain unchanged.
