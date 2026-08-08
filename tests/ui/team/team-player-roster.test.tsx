@@ -27,6 +27,42 @@ afterEach(() => {
 })
 
 describe("TeamPlayerRoster", () => {
+  it("shows phone details in editable and read-only rows without overflowing the roster grid", () => {
+    const editableRender = render(
+      <TeamPlayerRoster
+        format="FIVE_V_FIVE"
+        initialPlayers={[player]}
+        teamId="team-1"
+      />,
+    )
+
+    const editablePhone = screen.getByText("0812345678")
+    const editableSummary = editablePhone.closest("div.grid")
+    expect(screen.getByText("โทร.")).toBeTruthy()
+    expect(editableSummary?.className).toContain("min-w-0")
+    expect(editableSummary?.className).toContain("md:grid-cols-2")
+    expect(editableSummary?.className).toContain("lg:grid-cols-")
+    expect(editablePhone.className).toContain("break-all")
+
+    editableRender.unmount()
+    render(
+      <TeamPlayerRoster
+        format="FIVE_V_FIVE"
+        initialPlayers={[player]}
+        readOnly
+        teamId="team-1"
+      />,
+    )
+
+    const readOnlyPhone = screen.getByText("0812345678")
+    const readOnlySummary = readOnlyPhone.closest("div.grid")
+    expect(screen.getByText("โทร.")).toBeTruthy()
+    expect(readOnlySummary?.className).toContain("md:grid-cols-2")
+    expect(readOnlySummary?.className).toContain("lg:grid-cols-")
+    expect(readOnlyPhone.className).toContain("break-all")
+    expect(screen.queryByRole("button", { name: /แก้ไขผู้เล่น/ })).toBeNull()
+  })
+
   it("shows the active count, Thai empty state, format minimum warning, and no account selector", () => {
     const firstRender = render(
       <TeamPlayerRoster format="FIVE_V_FIVE" initialPlayers={[]} teamId="team-1" />,

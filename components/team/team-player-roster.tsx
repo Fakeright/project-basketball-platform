@@ -209,10 +209,10 @@ export function TeamPlayerRoster({
                   </fieldset>
                 ) : (
                   <div
-                    className={`grid min-w-0 gap-3 text-sm md:items-center ${
+                    className={`grid min-w-0 gap-3 text-sm md:grid-cols-2 md:items-center ${
                       readOnly
-                        ? "md:grid-cols-[minmax(0,1.4fr)_minmax(0,0.8fr)_minmax(0,0.7fr)_minmax(0,0.7fr)]"
-                        : "md:grid-cols-[minmax(0,1.4fr)_minmax(0,0.8fr)_minmax(0,0.7fr)_minmax(0,0.7fr)_auto]"
+                        ? "lg:grid-cols-[minmax(0,1.4fr)_minmax(0,0.8fr)_minmax(0,0.6fr)_minmax(0,0.6fr)_minmax(0,1fr)]"
+                        : "lg:grid-cols-[minmax(0,1.4fr)_minmax(0,0.8fr)_minmax(0,0.6fr)_minmax(0,0.6fr)_minmax(0,1fr)_auto]"
                     }`}
                   >
                     <div className="min-w-0">
@@ -222,6 +222,10 @@ export function TeamPlayerRoster({
                     <p><span className="text-muted-foreground">วันเกิด </span>{player.birthDate}</p>
                     <p><span className="text-muted-foreground">เบอร์เสื้อ </span>{player.jerseyNumber ?? "-"}</p>
                     <p><span className="text-muted-foreground">ตำแหน่ง </span>{player.position ?? "-"}</p>
+                    <p className="min-w-0">
+                      <span className="text-muted-foreground">โทร. </span>
+                      <span className="break-all">{player.phone ?? "-"}</span>
+                    </p>
                     {!readOnly ? <div className="flex min-w-20 justify-end gap-1">
                       <Tooltip>
                         <TooltipTrigger
