@@ -5,7 +5,10 @@ import { createTeam } from "@/features/team-management/application/create-team"
 import { deactivateTeamPlayer } from "@/features/team-management/application/deactivate-team-player"
 import { getOwnedTeamWorkspace } from "@/features/team-management/application/get-owned-team-workspace"
 import { listOwnedTeams } from "@/features/team-management/application/list-owned-teams"
-import type { TeamRepository } from "@/features/team-management/application/ports/team-repository"
+import type {
+  TeamMutationRepository,
+  TeamRepository,
+} from "@/features/team-management/application/ports/team-repository"
 import { removeOrDeactivateTeam } from "@/features/team-management/application/remove-or-deactivate-team"
 import { updateTeam } from "@/features/team-management/application/update-team"
 import { updateTeamPlayer } from "@/features/team-management/application/update-team-player"
@@ -107,7 +110,204 @@ function createRepository(
   return repository
 }
 
+function createDistinctTransactionRepositories(
+  transactionOverrides: Partial<TeamMutationRepository> = {},
+) {
+  const transaction = createRepository(transactionOverrides)
+  const outer = createRepository()
+  outer.inTransaction = vi.fn(
+    async <T>(
+      operation: (repository: TeamMutationRepository) => Promise<T>,
+    ): Promise<T> => operation(transaction),
+  )
+  return { outer, transaction }
+}
+
 describe("team use cases", () => {
+  describe("transaction-scoped roster mutations", () => {
+    it("adds players only through the callback repository after its Team lock", async () => {
+      const { outer, transaction } = createDistinctTransactionRepositories()
+
+      await addTeamPlayers(
+        { teamId: team.id, players: [draftPlayer("one", 4)] },
+        teamManager,
+        { teams: outer },
+      )
+
+      expect(outer.inTransaction).toHaveBeenCalledOnce()
+      expect(transaction.findByIdForUpdate).toHaveBeenCalledWith(team.id)
+      expect(transaction.findExistingPlayersByIdentities).toHaveBeenCalledOnce()
+      expect(transaction.addPlayers).toHaveBeenCalledOnce()
+      expect(transaction.appendAuditEvent).toHaveBeenCalledOnce()
+      expect(outer.findById).not.toHaveBeenCalled()
+      expect(outer.findByIdForUpdate).not.toHaveBeenCalled()
+      expect(outer.findExistingPlayersByIdentities).not.toHaveBeenCalled()
+      expect(outer.addPlayers).not.toHaveBeenCalled()
+      expect(outer.appendAuditEvent).not.toHaveBeenCalled()
+      expect(
+        vi.mocked(transaction.findByIdForUpdate).mock.invocationCallOrder[0],
+      ).toBeLessThan(
+        vi.mocked(transaction.findExistingPlayersByIdentities).mock.invocationCallOrder[0],
+      )
+      expect(
+        vi.mocked(transaction.findByIdForUpdate).mock.invocationCallOrder[0],
+      ).toBeLessThan(vi.mocked(transaction.addPlayers).mock.invocationCallOrder[0])
+    })
+
+    it("updates a player only through the callback repository after its Team lock", async () => {
+      const existingPlayer = playerFromDraft(draftPlayer("one", 4))
+      const { outer, transaction } = createDistinctTransactionRepositories({
+        listActivePlayers: vi.fn(async () => [existingPlayer]),
+      })
+
+      await updateTeamPlayer(
+        {
+          teamId: team.id,
+          playerId: existingPlayer.id,
+          player: draftPlayer("one", 8),
+        },
+        teamManager,
+        { teams: outer },
+      )
+
+      expect(outer.inTransaction).toHaveBeenCalledOnce()
+      expect(transaction.findByIdForUpdate).toHaveBeenCalledWith(team.id)
+      expect(transaction.listActivePlayers).toHaveBeenCalledWith(team.id)
+      expect(transaction.updatePlayer).toHaveBeenCalledOnce()
+      expect(transaction.appendAuditEvent).toHaveBeenCalledOnce()
+      expect(outer.findById).not.toHaveBeenCalled()
+      expect(outer.findByIdForUpdate).not.toHaveBeenCalled()
+      expect(outer.listActivePlayers).not.toHaveBeenCalled()
+      expect(outer.updatePlayer).not.toHaveBeenCalled()
+      expect(outer.appendAuditEvent).not.toHaveBeenCalled()
+      expect(
+        vi.mocked(transaction.findByIdForUpdate).mock.invocationCallOrder[0],
+      ).toBeLessThan(
+        vi.mocked(transaction.listActivePlayers).mock.invocationCallOrder[0],
+      )
+      expect(
+        vi.mocked(transaction.findByIdForUpdate).mock.invocationCallOrder[0],
+      ).toBeLessThan(vi.mocked(transaction.updatePlayer).mock.invocationCallOrder[0])
+    })
+
+    it("deactivates a player only through the callback repository after its Team lock", async () => {
+      const existingPlayer = playerFromDraft(draftPlayer("one", 4))
+      const { outer, transaction } = createDistinctTransactionRepositories({
+        listActivePlayers: vi.fn(async () => [existingPlayer]),
+      })
+
+      await deactivateTeamPlayer(
+        {
+          teamId: team.id,
+          playerId: existingPlayer.id,
+          at: "2026-08-10T00:00:00.000Z",
+        },
+        teamManager,
+        { teams: outer },
+      )
+
+      expect(outer.inTransaction).toHaveBeenCalledOnce()
+      expect(transaction.findByIdForUpdate).toHaveBeenCalledWith(team.id)
+      expect(transaction.listActivePlayers).toHaveBeenCalledWith(team.id)
+      expect(transaction.deactivatePlayer).toHaveBeenCalledOnce()
+      expect(transaction.appendAuditEvent).toHaveBeenCalledOnce()
+      expect(outer.findById).not.toHaveBeenCalled()
+      expect(outer.findByIdForUpdate).not.toHaveBeenCalled()
+      expect(outer.listActivePlayers).not.toHaveBeenCalled()
+      expect(outer.deactivatePlayer).not.toHaveBeenCalled()
+      expect(outer.appendAuditEvent).not.toHaveBeenCalled()
+      expect(
+        vi.mocked(transaction.findByIdForUpdate).mock.invocationCallOrder[0],
+      ).toBeLessThan(
+        vi.mocked(transaction.listActivePlayers).mock.invocationCallOrder[0],
+      )
+      expect(
+        vi.mocked(transaction.findByIdForUpdate).mock.invocationCallOrder[0],
+      ).toBeLessThan(
+        vi.mocked(transaction.deactivatePlayer).mock.invocationCallOrder[0],
+      )
+    })
+
+    it("stops a player batch inside the callback when its locked Team is inactive", async () => {
+      const { outer, transaction } = createDistinctTransactionRepositories({
+        findByIdForUpdate: vi.fn(async () => ({ ...team, isActive: false })),
+      })
+
+      await expect(
+        addTeamPlayers(
+          { teamId: team.id, players: [draftPlayer("one", 4)] },
+          teamManager,
+          { teams: outer },
+        ),
+      ).rejects.toThrow("TEAM_INACTIVE")
+
+      expect(outer.inTransaction).toHaveBeenCalledOnce()
+      expect(transaction.findByIdForUpdate).toHaveBeenCalledWith(team.id)
+      expect(transaction.findExistingPlayersByIdentities).not.toHaveBeenCalled()
+      expect(transaction.addPlayers).not.toHaveBeenCalled()
+      expect(transaction.appendAuditEvent).not.toHaveBeenCalled()
+      expect(outer.findById).not.toHaveBeenCalled()
+      expect(outer.findByIdForUpdate).not.toHaveBeenCalled()
+      expect(outer.findExistingPlayersByIdentities).not.toHaveBeenCalled()
+      expect(outer.addPlayers).not.toHaveBeenCalled()
+      expect(outer.appendAuditEvent).not.toHaveBeenCalled()
+    })
+
+    it("stops a player update inside the callback when its locked Team is inactive", async () => {
+      const { outer, transaction } = createDistinctTransactionRepositories({
+        findByIdForUpdate: vi.fn(async () => ({ ...team, isActive: false })),
+      })
+
+      await expect(
+        updateTeamPlayer(
+          { teamId: team.id, playerId: "player-1", player: draftPlayer("one", 8) },
+          teamManager,
+          { teams: outer },
+        ),
+      ).rejects.toThrow("TEAM_INACTIVE")
+
+      expect(outer.inTransaction).toHaveBeenCalledOnce()
+      expect(transaction.findByIdForUpdate).toHaveBeenCalledWith(team.id)
+      expect(transaction.listActivePlayers).not.toHaveBeenCalled()
+      expect(transaction.updatePlayer).not.toHaveBeenCalled()
+      expect(transaction.appendAuditEvent).not.toHaveBeenCalled()
+      expect(outer.findById).not.toHaveBeenCalled()
+      expect(outer.findByIdForUpdate).not.toHaveBeenCalled()
+      expect(outer.listActivePlayers).not.toHaveBeenCalled()
+      expect(outer.updatePlayer).not.toHaveBeenCalled()
+      expect(outer.appendAuditEvent).not.toHaveBeenCalled()
+    })
+
+    it("stops player deactivation inside the callback when its locked Team is inactive", async () => {
+      const { outer, transaction } = createDistinctTransactionRepositories({
+        findByIdForUpdate: vi.fn(async () => ({ ...team, isActive: false })),
+      })
+
+      await expect(
+        deactivateTeamPlayer(
+          {
+            teamId: team.id,
+            playerId: "player-1",
+            at: "2026-08-10T00:00:00.000Z",
+          },
+          teamManager,
+          { teams: outer },
+        ),
+      ).rejects.toThrow("TEAM_INACTIVE")
+
+      expect(outer.inTransaction).toHaveBeenCalledOnce()
+      expect(transaction.findByIdForUpdate).toHaveBeenCalledWith(team.id)
+      expect(transaction.listActivePlayers).not.toHaveBeenCalled()
+      expect(transaction.deactivatePlayer).not.toHaveBeenCalled()
+      expect(transaction.appendAuditEvent).not.toHaveBeenCalled()
+      expect(outer.findById).not.toHaveBeenCalled()
+      expect(outer.findByIdForUpdate).not.toHaveBeenCalled()
+      expect(outer.listActivePlayers).not.toHaveBeenCalled()
+      expect(outer.deactivatePlayer).not.toHaveBeenCalled()
+      expect(outer.appendAuditEvent).not.toHaveBeenCalled()
+    })
+  })
+
   it("adds an owned team's player batch and records one audit event", async () => {
     const repository = createRepository()
 
