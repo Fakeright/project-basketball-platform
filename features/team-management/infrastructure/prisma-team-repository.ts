@@ -76,10 +76,10 @@ export class PrismaTeamRepository implements TeamRepository {
 
   async listLegacyReconciliationContexts(teamId?: string) {
     const legacyCounts = await this.prisma.teamMember.groupBy({
-      by: ["teamId", "role"],
-      where: teamId ? { isActive: true, teamId } : { isActive: true },
+      by: ["teamId", "role", "isActive"],
+      where: teamId ? { teamId } : undefined,
       _count: { _all: true },
-      orderBy: [{ teamId: "asc" }, { role: "asc" }],
+      orderBy: [{ teamId: "asc" }, { role: "asc" }, { isActive: "desc" }],
     })
     const teamIds = [...new Set(legacyCounts.map((count) => count.teamId))]
     if (teamIds.length === 0) return []
@@ -115,10 +115,30 @@ export class PrismaTeamRepository implements TeamRepository {
       return {
         teamId: team.id,
         format: team.format,
-        activeLegacyPlayerCount:
-          teamLegacyCounts.find((count) => count.role === "PLAYER")?._count._all ?? 0,
-        activeLegacyCoachCount:
-          teamLegacyCounts.find((count) => count.role === "COACH")?._count._all ?? 0,
+        activeLegacyPlayerCount: legacyMemberCount(
+          teamLegacyCounts,
+          "PLAYER",
+          true,
+        ),
+        activeLegacyCoachCount: legacyMemberCount(
+          teamLegacyCounts,
+          "COACH",
+          true,
+        ),
+        inactiveLegacyPlayerCount: legacyMemberCount(
+          teamLegacyCounts,
+          "PLAYER",
+          false,
+        ),
+        inactiveLegacyCoachCount: legacyMemberCount(
+          teamLegacyCounts,
+          "COACH",
+          false,
+        ),
+        totalLegacyMemberCount: teamLegacyCounts.reduce(
+          (total, count) => total + count._count._all,
+          0,
+        ),
         activeTeamPlayerCount:
           activePlayerCounts.find((count) => count.teamId === team.id)?._count._all ?? 0,
         registrationHistoryCount: teamRegistrationCounts.reduce(
@@ -190,6 +210,20 @@ export class PrismaTeamRepository implements TeamRepository {
   }
 }
 
+function legacyMemberCount(
+  counts: Array<{
+    role: "PLAYER" | "COACH"
+    isActive: boolean
+    _count: { _all: number }
+  }>,
+  role: "PLAYER" | "COACH",
+  isActive: boolean,
+) {
+  return counts.find(
+    (count) => count.role === role && count.isActive === isActive,
+  )?._count._all ?? 0
+}
+
 class PrismaTeamMutationRepository implements TeamMutationRepository {
   constructor(private readonly prisma: TeamDatabaseClient) {}
 
@@ -250,13 +284,17 @@ class PrismaTeamMutationRepository implements TeamMutationRepository {
     const team = await this.findByIdForUpdate(teamId)
     if (!team) return null
 
-    const registrations = await this.prisma.registration.findMany({
-      where: { teamId },
-      select: { status: true },
-    })
+    const [registrations, totalLegacyMemberCount] = await Promise.all([
+      this.prisma.registration.findMany({
+        where: { teamId },
+        select: { status: true },
+      }),
+      this.prisma.teamMember.count({ where: { teamId } }),
+    ])
     return {
       team,
       registrationStatuses: registrations.map(({ status }) => status),
+      totalLegacyMemberCount,
     }
   }
 

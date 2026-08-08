@@ -9,6 +9,7 @@ import type { RegistrationStatus } from "@/features/registrations/domain/registr
 export interface TeamRemovalContext {
   team: TeamSummary
   registrationStatuses: RegistrationStatus[]
+  totalLegacyMemberCount: number
 }
 
 export interface LegacyTeamReconciliationContext {
@@ -16,6 +17,9 @@ export interface LegacyTeamReconciliationContext {
   format: TeamFormat
   activeLegacyPlayerCount: number
   activeLegacyCoachCount: number
+  inactiveLegacyPlayerCount: number
+  inactiveLegacyCoachCount: number
+  totalLegacyMemberCount: number
   activeTeamPlayerCount: number
   registrationHistoryCount: number
   registrationStatusCounts: Record<RegistrationStatus, number>

@@ -17,6 +17,12 @@ export function LegacyTeamReconciliationNotice({
         สมาชิกเดิมที่ยังใช้งาน: ผู้เล่น {reconciliation.activeLegacyPlayerCount} คน,
         โค้ช {reconciliation.activeLegacyCoachCount} คน
       </p>
+      {reconciliation.inactiveLegacyMemberCount > 0 ? (
+        <p className="mt-2">
+          ประวัติสมาชิกเดิมที่ปิดใช้งาน: ผู้เล่น {reconciliation.inactiveLegacyPlayerCount} คน,
+          โค้ช {reconciliation.inactiveLegacyCoachCount} คน
+        </p>
+      ) : null}
       <p className="mt-2 text-muted-foreground">
         สมาชิกเดิมไม่ถูกนับเป็นรายชื่อสำหรับสมัครแข่งขัน กรุณาตรวจสอบรูปแบบทีมว่าเป็น
         5v5 หรือ 3v3
@@ -25,9 +31,10 @@ export function LegacyTeamReconciliationNotice({
             {" "}ตรวจสอบผู้เล่นเดิม {reconciliation.activeLegacyPlayerCount} คนและกรอกเป็น
             TeamPlayer จากข้อมูลที่ยืนยันได้
           </>
-        ) : (
-          <> และกรอกผู้เล่นที่ต้องใช้งานเป็น TeamPlayer จากข้อมูลที่ยืนยันได้</>
-        )}
+        ) : null}
+        {reconciliation.inactiveLegacyMemberCount > 0 ? (
+          <> ประวัตินี้ต้องเก็บรักษาไว้และไม่ถูกนับเป็น TeamPlayer</>
+        ) : null}
       </p>
     </section>
   )

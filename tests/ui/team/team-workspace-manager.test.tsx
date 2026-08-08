@@ -38,7 +38,11 @@ describe("TeamWorkspaceManager", () => {
           format: "FIVE_V_FIVE",
           activeLegacyPlayerCount: 2,
           activeLegacyCoachCount: 1,
+          inactiveLegacyPlayerCount: 0,
+          inactiveLegacyCoachCount: 0,
+          totalLegacyMemberCount: 3,
           activeLegacyMemberCount: 3,
+          inactiveLegacyMemberCount: 0,
           activeTeamPlayerCount: 0,
           registrationHistoryCount: 1,
           registrationStatusCounts: {
@@ -65,6 +69,54 @@ describe("TeamWorkspaceManager", () => {
     expect(
       screen.getByText(/ตรวจสอบผู้เล่นเดิม 2 คนและกรอกเป็น TeamPlayer จากข้อมูลที่ยืนยันได้/),
     ).toBeTruthy()
+  })
+
+  it("distinguishes inactive legacy history from active re-entry needs", () => {
+    render(
+      <TeamWorkspaceManager
+        adminOverride={false}
+        initialPlayers={[]}
+        initialTeam={{
+          id: "team-inactive-legacy",
+          name: "Legacy History",
+          provinceCode: "10",
+          province: "Bangkok",
+          format: "THREE_V_THREE",
+          version: 0,
+        }}
+        legacyReconciliation={{
+          teamId: "team-inactive-legacy",
+          format: "THREE_V_THREE",
+          activeLegacyPlayerCount: 0,
+          activeLegacyCoachCount: 0,
+          inactiveLegacyPlayerCount: 2,
+          inactiveLegacyCoachCount: 1,
+          totalLegacyMemberCount: 3,
+          activeLegacyMemberCount: 0,
+          inactiveLegacyMemberCount: 3,
+          activeTeamPlayerCount: 0,
+          registrationHistoryCount: 0,
+          registrationStatusCounts: {
+            PENDING: 0,
+            APPROVED: 0,
+            REJECTED: 0,
+            CANCELLED: 0,
+            WITHDRAWN: 0,
+          },
+          readyForLegacyRemoval: false,
+          issues: [
+            "INACTIVE_LEGACY_HISTORY_REQUIRES_PRESERVATION",
+            "TEAM_FORMAT_REQUIRES_REVIEW",
+          ],
+        }}
+      />,
+    )
+
+    expect(
+      screen.getByText("ประวัติสมาชิกเดิมที่ปิดใช้งาน: ผู้เล่น 2 คน, โค้ช 1 คน"),
+    ).toBeTruthy()
+    expect(screen.getByText(/ประวัตินี้ต้องเก็บรักษาไว้/)).toBeTruthy()
+    expect(screen.queryByText(/ตรวจสอบผู้เล่นเดิม .* และกรอกเป็น TeamPlayer/)).toBeNull()
   })
 
   it("refreshes and immediately reconciles the roster minimum after a format update", async () => {

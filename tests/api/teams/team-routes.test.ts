@@ -8,6 +8,11 @@ import {
   handleUpdateTeamPlayer,
   handleUpdateTeam,
 } from "@/features/team-management/presentation/team-handler"
+import type {
+  TeamMutationRepository,
+  TeamRepository,
+} from "@/features/team-management/application/ports/team-repository"
+import { removeOrDeactivateTeam } from "@/features/team-management/application/remove-or-deactivate-team"
 import { createTestActor } from "@/tests/fixtures/actor"
 
 const anonymous = { getCurrentActor: vi.fn(async () => null) }
@@ -181,6 +186,58 @@ describe("team route handlers", () => {
       await expect(response.json()).resolves.toEqual({ message })
     },
   )
+
+  it("returns DEACTIVATED without deleting legacy rows when no registration exists", async () => {
+    const team = {
+      id: "team-legacy",
+      name: "Legacy Ballers",
+      provinceCode: "10",
+      province: "Bangkok",
+      ownerId: teamManager.id,
+      format: "FIVE_V_FIVE" as const,
+      isActive: true,
+      deactivatedAt: null,
+      version: 2,
+    }
+    const deleteTeam = vi.fn(async () => undefined)
+    const appendAuditEvent = vi.fn(async () => undefined)
+    const mutations = {
+      getRemovalContextForUpdate: vi.fn(async () => ({
+        team,
+        registrationStatuses: [],
+        totalLegacyMemberCount: 1,
+      })),
+      deleteTeam,
+      deactivateTeam: vi.fn(async (_teamId, expectedVersion, at) => ({
+        ...team,
+        isActive: false,
+        deactivatedAt: at,
+        version: expectedVersion + 1,
+      })),
+      appendAuditEvent,
+    } as unknown as TeamMutationRepository
+    const teams = {
+      inTransaction: vi.fn(async (operation) => operation(mutations)),
+    } as unknown as TeamRepository
+
+    const response = await handleRemoveOrDeactivateTeam(
+      team.id,
+      jsonRequest({ confirmationName: team.name, expectedVersion: team.version }),
+      {
+        actorProvider: { getCurrentActor: vi.fn(async () => teamManager) },
+        remove: (input, actor) => removeOrDeactivateTeam(input, actor, { teams }),
+      },
+    )
+
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toMatchObject({
+      outcome: "DEACTIVATED",
+    })
+    expect(deleteTeam).not.toHaveBeenCalled()
+    expect(appendAuditEvent).toHaveBeenCalledWith(
+      expect.objectContaining({ action: "team.deactivated" }),
+    )
+  })
 
   it("maps an inactive team update to a safe 409 response", async () => {
     const response = await handleUpdateTeam(

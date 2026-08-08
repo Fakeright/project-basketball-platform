@@ -6,11 +6,13 @@ import type {
 export type LegacyTeamReconciliationIssue =
   | "LEGACY_PLAYERS_REQUIRE_MANUAL_REENTRY"
   | "LEGACY_COACHES_REQUIRE_REVIEW"
+  | "INACTIVE_LEGACY_HISTORY_REQUIRES_PRESERVATION"
   | "TEAM_FORMAT_REQUIRES_REVIEW"
 
 export interface LegacyTeamReconciliationSummary
   extends LegacyTeamReconciliationContext {
   activeLegacyMemberCount: number
+  inactiveLegacyMemberCount: number
   readyForLegacyRemoval: boolean
   issues: LegacyTeamReconciliationIssue[]
 }
@@ -25,14 +27,34 @@ export function summarizeLegacyTeamReconciliation(
   if (context.activeLegacyCoachCount > 0) {
     issues.push("LEGACY_COACHES_REQUIRE_REVIEW")
   }
+  if (
+    context.inactiveLegacyPlayerCount > 0 ||
+    context.inactiveLegacyCoachCount > 0
+  ) {
+    issues.push("INACTIVE_LEGACY_HISTORY_REQUIRES_PRESERVATION")
+  }
   issues.push("TEAM_FORMAT_REQUIRES_REVIEW")
 
   return {
     ...context,
     activeLegacyMemberCount:
       context.activeLegacyPlayerCount + context.activeLegacyCoachCount,
-    readyForLegacyRemoval: false,
+    inactiveLegacyMemberCount:
+      context.inactiveLegacyPlayerCount + context.inactiveLegacyCoachCount,
+    readyForLegacyRemoval: context.totalLegacyMemberCount === 0,
     issues,
+  }
+}
+
+export function createLegacyTeamReconciliationAuditReport(
+  teams: LegacyTeamReconciliationSummary[],
+) {
+  return {
+    legacyTeamReconciliation: {
+      teamCount: teams.length,
+      readyForLegacyRemoval: teams.every((team) => team.readyForLegacyRemoval),
+      teams,
+    },
   }
 }
 

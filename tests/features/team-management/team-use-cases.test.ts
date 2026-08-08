@@ -111,6 +111,7 @@ function createRepository(
     getRemovalContextForUpdate: vi.fn(async () => ({
       team,
       registrationStatuses: [],
+      totalLegacyMemberCount: 0,
     })),
     deleteTeam: vi.fn(async () => undefined),
     deactivateTeam: vi.fn(async (_id, expectedVersion, at) => ({
@@ -834,12 +835,52 @@ describe("team use cases", () => {
     expect(repository.inTransaction).toHaveBeenCalledOnce()
   })
 
+  it("deactivates a team with legacy member history even without registrations", async () => {
+    const at = "2026-08-09T12:00:00.000Z"
+    const repository = createRepository({
+      getRemovalContextForUpdate: vi.fn(async () => ({
+        team,
+        registrationStatuses: [],
+        totalLegacyMemberCount: 2,
+      })),
+    })
+
+    await expect(
+      removeOrDeactivateTeam(
+        {
+          teamId: team.id,
+          confirmationName: team.name,
+          expectedVersion: team.version,
+          at,
+        },
+        teamManager,
+        { teams: repository },
+      ),
+    ).resolves.toEqual({ outcome: "DEACTIVATED" })
+
+    expect(repository.deleteTeam).not.toHaveBeenCalled()
+    expect(repository.deactivateTeam).toHaveBeenCalledWith(
+      team.id,
+      team.version,
+      at,
+    )
+    expect(repository.appendAuditEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "team.deactivated",
+        entityId: team.id,
+        before: team,
+        after: expect.objectContaining({ isActive: false }),
+      }),
+    )
+  })
+
   it("deactivates a team with terminal registration history and increments version", async () => {
     const at = "2026-08-09T12:00:00.000Z"
     const repository = createRepository({
       getRemovalContextForUpdate: vi.fn(async () => ({
         team,
         registrationStatuses: ["REJECTED", "CANCELLED", "WITHDRAWN"],
+        totalLegacyMemberCount: 0,
       })),
     })
 
@@ -882,6 +923,7 @@ describe("team use cases", () => {
         getRemovalContextForUpdate: vi.fn(async () => ({
           team,
           registrationStatuses: [status],
+          totalLegacyMemberCount: 1,
         })),
       })
 
@@ -909,6 +951,7 @@ describe("team use cases", () => {
       getRemovalContextForUpdate: vi.fn(async () => ({
         team: { ...team, version: 2 },
         registrationStatuses: ["APPROVED"],
+        totalLegacyMemberCount: 1,
       })),
     })
 
@@ -930,7 +973,8 @@ describe("team use cases", () => {
     const repository = createRepository({
       getRemovalContextForUpdate: vi.fn(async () => ({
         team: { ...team, isActive: false },
-        registrationStatuses: ["REJECTED"],
+        registrationStatuses: ["APPROVED"],
+        totalLegacyMemberCount: 1,
       })),
     })
 
@@ -949,7 +993,13 @@ describe("team use cases", () => {
   })
 
   it("requires the trimmed confirmation to match the team name exactly", async () => {
-    const repository = createRepository()
+    const repository = createRepository({
+      getRemovalContextForUpdate: vi.fn(async () => ({
+        team,
+        registrationStatuses: ["APPROVED"],
+        totalLegacyMemberCount: 1,
+      })),
+    })
 
     await expect(
       removeOrDeactivateTeam(
@@ -973,6 +1023,7 @@ describe("team use cases", () => {
       getRemovalContextForUpdate: vi.fn(async () => ({
         team: { ...team, ownerId: "manager-2" },
         registrationStatuses: [],
+        totalLegacyMemberCount: 1,
       })),
     })
 
@@ -996,6 +1047,7 @@ describe("team use cases", () => {
       getRemovalContextForUpdate: vi.fn(async () => ({
         team: otherOwnerTeam,
         registrationStatuses: ["REJECTED"],
+        totalLegacyMemberCount: 1,
       })),
     })
 
@@ -1081,6 +1133,9 @@ describe("team use cases", () => {
           format: team.format,
           activeLegacyPlayerCount: 2,
           activeLegacyCoachCount: 1,
+          inactiveLegacyPlayerCount: 0,
+          inactiveLegacyCoachCount: 0,
+          totalLegacyMemberCount: 3,
           activeTeamPlayerCount: 0,
           registrationHistoryCount: 2,
           registrationStatusCounts: {
@@ -1104,7 +1159,11 @@ describe("team use cases", () => {
         format: "FIVE_V_FIVE",
         activeLegacyPlayerCount: 2,
         activeLegacyCoachCount: 1,
+        inactiveLegacyPlayerCount: 0,
+        inactiveLegacyCoachCount: 0,
+        totalLegacyMemberCount: 3,
         activeLegacyMemberCount: 3,
+        inactiveLegacyMemberCount: 0,
         activeTeamPlayerCount: 0,
         registrationHistoryCount: 2,
         registrationStatusCounts: {
@@ -1123,6 +1182,48 @@ describe("team use cases", () => {
       },
     })
     expect(repository.listActivePlayers).toHaveBeenCalledWith(team.id)
+  })
+
+  it("reports inactive-only legacy history as preserved and not ready for removal", async () => {
+    const repository = createRepository({
+      listActivePlayers: vi.fn(async () => []),
+      listLegacyReconciliationContexts: vi.fn(async () => [
+        {
+          teamId: team.id,
+          format: team.format,
+          activeLegacyPlayerCount: 0,
+          activeLegacyCoachCount: 0,
+          inactiveLegacyPlayerCount: 2,
+          inactiveLegacyCoachCount: 1,
+          totalLegacyMemberCount: 3,
+          activeTeamPlayerCount: 0,
+          registrationHistoryCount: 0,
+          registrationStatusCounts: {
+            PENDING: 0,
+            APPROVED: 0,
+            REJECTED: 0,
+            CANCELLED: 0,
+            WITHDRAWN: 0,
+          },
+        },
+      ]),
+    })
+
+    const workspace = await getOwnedTeamWorkspace(team.id, teamManager, {
+      teams: repository,
+    })
+
+    expect(workspace.players).toEqual([])
+    expect(workspace.legacyReconciliation).toMatchObject({
+      activeLegacyMemberCount: 0,
+      inactiveLegacyMemberCount: 3,
+      totalLegacyMemberCount: 3,
+      readyForLegacyRemoval: false,
+      issues: [
+        "INACTIVE_LEGACY_HISTORY_REQUIRES_PRESERVATION",
+        "TEAM_FORMAT_REQUIRES_REVIEW",
+      ],
+    })
   })
 
   it("performs each team mutation in a repository transaction", async () => {

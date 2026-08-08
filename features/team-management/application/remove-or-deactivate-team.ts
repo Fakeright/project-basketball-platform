@@ -25,7 +25,7 @@ export async function removeOrDeactivateTeam(
     const context = await teams.getRemovalContextForUpdate(input.teamId)
     if (!context) throw new Error("NOT_FOUND")
 
-    const { team, registrationStatuses } = context
+    const { team, registrationStatuses, totalLegacyMemberCount } = context
     const isOverride = authorizeTeamAccess(actor, "team.update", team)
     if (team.version !== input.expectedVersion) throw new Error("CONFLICT")
     if (input.confirmationName.trim() !== team.name) {
@@ -36,7 +36,7 @@ export async function removeOrDeactivateTeam(
       throw new Error("TEAM_REMOVAL_BLOCKED")
     }
 
-    if (registrationStatuses.length === 0) {
+    if (registrationStatuses.length === 0 && totalLegacyMemberCount === 0) {
       await teams.deleteTeam(team.id)
       await teams.appendAuditEvent({
         actorId: actor.id,

@@ -53,7 +53,7 @@ function createPrismaMock() {
       updateMany: vi.fn(),
     },
     registration: { findFirst: vi.fn(), findMany: vi.fn(), groupBy: vi.fn() },
-    teamMember: { groupBy: vi.fn() },
+    teamMember: { count: vi.fn(), groupBy: vi.fn() },
     teamPlayer: {
       findUnique: vi.fn(),
       findMany: vi.fn(),
@@ -74,8 +74,8 @@ describe("PrismaTeamRepository", () => {
   it("reports legacy reconciliation counts and registration statuses without selecting PII", async () => {
     const prisma = createPrismaMock()
     prisma.teamMember.groupBy.mockResolvedValue([
-      { teamId: "team-1", role: "PLAYER", _count: { _all: 2 } },
-      { teamId: "team-1", role: "COACH", _count: { _all: 1 } },
+      { teamId: "team-1", role: "PLAYER", isActive: true, _count: { _all: 2 } },
+      { teamId: "team-1", role: "COACH", isActive: true, _count: { _all: 1 } },
     ])
     prisma.team.findMany.mockResolvedValue([teamRow])
     prisma.teamPlayer.groupBy.mockResolvedValue([
@@ -99,6 +99,9 @@ describe("PrismaTeamRepository", () => {
         format: "THREE_V_THREE",
         activeLegacyPlayerCount: 2,
         activeLegacyCoachCount: 1,
+        inactiveLegacyPlayerCount: 0,
+        inactiveLegacyCoachCount: 0,
+        totalLegacyMemberCount: 3,
         activeTeamPlayerCount: 1,
         registrationHistoryCount: 3,
         registrationStatusCounts: {
@@ -111,10 +114,10 @@ describe("PrismaTeamRepository", () => {
       },
     ])
     expect(prisma.teamMember.groupBy).toHaveBeenCalledWith({
-      by: ["teamId", "role"],
-      where: { isActive: true, teamId: "team-1" },
+      by: ["teamId", "role", "isActive"],
+      where: { teamId: "team-1" },
       _count: { _all: true },
-      orderBy: [{ teamId: "asc" }, { role: "asc" }],
+      orderBy: [{ teamId: "asc" }, { role: "asc" }, { isActive: "desc" }],
     })
     expect(prisma.team.findMany).toHaveBeenCalledWith({
       where: { id: { in: ["team-1"] } },
@@ -131,6 +134,42 @@ describe("PrismaTeamRepository", () => {
       where: { teamId: { in: ["team-1"] } },
       _count: { _all: true },
     })
+  })
+
+  it("includes teams with inactive-only legacy member history", async () => {
+    const prisma = createPrismaMock()
+    prisma.teamMember.groupBy.mockResolvedValue([
+      { teamId: "team-1", role: "PLAYER", isActive: false, _count: { _all: 2 } },
+      { teamId: "team-1", role: "COACH", isActive: false, _count: { _all: 1 } },
+    ])
+    prisma.team.findMany.mockResolvedValue([teamRow])
+    prisma.teamPlayer.groupBy.mockResolvedValue([])
+    prisma.registration.groupBy.mockResolvedValue([])
+    const repository = new PrismaTeamRepository(prisma as unknown as PrismaClient)
+
+    await expect(repository.listLegacyReconciliationContexts()).resolves.toEqual([
+      {
+        teamId: "team-1",
+        format: "THREE_V_THREE",
+        activeLegacyPlayerCount: 0,
+        activeLegacyCoachCount: 0,
+        inactiveLegacyPlayerCount: 2,
+        inactiveLegacyCoachCount: 1,
+        totalLegacyMemberCount: 3,
+        activeTeamPlayerCount: 0,
+        registrationHistoryCount: 0,
+        registrationStatusCounts: {
+          PENDING: 0,
+          APPROVED: 0,
+          REJECTED: 0,
+          CANCELLED: 0,
+          WITHDRAWN: 0,
+        },
+      },
+    ])
+    expect(prisma.teamMember.groupBy).toHaveBeenCalledWith(
+      expect.objectContaining({ where: undefined }),
+    )
   })
 
   it("locks the team row before reading the update snapshot", async () => {
@@ -161,6 +200,7 @@ describe("PrismaTeamRepository", () => {
       { status: "REJECTED" },
       { status: "WITHDRAWN" },
     ])
+    prisma.teamMember.count.mockResolvedValue(2)
     const repository = new PrismaTeamRepository(prisma as unknown as PrismaClient)
 
     await expect(
@@ -180,6 +220,7 @@ describe("PrismaTeamRepository", () => {
         version: 2,
       },
       registrationStatuses: ["REJECTED", "WITHDRAWN"],
+      totalLegacyMemberCount: 2,
     })
     expect(prisma.$queryRaw).toHaveBeenCalledOnce()
     expect(prisma.$queryRaw.mock.calls[0][0].text).toMatch(/FOR\s+UPDATE/i)
@@ -187,6 +228,12 @@ describe("PrismaTeamRepository", () => {
       where: { teamId: "team-1" },
       select: { status: true },
     })
+    expect(prisma.teamMember.count).toHaveBeenCalledWith({
+      where: { teamId: "team-1" },
+    })
+    expect(prisma.$queryRaw.mock.invocationCallOrder[0]).toBeLessThan(
+      prisma.teamMember.count.mock.invocationCallOrder[0],
+    )
   })
 
   it("permanently deletes a team inside the transaction repository", async () => {
