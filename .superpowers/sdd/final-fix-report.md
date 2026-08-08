@@ -108,7 +108,7 @@ Implemented only the requested P2 fixes:
 
 ### Scope
 
-- Extended the locked team-removal snapshot with total active and inactive `TeamMember` history. Hard delete now requires both zero registration history and zero legacy-member history; otherwise the team is deactivated and legacy rows remain untouched.
+- Extended the locked team-removal snapshot with total active and inactive `TeamMember` history. After the active-registration guard passes, hard delete requires both zero registration history and zero legacy-member history; terminal registration history or any legacy-member history selects deactivation and leaves legacy rows untouched.
 - Preserved removal guard precedence: authorization, stale version, confirmation name, inactive team, then active registration. The preservation decision runs only after those guards pass.
 - Extended the PII-free reconciliation query and report with active/inactive PLAYER/COACH counts and total legacy history. Inactive-only teams are included and can never report ready while any legacy row exists.
 - Distinguished active manual re-entry needs from inactive preserved history in the Thai workspace notice. Neither path changes TeamPlayer-only registration eligibility.
