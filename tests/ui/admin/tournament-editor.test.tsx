@@ -1,4 +1,4 @@
-import { cleanup, render, screen, waitFor } from "@testing-library/react"
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
@@ -258,16 +258,16 @@ describe("TournamentEditor", () => {
 async function fillValidTournament(
   user: ReturnType<typeof userEvent.setup>,
 ) {
-  await user.type(screen.getByLabelText("ชื่อรายการ"), "Chiang Rai Cup")
-  await user.type(screen.getByLabelText("รายละเอียด"), "การแข่งขันระดับชุมชน")
+  fireEvent.change(screen.getByLabelText("ชื่อรายการ"), { target: { value: "Chiang Rai Cup" } })
+  fireEvent.change(screen.getByLabelText("รายละเอียด"), { target: { value: "การแข่งขันระดับชุมชน" } })
   const province = screen.getByLabelText("จังหวัด")
   await user.click(province)
-  await user.type(province, "Chiang Rai")
+  fireEvent.change(province, { target: { value: "Chiang Rai" } })
   await user.click(await screen.findByRole("option", { name: /เชียงราย.*Chiang Rai/i }))
-  await user.type(screen.getByLabelText("สถานที่"), "สนามกีฬากลาง")
-  await user.selectOptions(screen.getByLabelText("รุ่นอายุ"), "Open")
-  await user.type(screen.getByLabelText("วันเริ่มแข่งขัน"), "2026-12-10T09:00")
-  await user.type(screen.getByLabelText("วันสิ้นสุดการแข่งขัน"), "2026-12-11T18:00")
-  await user.type(screen.getByLabelText("วันปิดรับสมัคร"), "2026-12-01T23:59")
-  await user.type(screen.getByLabelText("กติกา"), "ใช้กติกามาตรฐาน")
+  fireEvent.change(screen.getByLabelText("สถานที่"), { target: { value: "สนามกีฬากลาง" } })
+  fireEvent.change(screen.getByLabelText("รุ่นอายุ"), { target: { value: "Open" } })
+  fireEvent.change(screen.getByLabelText("วันเริ่มแข่งขัน"), { target: { value: "2026-12-10T09:00" } })
+  fireEvent.change(screen.getByLabelText("วันสิ้นสุดการแข่งขัน"), { target: { value: "2026-12-11T18:00" } })
+  fireEvent.change(screen.getByLabelText("วันปิดรับสมัคร"), { target: { value: "2026-12-01T23:59" } })
+  fireEvent.change(screen.getByLabelText("กติกา"), { target: { value: "ใช้กติกามาตรฐาน" } })
 }
