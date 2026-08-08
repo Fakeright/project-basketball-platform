@@ -182,6 +182,27 @@ describe("team route handlers", () => {
     },
   )
 
+  it("maps an inactive team update to a safe 409 response", async () => {
+    const response = await handleUpdateTeam(
+      "team-1",
+      jsonRequest({
+        name: "Updated",
+        provinceCode: "10",
+        format: "FIVE_V_FIVE",
+        expectedVersion: 2,
+      }),
+      {
+        actorProvider: { getCurrentActor: vi.fn(async () => teamManager) },
+        update: vi.fn(async () => {
+          throw new Error("TEAM_INACTIVE")
+        }),
+      },
+    )
+
+    expect(response.status).toBe(409)
+    await expect(response.json()).resolves.toEqual({ message: "ทีมนี้ปิดใช้งานแล้ว" })
+  })
+
   it("maps a body transport failure to a safe correlated 500", async () => {
     const logger = { error: vi.fn() }
     const request = {

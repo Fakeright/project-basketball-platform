@@ -88,11 +88,7 @@ export class PrismaTeamRepository implements TeamRepository {
   }
 
   async listActivePlayers(teamId: string) {
-    const players = await this.prisma.teamPlayer.findMany({
-      where: { teamId, isActive: true },
-      orderBy: { createdAt: "asc" },
-    })
-    return players.map(mapPlayer)
+    return this.mutations.listActivePlayers(teamId)
   }
 
   findExistingPlayersByIdentities(
@@ -219,6 +215,14 @@ class PrismaTeamMutationRepository implements TeamMutationRepository {
     })
     if (!team) throw new Error("NOT_FOUND")
     return mapTeam(team)
+  }
+
+  async listActivePlayers(teamId: string) {
+    const players = await this.prisma.teamPlayer.findMany({
+      where: { teamId, isActive: true },
+      orderBy: { createdAt: "asc" },
+    })
+    return players.map(mapPlayer)
   }
 
   async findExistingPlayersByIdentities(

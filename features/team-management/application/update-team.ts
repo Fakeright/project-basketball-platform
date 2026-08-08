@@ -23,6 +23,7 @@ export async function updateTeam(
 
     const isOverride = authorizeTeamAccess(actor, "team.update", team)
     if (team.version !== input.expectedVersion) throw new Error("CONFLICT")
+    if (!team.isActive) throw new Error("TEAM_INACTIVE")
 
     if (
       team.format !== input.format &&

@@ -188,6 +188,27 @@ describe("PrismaTeamRepository", () => {
     ])
   })
 
+  it("reads TeamPlayers through the transaction repository after locking Team", async () => {
+    const prisma = createPrismaMock()
+    prisma.$queryRaw.mockResolvedValue([{ id: "team-1" }])
+    prisma.team.findUnique.mockResolvedValue(teamRow)
+    prisma.teamPlayer.findMany.mockResolvedValue([playerRow])
+    const repository = new PrismaTeamRepository(prisma as unknown as PrismaClient)
+
+    await repository.inTransaction(async (teams) => {
+      await teams.findByIdForUpdate("team-1")
+      await teams.listActivePlayers("team-1")
+    })
+
+    expect(prisma.$queryRaw.mock.invocationCallOrder[0]).toBeLessThan(
+      prisma.teamPlayer.findMany.mock.invocationCallOrder[0],
+    )
+    expect(prisma.teamPlayer.findMany).toHaveBeenCalledWith({
+      where: { teamId: "team-1", isActive: true },
+      orderBy: { createdAt: "asc" },
+    })
+  })
+
   it("finds matching player identities regardless of active status", async () => {
     const prisma = createPrismaMock()
     const inactivePlayer = {

@@ -129,6 +129,14 @@ describe("team use cases", () => {
         },
       }),
     )
+    expect(repository.findById).not.toHaveBeenCalled()
+    expect(repository.findByIdForUpdate).toHaveBeenCalledWith(team.id)
+    expect(vi.mocked(repository.findByIdForUpdate).mock.invocationCallOrder[0]).toBeLessThan(
+      vi.mocked(repository.findExistingPlayersByIdentities).mock.invocationCallOrder[0],
+    )
+    expect(
+      vi.mocked(repository.findExistingPlayersByIdentities).mock.invocationCallOrder[0],
+    ).toBeLessThan(vi.mocked(repository.addPlayers).mock.invocationCallOrder[0])
   })
 
   it("rejects player batches outside the allowed size", async () => {
@@ -153,7 +161,7 @@ describe("team use cases", () => {
 
   it("rejects a non-owner from managing a player roster", async () => {
     const repository = createRepository({
-      findById: vi.fn(async () => ({ ...team, ownerId: "manager-2" })),
+      findByIdForUpdate: vi.fn(async () => ({ ...team, ownerId: "manager-2" })),
     })
 
     await expect(
@@ -167,7 +175,7 @@ describe("team use cases", () => {
 
   it("rejects player roster changes for an inactive team", async () => {
     const repository = createRepository({
-      findById: vi.fn(async () => ({ ...team, isActive: false })),
+      findByIdForUpdate: vi.fn(async () => ({ ...team, isActive: false })),
     })
 
     await expect(
@@ -177,6 +185,35 @@ describe("team use cases", () => {
         { teams: repository },
       ),
     ).rejects.toThrow("TEAM_INACTIVE")
+    expect(repository.findExistingPlayersByIdentities).not.toHaveBeenCalled()
+    expect(repository.addPlayers).not.toHaveBeenCalled()
+  })
+
+  it("rejects player edit and deactivation when the locked team is inactive", async () => {
+    const activePlayer = playerFromDraft(draftPlayer("one", 4))
+    const repository = createRepository({
+      findByIdForUpdate: vi.fn(async () => ({ ...team, isActive: false })),
+      listActivePlayers: vi.fn(async () => [activePlayer]),
+    })
+
+    await expect(
+      updateTeamPlayer(
+        { teamId: team.id, playerId: activePlayer.id, player: draftPlayer("one", 8) },
+        teamManager,
+        { teams: repository },
+      ),
+    ).rejects.toThrow("TEAM_INACTIVE")
+    await expect(
+      deactivateTeamPlayer(
+        { teamId: team.id, playerId: activePlayer.id, at: "2026-08-10T00:00:00.000Z" },
+        teamManager,
+        { teams: repository },
+      ),
+    ).rejects.toThrow("TEAM_INACTIVE")
+
+    expect(repository.listActivePlayers).not.toHaveBeenCalled()
+    expect(repository.updatePlayer).not.toHaveBeenCalled()
+    expect(repository.deactivatePlayer).not.toHaveBeenCalled()
   })
 
   it("does not classify a fresh player with different timestamps as reactivated", async () => {
@@ -253,6 +290,14 @@ describe("team use cases", () => {
         after: updated,
       }),
     )
+    expect(repository.findById).not.toHaveBeenCalled()
+    expect(repository.findByIdForUpdate).toHaveBeenCalledWith(team.id)
+    expect(vi.mocked(repository.findByIdForUpdate).mock.invocationCallOrder[0]).toBeLessThan(
+      vi.mocked(repository.listActivePlayers).mock.invocationCallOrder[0],
+    )
+    expect(vi.mocked(repository.listActivePlayers).mock.invocationCallOrder[0]).toBeLessThan(
+      vi.mocked(repository.updatePlayer).mock.invocationCallOrder[0],
+    )
   })
 
   it("soft-removes an active player and audits the transition", async () => {
@@ -271,6 +316,14 @@ describe("team use cases", () => {
     expect(deactivated).toMatchObject({ isActive: false, deactivatedAt: at })
     expect(repository.appendAuditEvent).toHaveBeenCalledWith(
       expect.objectContaining({ action: "team.player_deactivated", before: existingPlayer }),
+    )
+    expect(repository.findById).not.toHaveBeenCalled()
+    expect(repository.findByIdForUpdate).toHaveBeenCalledWith(team.id)
+    expect(vi.mocked(repository.findByIdForUpdate).mock.invocationCallOrder[0]).toBeLessThan(
+      vi.mocked(repository.listActivePlayers).mock.invocationCallOrder[0],
+    )
+    expect(vi.mocked(repository.listActivePlayers).mock.invocationCallOrder[0]).toBeLessThan(
+      vi.mocked(repository.deactivatePlayer).mock.invocationCallOrder[0],
     )
   })
 
@@ -407,6 +460,48 @@ describe("team use cases", () => {
       ),
     ).rejects.toThrow("CONFLICT")
     expect(hasActiveRegistration).not.toHaveBeenCalled()
+    expect(repository.update).not.toHaveBeenCalled()
+  })
+
+  it("rejects a current-version update when the locked team is inactive", async () => {
+    const repository = createRepository({
+      findByIdForUpdate: vi.fn(async () => ({ ...team, isActive: false })),
+    })
+
+    await expect(
+      updateTeam(
+        {
+          teamId: team.id,
+          name: team.name,
+          provinceCode: team.provinceCode,
+          format: team.format,
+          expectedVersion: team.version,
+        },
+        teamManager,
+        { teams: repository },
+      ),
+    ).rejects.toThrow("TEAM_INACTIVE")
+    expect(repository.update).not.toHaveBeenCalled()
+  })
+
+  it("returns a stale conflict before the inactive-team update guard", async () => {
+    const repository = createRepository({
+      findByIdForUpdate: vi.fn(async () => ({ ...team, isActive: false, version: 2 })),
+    })
+
+    await expect(
+      updateTeam(
+        {
+          teamId: team.id,
+          name: team.name,
+          provinceCode: team.provinceCode,
+          format: team.format,
+          expectedVersion: 1,
+        },
+        teamManager,
+        { teams: repository },
+      ),
+    ).rejects.toThrow("CONFLICT")
     expect(repository.update).not.toHaveBeenCalled()
   })
 

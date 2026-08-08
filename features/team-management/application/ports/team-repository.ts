@@ -36,6 +36,7 @@ export interface TeamMutationRepository {
     expectedVersion: number,
     at: string,
   ): Promise<TeamSummary>
+  listActivePlayers(teamId: string): Promise<TeamPlayer[]>
   findExistingPlayersByIdentities(
     teamId: string,
     players: readonly TeamPlayerDraft[],
@@ -62,5 +63,4 @@ export interface TeamRepository extends TeamMutationRepository {
   ): Promise<T>
   findById(id: string): Promise<TeamSummary | null>
   listByOwner(ownerId: string): Promise<TeamSummary[]>
-  listActivePlayers(teamId: string): Promise<TeamPlayer[]>
 }

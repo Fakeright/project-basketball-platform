@@ -20,13 +20,13 @@ export async function addTeamPlayers(
     throw new Error("PLAYER_BATCH_INVALID")
   }
 
-  const team = await dependencies.teams.findById(input.teamId)
-  if (!team) throw new Error("NOT_FOUND")
-
-  const isOverride = authorizePlayerRosterAccess(actor, team.ownerId)
-  if (!team.isActive) throw new Error("TEAM_INACTIVE")
-
   return dependencies.teams.inTransaction(async (teams) => {
+    const team = await teams.findByIdForUpdate(input.teamId)
+    if (!team) throw new Error("NOT_FOUND")
+
+    const isOverride = authorizePlayerRosterAccess(actor, team.ownerId)
+    if (!team.isActive) throw new Error("TEAM_INACTIVE")
+
     const existingPlayers = await teams.findExistingPlayersByIdentities(
       team.id,
       input.players,
