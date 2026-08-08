@@ -101,3 +101,40 @@ Implemented only the requested P2 fixes:
 - Production cutover remains blocked on manual reconciliation of the 5 reported legacy teams. Do not delete legacy rows, invent birth dates, or treat legacy members as registration-eligible players.
 - Any future database whose audit PII report contains findings requires a separately approved retention/redaction operation; the report intentionally does not rewrite audit history.
 - Existing Vitest `vite-tsconfig-paths` deprecation and Next linked-worktree root warnings remain unchanged.
+
+---
+
+## Whole-Branch Fix Wave Round 2 - 9 August 2026
+
+### Scope
+
+- Extended the locked team-removal snapshot with total active and inactive `TeamMember` history. Hard delete now requires both zero registration history and zero legacy-member history; otherwise the team is deactivated and legacy rows remain untouched.
+- Preserved removal guard precedence: authorization, stale version, confirmation name, inactive team, then active registration. The preservation decision runs only after those guards pass.
+- Extended the PII-free reconciliation query and report with active/inactive PLAYER/COACH counts and total legacy history. Inactive-only teams are included and can never report ready while any legacy row exists.
+- Distinguished active manual re-entry needs from inactive preserved history in the Thai workspace notice. Neither path changes TeamPlayer-only registration eligibility.
+
+### TDD RED Evidence
+
+1. Legacy-preserving team removal
+   - Command: `npm run test -- tests/features/team-management/prisma-team-repository.test.ts tests/features/team-management/team-use-cases.test.ts tests/api/teams/team-routes.test.ts`
+   - RED: 3 expected failures. The locked repository snapshot omitted total legacy history, and both use-case and route selected `DELETED` for a no-registration team with legacy rows.
+   - GREEN: 3 files, 85 tests passed. Tests assert `DEACTIVATED`, `team.deactivated`, and that `deleteTeam` is not called.
+2. Inactive-only reconciliation
+   - Command: `npm run test -- tests/features/team-management/prisma-team-repository.test.ts tests/features/team-management/team-use-cases.test.ts tests/ui/team/team-workspace-manager.test.tsx tests/scripts/audit-legacy-team-members.test.ts`
+   - RED: 6 expected failures. Inactive-only rows were classified as active, inactive totals/preservation issue were absent, the report formatter was absent, and the workspace did not show preserved inactive history.
+   - GREEN: 4 files, 62 tests passed.
+
+### Verification
+
+- Focused bounded suite: `npm run test -- tests/features/team-management tests/api/teams tests/ui/team tests/scripts/audit-legacy-team-members.test.ts` - 14 files, 119 tests passed.
+- Full default suite: `npm run test` - 98 files, 558 tests passed.
+- Lint: `npm run lint` - exit 0, no ESLint findings.
+- Production build: `npm run build` - exit 0; TypeScript and static generation for 25 pages completed.
+- Prisma: `npx prisma validate` - schema valid; no migration or schema changes were made.
+- Legacy audit: `npx tsx scripts/audit-legacy-team-members.ts` - 5 teams, 28 total legacy rows, all currently active, `readyForLegacyRemoval=false`; no rows changed.
+- Audit PII report: `npx tsx scripts/audit-team-player-audit-pii.ts` - 0 events scanned and 0 findings; no rows changed.
+
+### Remaining Gates
+
+- The 5 development teams with legacy history still require manual reconciliation before production cutover. Inactive-only coverage is regression-tested even though the current development audit contains no inactive legacy rows.
+- Existing Vitest `vite-tsconfig-paths` deprecation and Next linked-worktree root warnings remain unchanged.
