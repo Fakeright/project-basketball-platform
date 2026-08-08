@@ -59,6 +59,7 @@ function playerFromDraft(
 }
 
 type TransactionalTeamRepository = TeamRepository
+const transactionLifetimeError = "TRANSACTION_REPOSITORY_OUTSIDE_CALLBACK"
 
 function createRepository(
   overrides: Partial<TransactionalTeamRepository> = {},
@@ -110,21 +111,71 @@ function createRepository(
   return repository
 }
 
+function guardTransactionRepository(
+  repository: TransactionalTeamRepository,
+  isActive: () => boolean,
+): TransactionalTeamRepository {
+  const guardedMethods = new Map<
+    PropertyKey,
+    (...args: unknown[]) => Promise<unknown>
+  >()
+
+  return new Proxy(repository, {
+    get(target, property, receiver) {
+      const value = Reflect.get(target, property, receiver)
+      if (typeof value !== "function") return value
+
+      let guarded = guardedMethods.get(property)
+      if (!guarded) {
+        guarded = vi.fn(async (...args: unknown[]) => {
+          if (!isActive()) throw new Error(transactionLifetimeError)
+          return Reflect.apply(value, target, args)
+        })
+        guardedMethods.set(property, guarded)
+      }
+      return guarded
+    },
+  })
+}
+
 function createDistinctTransactionRepositories(
   transactionOverrides: Partial<TeamMutationRepository> = {},
 ) {
-  const transaction = createRepository(transactionOverrides)
+  let transactionActive = false
+  const transaction = guardTransactionRepository(
+    createRepository(transactionOverrides),
+    () => transactionActive,
+  )
   const outer = createRepository()
   outer.inTransaction = vi.fn(
     async <T>(
       operation: (repository: TeamMutationRepository) => Promise<T>,
-    ): Promise<T> => operation(transaction),
+    ): Promise<T> => {
+      transactionActive = true
+      try {
+        return await operation(transaction)
+      } finally {
+        transactionActive = false
+      }
+    },
   )
   return { outer, transaction }
 }
 
 describe("team use cases", () => {
   describe("transaction-scoped roster mutations", () => {
+    it("rejects transaction repository use after the callback lifetime", async () => {
+      const { outer, transaction } = createDistinctTransactionRepositories()
+
+      await outer.inTransaction(async (teams) => {
+        await teams.findByIdForUpdate(team.id)
+      })
+
+      await expect(transaction.findByIdForUpdate(team.id)).rejects.toThrow(
+        transactionLifetimeError,
+      )
+    })
+
     it("adds players only through the callback repository after its Team lock", async () => {
       const { outer, transaction } = createDistinctTransactionRepositories()
 
