@@ -2,10 +2,9 @@ import { authorize } from "@/features/identity/application/authorize"
 import type { Actor } from "@/features/identity/domain/actor"
 import type { TeamPlayer, TeamPlayerDraft } from "@/features/team-management/domain/team"
 import { projectTeamPlayerBatchAuditSnapshot } from "@/features/team-management/domain/team-player-audit"
+import { assertTeamPlayerBatch } from "@/features/team-management/domain/team-player-batch-policy"
 
 import type { TeamRepository } from "./ports/team-repository"
-
-const maximumPlayerBatchSize = 30
 
 export interface AddTeamPlayersInput {
   teamId: string
@@ -17,9 +16,7 @@ export async function addTeamPlayers(
   actor: Actor,
   dependencies: { teams: TeamRepository },
 ): Promise<TeamPlayer[]> {
-  if (input.players.length === 0 || input.players.length > maximumPlayerBatchSize) {
-    throw new Error("PLAYER_BATCH_INVALID")
-  }
+  assertTeamPlayerBatch(input.players, { allowEmpty: false })
 
   return dependencies.teams.inTransaction(async (teams) => {
     const team = await teams.findByIdForUpdate(input.teamId)

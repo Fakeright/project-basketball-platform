@@ -249,6 +249,42 @@ describe("team use cases", () => {
       ).toBeLessThan(vi.mocked(transaction.addPlayers).mock.invocationCallOrder[0])
     })
 
+    it("creates a team and its initial roster only through the callback repository", async () => {
+      const { outer, transaction } = createDistinctTransactionRepositories()
+      const draft = draftPlayer("one", 4)
+
+      const result = await createTeam(
+        {
+          name: "New Team",
+          provinceCode: "10",
+          format: "THREE_V_THREE",
+          players: [draft],
+        },
+        teamManager,
+        { teams: outer },
+      )
+
+      expect(outer.inTransaction).toHaveBeenCalledOnce()
+      expect(transaction.create).toHaveBeenCalledWith({
+        name: "New Team",
+        provinceCode: "10",
+        format: "THREE_V_THREE",
+        ownerId: teamManager.id,
+      })
+      expect(transaction.addPlayers).toHaveBeenCalledWith("team-new", [draft])
+      expect(transaction.appendAuditEvent).toHaveBeenCalledTimes(2)
+      expect(outer.create).not.toHaveBeenCalled()
+      expect(outer.addPlayers).not.toHaveBeenCalled()
+      expect(outer.appendAuditEvent).not.toHaveBeenCalled()
+      expect(vi.mocked(transaction.create).mock.invocationCallOrder[0]).toBeLessThan(
+        vi.mocked(transaction.addPlayers).mock.invocationCallOrder[0],
+      )
+      expect(result).toEqual({
+        team: expect.objectContaining({ id: "team-new" }),
+        players: [expect.objectContaining({ teamId: "team-new", firstName: "one" })],
+      })
+    })
+
     it("updates a player only through the callback repository after its Team lock", async () => {
       const existingPlayer = playerFromDraft(draftPlayer("one", 4))
       const { outer, transaction } = createDistinctTransactionRepositories({
@@ -651,20 +687,22 @@ describe("team use cases", () => {
     expectPlayerAuditPayloadsToOmitPii(repository)
   })
 
-  it("creates a team owned by the team manager and audits the mutation", async () => {
+  it("creates an empty team owned by the team manager and audits the mutation", async () => {
     const repository = createRepository()
 
-    const created = await createTeam(
+    const result = await createTeam(
       {
         name: "Chiang Mai Hoops",
         provinceCode: "50",
         format: "THREE_V_THREE",
+        players: [],
       },
       teamManager,
       { teams: repository },
     )
 
-    expect(created.ownerId).toBe(teamManager.id)
+    expect(result.team.ownerId).toBe(teamManager.id)
+    expect(result.players).toEqual([])
     expect(repository.create).toHaveBeenCalledWith({
       name: "Chiang Mai Hoops",
       provinceCode: "50",
@@ -675,10 +713,172 @@ describe("team use cases", () => {
       expect.objectContaining({
         actorId: teamManager.id,
         action: "team.created",
-        entityId: created.id,
-        after: created,
+        entityId: result.team.id,
+        after: { team: result.team, initialPlayerCount: 0 },
       }),
     )
+    expect(repository.addPlayers).not.toHaveBeenCalled()
+  })
+
+  it("rejects actors without team.create before starting a transaction", async () => {
+    const repository = createRepository()
+
+    await expect(
+      createTeam(
+        {
+          name: "Unauthorized Team",
+          provinceCode: "10",
+          format: "FIVE_V_FIVE",
+          players: [],
+        },
+        playerActor,
+        { teams: repository },
+      ),
+    ).rejects.toThrow("FORBIDDEN")
+
+    expect(repository.inTransaction).not.toHaveBeenCalled()
+    expect(repository.create).not.toHaveBeenCalled()
+  })
+
+  it("preserves existing team creation callers that omit the initial roster", async () => {
+    const repository = createRepository()
+
+    const result = await createTeam(
+      {
+        name: "Existing Caller Team",
+        provinceCode: "10",
+        format: "FIVE_V_FIVE",
+      },
+      teamManager,
+      { teams: repository },
+    )
+
+    expect(result.players).toEqual([])
+    expect(repository.addPlayers).not.toHaveBeenCalled()
+  })
+
+  it("creates an initial roster and records PII-safe audit snapshots", async () => {
+    const repository = createRepository()
+    const drafts = [draftPlayer("one", 4), draftPlayer("two", 8)]
+
+    const result = await createTeam(
+      {
+        name: "Chiang Mai Hoops",
+        provinceCode: "50",
+        format: "THREE_V_THREE",
+        players: drafts,
+      },
+      teamManager,
+      { teams: repository },
+    )
+
+    expect(result.players).toHaveLength(2)
+    expect(repository.appendAuditEvent).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        action: "team.created",
+        after: { team: result.team, initialPlayerCount: 2 },
+      }),
+    )
+    expect(repository.appendAuditEvent).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        action: "team.players_added",
+        after: {
+          players: result.players.map(playerAuditSnapshot),
+          reactivatedPlayerIds: [],
+          count: 2,
+        },
+      }),
+    )
+    expectPlayerAuditPayloadsToOmitPii(repository)
+  })
+
+  it.each([
+    {
+      name: "more than 30 initial players",
+      players: Array.from({ length: 31 }, (_, index) =>
+        draftPlayer(`player-${index}`, index + 1),
+      ),
+      code: "PLAYER_BATCH_INVALID",
+    },
+    {
+      name: "duplicate player identities",
+      players: [draftPlayer("same", 4), draftPlayer(" SAME ", 8)],
+      code: "PLAYER_ALREADY_EXISTS",
+    },
+    {
+      name: "duplicate jersey numbers",
+      players: [draftPlayer("one", 4), draftPlayer("two", 4)],
+      code: "JERSEY_ALREADY_IN_USE",
+    },
+  ])("rejects $name before starting a transaction", async ({ players, code }) => {
+    const repository = createRepository()
+
+    await expect(
+      createTeam(
+        {
+          name: "Invalid Team",
+          provinceCode: "10",
+          format: "FIVE_V_FIVE",
+          players,
+        },
+        teamManager,
+        { teams: repository },
+      ),
+    ).rejects.toThrow(code)
+
+    expect(repository.inTransaction).not.toHaveBeenCalled()
+    expect(repository.create).not.toHaveBeenCalled()
+  })
+
+  it("propagates an initial roster failure so the transaction can roll back", async () => {
+    const rosterFailure = new Error("ROSTER_WRITE_FAILED")
+    const repository = createRepository({
+      addPlayers: vi.fn(async () => {
+        throw rosterFailure
+      }),
+    })
+
+    await expect(
+      createTeam(
+        {
+          name: "Rollback Team",
+          provinceCode: "10",
+          format: "FIVE_V_FIVE",
+          players: [draftPlayer("one", 4)],
+        },
+        teamManager,
+        { teams: repository },
+      ),
+    ).rejects.toBe(rosterFailure)
+
+    expect(repository.appendAuditEvent).not.toHaveBeenCalled()
+  })
+
+  it("records team, roster, and admin override audits in one transaction", async () => {
+    const { outer, transaction } = createDistinctTransactionRepositories()
+
+    await createTeam(
+      {
+        name: "Admin Team",
+        provinceCode: "10",
+        format: "THREE_V_THREE",
+        players: [draftPlayer("one", 4)],
+      },
+      platformAdmin,
+      { teams: outer },
+    )
+
+    expect(transaction.appendAuditEvent).toHaveBeenCalledTimes(3)
+    expect(transaction.appendAuditEvent).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        actorId: platformAdmin.id,
+        action: "team.admin_override",
+        entityId: "team-new",
+      }),
+    )
+    expect(outer.appendAuditEvent).not.toHaveBeenCalled()
   })
 
   it("hides another manager's team when updating it", async () => {
@@ -1275,6 +1475,7 @@ describe("team use cases", () => {
         name: "Khon Kaen Hoops",
         provinceCode: "40",
         format: "FIVE_V_FIVE",
+        players: [],
       },
       teamManager,
       { teams: repository },

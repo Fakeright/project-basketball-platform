@@ -12,7 +12,10 @@ import type {
   TeamSummary,
 } from "@/features/team-management/domain/team"
 import type { AddTeamPlayersInput } from "@/features/team-management/application/add-team-players"
-import type { CreateTeamInput } from "@/features/team-management/application/create-team"
+import type {
+  CreateTeamInput,
+  CreateTeamResult,
+} from "@/features/team-management/application/create-team"
 import type { DeactivateTeamPlayerInput } from "@/features/team-management/application/deactivate-team-player"
 import type {
   RemoveOrDeactivateTeamInput,
@@ -21,6 +24,7 @@ import type {
 import type { UpdateTeamInput } from "@/features/team-management/application/update-team"
 import type { UpdateTeamPlayerInput } from "@/features/team-management/application/update-team-player"
 import { assertProvinceCode } from "@/features/provinces/application/assert-province-code"
+import { maximumTeamPlayerBatchSize } from "@/features/team-management/domain/team-player-batch-policy"
 
 const teamIdentitySchema = z.object({
   name: z.string().trim().min(2).max(80),
@@ -80,13 +84,20 @@ const teamPlayerSchema = z.object({
   phone: optionalTrimmedString(30),
 })
 
+const teamCreateSchema = teamIdentitySchema.extend({
+  players: z
+    .array(teamPlayerSchema)
+    .max(maximumTeamPlayerBatchSize)
+    .default([]),
+})
+
 const teamPlayerBatchSchema = z.object({
-  players: z.array(teamPlayerSchema).min(1).max(30),
+  players: z.array(teamPlayerSchema).min(1).max(maximumTeamPlayerBatchSize),
 })
 
 interface CreateTeamHandlerDependencies extends SafeHttpDiagnostics {
   actorProvider: CurrentActorProvider
-  create: (input: CreateTeamInput, actor: Actor) => Promise<TeamSummary>
+  create: (input: CreateTeamInput, actor: Actor) => Promise<CreateTeamResult>
 }
 
 interface UpdateTeamHandlerDependencies extends SafeHttpDiagnostics {
@@ -128,11 +139,18 @@ export async function handleCreateTeam(
     const payload = await parseJsonRequest(request)
     if (!payload.ok) return validationResponse()
 
-    const parsed = teamIdentitySchema.safeParse(payload.value)
-    if (!parsed.success) return validationResponse()
+    const parsed = teamCreateSchema.safeParse(payload.value)
+    if (!parsed.success) {
+      const hasPlayerIssue = parsed.error.issues.some(
+        (issue) => issue.path[0] === "players",
+      )
+      return hasPlayerIssue
+        ? playerValidationResponse(parsed.error.issues)
+        : validationResponse()
+    }
 
-    const team = await dependencies.create(parsed.data, actor)
-    return Response.json({ team }, { status: 201 })
+    const result = await dependencies.create(parsed.data, actor)
+    return Response.json(result, { status: 201 })
   } catch (error) {
     return (
       teamFailureResponse(error) ??

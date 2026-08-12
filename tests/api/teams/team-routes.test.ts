@@ -35,6 +35,17 @@ const storedPlayer = {
   createdAt: "2026-08-07T00:00:00.000Z",
   updatedAt: "2026-08-07T00:00:00.000Z",
 }
+const createdTeam = {
+  id: "team-1",
+  name: "Bangkok Ballers",
+  provinceCode: "10",
+  province: "กรุงเทพมหานคร",
+  ownerId: teamManager.id,
+  format: "THREE_V_THREE" as const,
+  isActive: true,
+  deactivatedAt: null,
+  version: 0,
+}
 
 function jsonRequest(body: unknown): Request {
   return new Request("http://localhost/api/teams", {
@@ -111,6 +122,188 @@ describe("team route handlers", () => {
 
     expect(response.status).toBe(422)
     expect(create).not.toHaveBeenCalled()
+  })
+
+  it("maps a forbidden team creation to 403", async () => {
+    const response = await handleCreateTeam(
+      jsonRequest({
+        name: "Bangkok Ballers",
+        provinceCode: "10",
+        format: "THREE_V_THREE",
+      }),
+      {
+        actorProvider: { getCurrentActor: vi.fn(async () => teamManager) },
+        create: vi.fn(async () => {
+          throw new Error("FORBIDDEN")
+        }),
+      },
+    )
+
+    expect(response.status).toBe(403)
+    await expect(response.json()).resolves.toEqual({
+      message: "คุณไม่มีสิทธิ์จัดการทีมนี้",
+    })
+  })
+
+  it("creates a team with a validated initial roster and returns both resources", async () => {
+    const create = vi.fn(async () => ({ team: createdTeam, players: [storedPlayer] }))
+    const response = await handleCreateTeam(
+      jsonRequest({
+        name: "Bangkok Ballers",
+        provinceCode: "10",
+        format: "THREE_V_THREE",
+        players: [validPlayer],
+      }),
+      {
+        actorProvider: { getCurrentActor: vi.fn(async () => teamManager) },
+        create,
+      },
+    )
+
+    expect(response.status).toBe(201)
+    expect(create).toHaveBeenCalledWith(
+      {
+        name: "Bangkok Ballers",
+        provinceCode: "10",
+        format: "THREE_V_THREE",
+        players: [validPlayer],
+      },
+      teamManager,
+    )
+    await expect(response.json()).resolves.toEqual({
+      team: createdTeam,
+      players: [storedPlayer],
+    })
+  })
+
+  it.each([
+    { label: "omitted", body: {} },
+    { label: "empty", body: { players: [] } },
+  ])("defaults an $label initial roster to an empty list", async ({ body }) => {
+    const create = vi.fn(async () => ({ team: createdTeam, players: [] }))
+    const response = await handleCreateTeam(
+      jsonRequest({
+        name: "Bangkok Ballers",
+        provinceCode: "10",
+        format: "THREE_V_THREE",
+        ...body,
+      }),
+      {
+        actorProvider: { getCurrentActor: vi.fn(async () => teamManager) },
+        create,
+      },
+    )
+
+    expect(response.status).toBe(201)
+    expect(create).toHaveBeenCalledWith(
+      expect.objectContaining({ players: [] }),
+      teamManager,
+    )
+    await expect(response.json()).resolves.toEqual({ team: createdTeam, players: [] })
+  })
+
+  it("returns 422 for malformed team creation JSON", async () => {
+    const request = new Request("http://localhost/api/teams", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: "{",
+    })
+    const response = await handleCreateTeam(request, {
+      actorProvider: { getCurrentActor: vi.fn(async () => teamManager) },
+      create: vi.fn(),
+    })
+
+    expect(response.status).toBe(422)
+  })
+
+  it("returns 422 when an initial roster exceeds 30 rows", async () => {
+    const create = vi.fn()
+    const response = await handleCreateTeam(
+      jsonRequest({
+        name: "Bangkok Ballers",
+        provinceCode: "10",
+        format: "THREE_V_THREE",
+        players: Array.from({ length: 31 }, (_, index) => ({
+          ...validPlayer,
+          firstName: `Player ${index}`,
+          jerseyNumber: index + 1,
+        })),
+      }),
+      {
+        actorProvider: { getCurrentActor: vi.fn(async () => teamManager) },
+        create,
+      },
+    )
+
+    expect(response.status).toBe(422)
+    expect(create).not.toHaveBeenCalled()
+  })
+
+  it("returns indexed 422 issues for an invalid initial player", async () => {
+    const response = await handleCreateTeam(
+      jsonRequest({
+        name: "Bangkok Ballers",
+        provinceCode: "10",
+        format: "THREE_V_THREE",
+        players: [{ ...validPlayer, firstName: "" }],
+      }),
+      {
+        actorProvider: { getCurrentActor: vi.fn(async () => teamManager) },
+        create: vi.fn(),
+      },
+    )
+
+    expect(response.status).toBe(422)
+    await expect(response.json()).resolves.toMatchObject({
+      issues: [expect.objectContaining({ row: 0, field: "firstName" })],
+    })
+  })
+
+  it.each(["PLAYER_ALREADY_EXISTS", "JERSEY_ALREADY_IN_USE"])(
+    "maps %s during team creation to 409",
+    async (code) => {
+      const response = await handleCreateTeam(
+        jsonRequest({
+          name: "Bangkok Ballers",
+          provinceCode: "10",
+          format: "THREE_V_THREE",
+          players: [validPlayer],
+        }),
+        {
+          actorProvider: { getCurrentActor: vi.fn(async () => teamManager) },
+          create: vi.fn(async () => {
+            throw new Error(code)
+          }),
+        },
+      )
+
+      expect(response.status).toBe(409)
+    },
+  )
+
+  it("keeps player PII out of unexpected team creation diagnostics", async () => {
+    const logger = { error: vi.fn() }
+    const privatePlayerDetail = `${validPlayer.firstName} ${validPlayer.phone}`
+    const response = await handleCreateTeam(
+      jsonRequest({
+        name: "Bangkok Ballers",
+        provinceCode: "10",
+        format: "THREE_V_THREE",
+        players: [validPlayer],
+      }),
+      {
+        actorProvider: { getCurrentActor: vi.fn(async () => teamManager) },
+        create: vi.fn(async () => {
+          throw new Error(privatePlayerDetail)
+        }),
+        createCorrelationId: () => "team-player-correlation",
+        logger,
+      },
+    )
+
+    expect(response.status).toBe(500)
+    expect(JSON.stringify(await response.json())).not.toContain(privatePlayerDetail)
+    expect(JSON.stringify(logger.error.mock.calls)).not.toContain(privatePlayerDetail)
   })
 
   it("passes format and expected version through a team update", async () => {
