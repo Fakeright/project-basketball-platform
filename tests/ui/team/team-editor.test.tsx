@@ -1,4 +1,4 @@
-import { act, cleanup, render, screen, waitFor } from "@testing-library/react"
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
@@ -111,12 +111,16 @@ describe("TeamEditor", () => {
 
     render(<TeamEditor initialTeam={null} reusablePlayers={[]} />)
 
-    await user.type(screen.getByLabelText("ชื่อทีม"), "Bangkok Ballers")
+    fireEvent.change(screen.getByLabelText("ชื่อทีม"), {
+      target: { value: "Bangkok Ballers" },
+    })
     const province = screen.getByLabelText("จังหวัด")
     await user.click(province)
     await user.type(province, "Bangkok")
     await user.click(await screen.findByRole("option", { name: /กรุงเทพมหานคร.*Bangkok/i }))
-    await user.selectOptions(screen.getByLabelText("รูปแบบทีม"), "THREE_V_THREE")
+    fireEvent.change(screen.getByLabelText("รูปแบบทีม"), {
+      target: { value: "THREE_V_THREE" },
+    })
     await user.click(screen.getByRole("button", { name: "บันทึกทีม" }))
 
     expect(fetchMock).toHaveBeenCalledWith(
@@ -150,16 +154,15 @@ describe("TeamEditor", () => {
     await user.click(screen.getByRole("button", { name: "เลือกจากผู้เล่นเดิม" }))
     await user.click(screen.getByRole("checkbox", { name: "เลือก สมชาย ใจดี" }))
     const historicalJersey = screen.getByLabelText("เบอร์เสื้อ")
-    await user.clear(historicalJersey)
-    await user.type(historicalJersey, "12")
+    fireEvent.change(historicalJersey, { target: { value: "12" } })
 
     await user.click(screen.getByRole("button", { name: "เพิ่มผู้เล่นใหม่" }))
     const firstNames = screen.getAllByLabelText("ชื่อ", { selector: "input" })
     const lastNames = screen.getAllByLabelText("นามสกุล", { selector: "input" })
     const birthDates = screen.getAllByLabelText("วันเกิด")
-    await user.type(firstNames[1], "มานะ")
-    await user.type(lastNames[1], "อดทน")
-    await user.type(birthDates[1], "2011-04-05")
+    fireEvent.change(firstNames[1], { target: { value: "มานะ" } })
+    fireEvent.change(lastNames[1], { target: { value: "อดทน" } })
+    fireEvent.change(birthDates[1], { target: { value: "2011-04-05" } })
 
     await user.click(screen.getByRole("button", { name: "บันทึกทีม" }))
 
@@ -216,9 +219,13 @@ describe("TeamEditor", () => {
     await fillTeamIdentity(user)
     await user.click(screen.getByRole("button", { name: "เพิ่มผู้เล่นใหม่" }))
     const firstName = screen.getByLabelText("ชื่อ", { selector: "input" })
-    await user.type(firstName, "มานะ")
-    await user.type(screen.getByLabelText("นามสกุล", { selector: "input" }), "อดทน")
-    await user.type(screen.getByLabelText("วันเกิด"), "2011-04-05")
+    fireEvent.change(firstName, { target: { value: "มานะ" } })
+    fireEvent.change(screen.getByLabelText("นามสกุล", { selector: "input" }), {
+      target: { value: "อดทน" },
+    })
+    fireEvent.change(screen.getByLabelText("วันเกิด"), {
+      target: { value: "2011-04-05" },
+    })
 
     await user.click(screen.getByRole("button", { name: "บันทึกทีม" }))
 
@@ -380,10 +387,14 @@ describe("NewTeamPage", () => {
 })
 
 async function fillTeamIdentity(user: ReturnType<typeof userEvent.setup>) {
-  await user.type(screen.getByLabelText("ชื่อทีม"), "Bangkok Ballers")
+  fireEvent.change(screen.getByLabelText("ชื่อทีม"), {
+    target: { value: "Bangkok Ballers" },
+  })
   const province = screen.getByLabelText("จังหวัด")
   await user.click(province)
   await user.type(province, "Bangkok")
   await user.click(await screen.findByRole("option", { name: /กรุงเทพมหานคร.*Bangkok/i }))
-  await user.selectOptions(screen.getByLabelText("รูปแบบทีม"), "THREE_V_THREE")
+  fireEvent.change(screen.getByLabelText("รูปแบบทีม"), {
+    target: { value: "THREE_V_THREE" },
+  })
 }
