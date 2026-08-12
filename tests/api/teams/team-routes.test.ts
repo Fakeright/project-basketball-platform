@@ -176,6 +176,32 @@ describe("team route handlers", () => {
     })
   })
 
+  it("accepts today's birth date according to Bangkok time", async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date("2026-08-11T18:00:00.000Z"))
+    const create = vi.fn(async () => ({ team: createdTeam, players: [storedPlayer] }))
+
+    try {
+      const response = await handleCreateTeam(
+        jsonRequest({
+          name: "Bangkok Ballers",
+          provinceCode: "10",
+          format: "THREE_V_THREE",
+          players: [{ ...validPlayer, birthDate: "2026-08-12" }],
+        }),
+        {
+          actorProvider: { getCurrentActor: vi.fn(async () => teamManager) },
+          create,
+        },
+      )
+
+      expect(response.status).toBe(201)
+      expect(create).toHaveBeenCalledOnce()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it.each([
     { label: "omitted", body: {} },
     { label: "empty", body: { players: [] } },

@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
 import { TeamPlayerBatchForm } from "@/components/team/team-player-batch-form"
+import { validatePlayerValues } from "@/components/team/team-player-fields"
 
 afterEach(() => {
   cleanup()
@@ -10,6 +11,25 @@ afterEach(() => {
 })
 
 describe("TeamPlayerBatchForm", () => {
+  it("accepts today's birth date according to Bangkok time", () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date("2026-08-11T18:00:00.000Z"))
+
+    try {
+      expect(validatePlayerValues({
+        firstName: "Somchai",
+        lastName: "Jaidee",
+        birthDate: "2026-08-12",
+        nickname: "",
+        jerseyNumber: "",
+        position: "",
+        phone: "",
+      }).birthDate).toBeUndefined()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it("starts with five labelled player rows and supports adding and removing rows", async () => {
     const user = userEvent.setup()
     render(<TeamPlayerBatchForm onPlayersAdded={vi.fn()} teamId="team-1" />)

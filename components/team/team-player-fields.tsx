@@ -1,6 +1,7 @@
 import type { ChangeEvent } from "react"
 
 import { Input } from "@/components/ui/input"
+import { toBangkokCalendarDate } from "@/features/shared/domain/calendar-date"
 import type {
   TeamPlayerDraft,
   TeamPlayerPosition,
@@ -189,7 +190,7 @@ export function validatePlayerValues(values: TeamPlayerFormValues): TeamPlayerFi
   else if (lastName.length > 80) errors.lastName = "นามสกุลต้องไม่เกิน 80 ตัวอักษร"
   if (!values.birthDate) errors.birthDate = "กรุณาระบุวันเกิดผู้เล่น"
   else if (!isIsoCalendarDate(values.birthDate)) errors.birthDate = "วันเกิดไม่ถูกต้อง"
-  else if (values.birthDate > new Date().toISOString().slice(0, 10)) {
+  else if (values.birthDate > toBangkokCalendarDate(new Date())) {
     errors.birthDate = "วันเกิดต้องไม่เป็นวันที่ในอนาคต"
   }
   if (nickname.length > 40) errors.nickname = "ชื่อเล่นต้องไม่เกิน 40 ตัวอักษร"

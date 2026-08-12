@@ -25,6 +25,7 @@ import type { UpdateTeamInput } from "@/features/team-management/application/upd
 import type { UpdateTeamPlayerInput } from "@/features/team-management/application/update-team-player"
 import { assertProvinceCode } from "@/features/provinces/application/assert-province-code"
 import { maximumTeamPlayerBatchSize } from "@/features/team-management/domain/team-player-batch-policy"
+import { toBangkokCalendarDate } from "@/features/shared/domain/calendar-date"
 
 const teamIdentitySchema = z.object({
   name: z.string().trim().min(2).max(80),
@@ -67,7 +68,7 @@ const teamPlayerSchema = z.object({
   birthDate: z
     .iso
     .date()
-    .refine((value) => value <= new Date().toISOString().slice(0, 10)),
+    .refine((value) => value <= toBangkokCalendarDate(new Date())),
   jerseyNumber: z
     .number()
     .int()

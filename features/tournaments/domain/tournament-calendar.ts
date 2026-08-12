@@ -1,33 +1,20 @@
-export const TOURNAMENT_TIME_ZONE = "Asia/Bangkok"
+import {
+  BANGKOK_TIME_ZONE,
+  toBangkokCalendarDate as toSharedBangkokCalendarDate,
+} from "@/features/shared/domain/calendar-date"
+
+export const TOURNAMENT_TIME_ZONE = BANGKOK_TIME_ZONE
+
+export function toBangkokCalendarDate(value: string | Date): string {
+  try {
+    return toSharedBangkokCalendarDate(value)
+  } catch {
+    throw new Error("INVALID_TOURNAMENT_DATE")
+  }
+}
 
 const BANGKOK_UTC_OFFSET_MILLISECONDS = 7 * 60 * 60 * 1_000
 const CALENDAR_DAY_MILLISECONDS = 24 * 60 * 60 * 1_000
-
-const bangkokCalendarDateFormatter = new Intl.DateTimeFormat("en-CA", {
-  day: "2-digit",
-  month: "2-digit",
-  timeZone: TOURNAMENT_TIME_ZONE,
-  year: "numeric",
-})
-
-export function toBangkokCalendarDate(value: string | Date): string {
-  const date = value instanceof Date ? value : new Date(value)
-
-  if (Number.isNaN(date.getTime())) {
-    throw new Error("INVALID_TOURNAMENT_DATE")
-  }
-
-  const parts = bangkokCalendarDateFormatter.formatToParts(date)
-  const year = parts.find((part) => part.type === "year")?.value
-  const month = parts.find((part) => part.type === "month")?.value
-  const day = parts.find((part) => part.type === "day")?.value
-
-  if (!year || !month || !day) {
-    throw new Error("INVALID_TOURNAMENT_DATE")
-  }
-
-  return `${year}-${month}-${day}`
-}
 
 export function getBangkokCalendarDayUtcRange(
   calendarDate: string,
