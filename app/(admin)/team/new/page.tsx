@@ -1,6 +1,15 @@
 import { TeamEditor } from "@/components/team/team-editor"
+import { createNextCookieCurrentActorProvider } from "@/features/identity/infrastructure/next-cookie-current-actor-provider"
+import { listReusableTeamPlayers } from "@/features/team-management/application/list-reusable-team-players"
+import { getTeamRepository } from "@/features/team-management/infrastructure/get-team-repository"
 
-export default function NewTeamPage() {
+export default async function NewTeamPage() {
+  const actor = await createNextCookieCurrentActorProvider().getCurrentActor()
+  if (!actor) return null
+  const reusablePlayers = await listReusableTeamPlayers(actor, {
+    teams: getTeamRepository(),
+  })
+
   return (
     <section>
       <header className="border-b border-border pb-5">
@@ -8,7 +17,7 @@ export default function NewTeamPage() {
         <h1 className="mt-2 text-2xl font-semibold">สร้างทีม</h1>
       </header>
       <div className="pt-8">
-        <TeamEditor initialTeam={null} />
+        <TeamEditor initialTeam={null} reusablePlayers={reusablePlayers} />
       </div>
     </section>
   )
