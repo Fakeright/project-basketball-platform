@@ -4,6 +4,7 @@ import { addTeamPlayers } from "@/features/team-management/application/add-team-
 import { createTeam } from "@/features/team-management/application/create-team"
 import { deactivateTeamPlayer } from "@/features/team-management/application/deactivate-team-player"
 import { getOwnedTeamWorkspace } from "@/features/team-management/application/get-owned-team-workspace"
+import { listReusableTeamPlayers } from "@/features/team-management/application/list-reusable-team-players"
 import { listOwnedTeams } from "@/features/team-management/application/list-owned-teams"
 import type {
   TeamMutationRepository,
@@ -13,10 +14,15 @@ import { removeOrDeactivateTeam } from "@/features/team-management/application/r
 import { updateTeam } from "@/features/team-management/application/update-team"
 import { updateTeamPlayer } from "@/features/team-management/application/update-team-player"
 import type { TeamPlayer, TeamPlayerDraft } from "@/features/team-management/domain/team"
+import {
+  projectReusableTeamPlayers,
+  type TeamPlayerHistorySource,
+} from "@/features/team-management/domain/team-player-history"
 import { createTestActor } from "@/tests/fixtures/actor"
 
 const teamManager = createTestActor("manager-1", "TEAM_MANAGER_COACH")
 const platformAdmin = createTestActor("admin-1", "PLATFORM_ADMIN")
+const playerActor = createTestActor("player-actor-1", "PLAYER")
 
 const team = {
   id: "team-1",
@@ -104,6 +110,7 @@ function createRepository(
     findById: vi.fn(async () => team),
     findByIdForUpdate: vi.fn(async () => team),
     listByOwner: vi.fn(async () => [team]),
+    listPlayerHistoryByOwner: vi.fn(async () => []),
     listLegacyReconciliationContexts: vi.fn(async () => []),
     update: vi.fn(async (id, input) => ({ ...team, id, ...input })),
     listActivePlayers: vi.fn(async () => []),
@@ -1107,6 +1114,40 @@ describe("team use cases", () => {
 
     expect(teams).toEqual([team])
     expect(repository.listByOwner).toHaveBeenCalledWith(teamManager.id)
+  })
+
+  it("projects reusable player history owned by the authorized manager", async () => {
+    const sources: TeamPlayerHistorySource[] = [
+      {
+        ...playerFromDraft(draftPlayer("One", 4)),
+        teamName: team.name,
+      },
+    ]
+    const repository = createRepository({
+      listPlayerHistoryByOwner: vi.fn(async () => sources),
+    })
+
+    await expect(
+      listReusableTeamPlayers(teamManager, { teams: repository }),
+    ).resolves.toEqual(projectReusableTeamPlayers(sources))
+    expect(repository.listPlayerHistoryByOwner).toHaveBeenCalledWith(teamManager.id)
+  })
+
+  it("keeps reusable player history scoped to the platform admin actor id", async () => {
+    const repository = createRepository()
+
+    await listReusableTeamPlayers(platformAdmin, { teams: repository })
+
+    expect(repository.listPlayerHistoryByOwner).toHaveBeenCalledWith(platformAdmin.id)
+  })
+
+  it("rejects actors without team.create before reading reusable player history", async () => {
+    const repository = createRepository()
+
+    await expect(
+      listReusableTeamPlayers(playerActor, { teams: repository }),
+    ).rejects.toThrow("FORBIDDEN")
+    expect(repository.listPlayerHistoryByOwner).not.toHaveBeenCalled()
   })
 
   it("loads active players without reading legacy members for the workspace", async () => {

@@ -5,6 +5,7 @@ import type {
   TeamSummary,
 } from "@/features/team-management/domain/team"
 import type { RegistrationStatus } from "@/features/registrations/domain/registration"
+import type { TeamPlayerHistorySource } from "@/features/team-management/domain/team-player-history"
 
 export interface TeamRemovalContext {
   team: TeamSummary
@@ -77,6 +78,7 @@ export interface TeamRepository extends TeamMutationRepository {
   ): Promise<T>
   findById(id: string): Promise<TeamSummary | null>
   listByOwner(ownerId: string): Promise<TeamSummary[]>
+  listPlayerHistoryByOwner(ownerId: string): Promise<TeamPlayerHistorySource[]>
   listLegacyReconciliationContexts(
     teamId?: string,
   ): Promise<LegacyTeamReconciliationContext[]>

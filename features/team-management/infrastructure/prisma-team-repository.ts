@@ -74,6 +74,18 @@ export class PrismaTeamRepository implements TeamRepository {
     return teams.map(mapTeam)
   }
 
+  async listPlayerHistoryByOwner(ownerId: string) {
+    const players = await this.prisma.teamPlayer.findMany({
+      where: { team: { ownerId } },
+      include: { team: { select: { name: true } } },
+      orderBy: [{ updatedAt: "desc" }, { id: "asc" }],
+    })
+    return players.map(({ team, ...player }) => ({
+      ...mapPlayer(player),
+      teamName: team.name,
+    }))
+  }
+
   async listLegacyReconciliationContexts(teamId?: string) {
     const legacyCounts = await this.prisma.teamMember.groupBy({
       by: ["teamId", "role", "isActive"],

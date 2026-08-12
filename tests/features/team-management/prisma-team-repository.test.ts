@@ -299,6 +299,66 @@ describe("PrismaTeamRepository", () => {
     ])
   })
 
+  it("lists active and inactive TeamPlayer history from all owned teams", async () => {
+    const prisma = createPrismaMock()
+    const inactivePlayerRow = {
+      ...playerRow,
+      id: "player-2",
+      teamId: "team-inactive",
+      isActive: false,
+      deactivatedAt: new Date("2026-07-27T00:00:00.000Z"),
+      updatedAt: new Date("2026-07-28T00:00:00.000Z"),
+      team: { name: "Archived Team" },
+    }
+    prisma.teamPlayer.findMany.mockResolvedValue([
+      inactivePlayerRow,
+      { ...playerRow, team: { name: "Bangkok Ballers" } },
+    ])
+    const repository = new PrismaTeamRepository(prisma as unknown as PrismaClient)
+
+    await expect(repository.listPlayerHistoryByOwner("manager-1")).resolves.toEqual([
+      {
+        id: "player-2",
+        teamId: "team-inactive",
+        firstName: "One",
+        lastName: "Player",
+        nickname: null,
+        birthDate: "2010-02-03",
+        jerseyNumber: 4,
+        position: "PG",
+        phone: null,
+        isActive: false,
+        deactivatedAt: "2026-07-27T00:00:00.000Z",
+        createdAt: "2026-07-25T00:00:00.000Z",
+        updatedAt: "2026-07-28T00:00:00.000Z",
+        teamName: "Archived Team",
+      },
+      {
+        id: "player-1",
+        teamId: "team-1",
+        firstName: "One",
+        lastName: "Player",
+        nickname: null,
+        birthDate: "2010-02-03",
+        jerseyNumber: 4,
+        position: "PG",
+        phone: null,
+        isActive: true,
+        deactivatedAt: null,
+        createdAt: "2026-07-25T00:00:00.000Z",
+        updatedAt: "2026-07-26T00:00:00.000Z",
+        teamName: "Bangkok Ballers",
+      },
+    ])
+    expect(prisma.teamPlayer.findMany).toHaveBeenCalledWith({
+      where: { team: { ownerId: "manager-1" } },
+      include: { team: { select: { name: true } } },
+      orderBy: [{ updatedAt: "desc" }, { id: "asc" }],
+    })
+    expect(prisma.teamMember.count).not.toHaveBeenCalled()
+    expect(prisma.teamMember.groupBy).not.toHaveBeenCalled()
+  })
+
   it("reads TeamPlayers through the transaction repository after locking Team", async () => {
     const prisma = createPrismaMock()
     prisma.$queryRaw.mockResolvedValue([{ id: "team-1" }])
