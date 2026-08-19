@@ -38,6 +38,7 @@ function createRepository(
     create: vi.fn(),
     findById: vi.fn(async () => tournament),
     listByOrganizer: vi.fn(),
+    listForAdmin: vi.fn(),
     listByStatus: vi.fn(),
     updateWithVersion: vi.fn(),
     reviewWithVersion: vi.fn(),

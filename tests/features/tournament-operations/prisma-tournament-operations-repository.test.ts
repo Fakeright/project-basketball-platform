@@ -48,6 +48,40 @@ function createPrismaMock() {
 }
 
 describe("PrismaTournamentOperationsRepository", () => {
+  it("searches all tournaments for platform administration", async () => {
+    const prisma = createPrismaMock()
+    prisma.tournament.findMany.mockResolvedValue([
+      { ...tournamentRow, organizer: { displayName: "Organizer One" } },
+    ])
+    const repository = new PrismaTournamentOperationsRepository(
+      prisma as unknown as PrismaClient,
+    )
+
+    const tournaments = await repository.listForAdmin({
+      query: "court",
+      status: "SUBMITTED",
+    })
+
+    expect(prisma.tournament.findMany).toHaveBeenCalledWith({
+      where: {
+        status: "SUBMITTED",
+        OR: [
+          { title: { contains: "court", mode: "insensitive" } },
+          { organizer: { displayName: { contains: "court", mode: "insensitive" } } },
+          { province: { nameTh: { contains: "court", mode: "insensitive" } } },
+          { province: { nameEn: { contains: "court", mode: "insensitive" } } },
+        ],
+      },
+      orderBy: { updatedAt: "desc" },
+      take: 100,
+      include: {
+        organizer: { select: { displayName: true } },
+        province: true,
+      },
+    })
+    expect(tournaments[0]?.organizerName).toBe("Organizer One")
+  })
+
   it("maps Prisma dates and increments the tournament version atomically", async () => {
     const prisma = createPrismaMock()
     prisma.tournament.updateMany.mockResolvedValue({ count: 1 })

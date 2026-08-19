@@ -26,6 +26,7 @@
 - การล็อกรายชื่อทีมที่อนุมัติ การสร้าง deterministic single-elimination bracket แบบกำหนด Seed หรือสุ่ม การจัดการ Bye และการเผยแพร่สายที่สร้างด้วยระบบ
 - การจัดวันเวลาและสนาม การบันทึกคะแนนร่าง การยืนยันผลแบบ transactional การเลื่อนผู้ชนะเข้ารอบถัดไป และการแสดง Winner/Runner-up จาก Final ที่ยืนยันแล้ว
 - การแก้ผลที่ยืนยันแล้วโดย Platform Admin พร้อมเหตุผล, audit, optimistic concurrency และการบล็อกการเปลี่ยนผู้ชนะเมื่อคู่ถัดไปเริ่มหรือมีผลแล้ว
+- หน้ารวมการแข่งขันของ Platform Admin พร้อมค้นหาชื่อรายการ ผู้จัด จังหวัด กรองสถานะ และเข้าสู่พื้นที่กำกับสายหรือผลโดยตรง
 - หน้า bracket และ schedule สาธารณะที่อ่านเฉพาะสายเผยแพร่ แสดงคะแนน ผู้ชนะ Bye และทีมที่ตกรอบตามรอบจริง
 - Prisma migrations, seed/reset tooling และ automated Vitest/RTL coverage
 
@@ -37,7 +38,6 @@
 - ช่องว่างด้าน governance ของ tournament: delete/remove, suspend, archive และการเปิดรับสมัครอีกครั้ง
 - Admin analytics ซึ่งปัจจุบันมี counts และ audits แต่ยังไม่มี visitor tracking, province popularity, trends หรือ charts
 - การตรวจสอบ browser แบบ responsive สำหรับทุก protected workflow และ production observability
-- การเข้าถึงรายการแข่งขันทั้งหมดจาก workspace ของ Platform Admin ยังต้องเพิ่มหน้ารวมเฉพาะสำหรับค้นหาและเข้าสู่ result governance โดยไม่ต้องทราบ URL ล่วงหน้า
 - การ reconcile `TeamMember` เดิมก่อน production cutover: audit แบบอ่านอย่างเดียวครอบคลุมทั้ง active และ inactive history รวมถึงทีมที่มีเฉพาะ inactive rows การตรวจเมื่อ 9 สิงหาคม 2026 พบ 5 ทีมที่มี legacy rows ทั้งหมดเป็น active แต่ข้อมูลเดิมไม่มีวันเกิด/ข้อมูลตัวตนเพียงพอสำหรับ backfill ที่ปลอดภัย ต้องยืนยันรูปแบบ `5v5`/`3v3`, กรอก `TeamPlayer` จากข้อมูลที่ตรวจสอบได้ และทบทวนประวัติการสมัครรายทีม โดยไม่ลบข้อมูลเดิมหรือสร้างวันเกิดขึ้นแทน
 - การกำกับ retention ของ TeamPlayer audit เดิม: event ใหม่เก็บเฉพาะ metadata ที่ไม่ใช่ PII และฐาน development ปัจจุบันไม่พบ event เดิมในขอบเขต read-only audit หากฐานเป้าหมายอื่นพบข้อมูล ต้องอนุมัติ redaction/retention แยกต่างหากและห้าม rewrite production audit โดยอัตโนมัติ
 
@@ -53,7 +53,7 @@
 ## ลำดับการส่งมอบถัดไป
 
 1. **Authentication hardening, email verification และ profile management** — ผู้ใช้ยืนยันอีเมล จัดการ profile ได้ และ auth flow พร้อมสำหรับ production configuration
-2. **Platform Admin tournament discovery และ External Bracket File** — Admin ค้นหารายการเพื่อกำกับผลได้จาก workspace และผู้จัดเลือกเผยแพร่ไฟล์สายจากภายนอกได้โดยไม่ใช้ไฟล์สร้างคู่แข่งอัตโนมัติ
+2. **External Bracket File** — ผู้จัดเลือกเผยแพร่ไฟล์สายจากภายนอกได้โดยไม่ใช้ไฟล์สร้างคู่แข่งอัตโนมัติ
 3. **Remaining media และ notification delivery** — สื่อที่เหลือและการแจ้งเตือนถูกส่งและจัดการผ่าน workflow ที่ใช้งานได้จริง
 4. **Analytics, monitoring, CI/CD และ deployment** — ระบบมี analytics, observability, pipeline และการ deploy production ที่ตรวจสอบได้
 

@@ -11,6 +11,7 @@ import type {
 
 import type {
   TournamentLifecycleTransition,
+  AdminTournamentFilters,
   TournamentMutationAudit,
   TournamentOperationsRepository,
   TournamentReviewTransition,
@@ -76,6 +77,35 @@ export class PrismaTournamentOperationsRepository
       where: { organizerId },
       orderBy: { updatedAt: "desc" },
       include: tournamentOperationInclude,
+    })
+    return tournaments.map(mapTournament)
+  }
+
+  async listForAdmin(filters: AdminTournamentFilters) {
+    const query = filters.query?.trim()
+    const textFilter = query
+      ? { contains: query, mode: "insensitive" as const }
+      : undefined
+    const tournaments = await this.prisma.tournament.findMany({
+      where: {
+        ...(filters.status ? { status: filters.status } : {}),
+        ...(textFilter
+          ? {
+              OR: [
+                { title: textFilter },
+                { organizer: { displayName: textFilter } },
+                { province: { nameTh: textFilter } },
+                { province: { nameEn: textFilter } },
+              ],
+            }
+          : {}),
+      },
+      orderBy: { updatedAt: "desc" },
+      take: 100,
+      include: {
+        organizer: { select: { displayName: true } },
+        province: true,
+      },
     })
     return tournaments.map(mapTournament)
   }

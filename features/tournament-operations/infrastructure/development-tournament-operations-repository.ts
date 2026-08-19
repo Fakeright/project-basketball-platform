@@ -14,6 +14,7 @@ import type {
   TournamentLifecycleTransition,
   TournamentMutationAudit,
   TournamentOperationsRepository,
+  AdminTournamentFilters,
 } from "./tournament-operations-repository"
 
 interface DevelopmentState {
@@ -79,6 +80,11 @@ class DevelopmentTournamentOperationsRepository
     return state.tournaments.filter(
       (tournament) => tournament.organizerId === organizerId,
     )
+  }
+
+  async listForAdmin(filters: AdminTournamentFilters) {
+    const state = await readState()
+    return filterAdminTournaments(state.tournaments, filters)
   }
 
   async listByStatus(status: TournamentOperation["status"]) {
@@ -192,6 +198,24 @@ class DevelopmentTournamentOperationsRepository
     await writeState(state)
     return updated
   }
+}
+
+function filterAdminTournaments(
+  tournaments: TournamentOperation[],
+  filters: AdminTournamentFilters,
+) {
+  const query = filters.query?.trim().toLocaleLowerCase("th-TH")
+  return tournaments
+    .filter((tournament) => !filters.status || tournament.status === filters.status)
+    .filter(
+      (tournament) =>
+        !query ||
+        [tournament.title, tournament.organizerName, tournament.province]
+          .filter(Boolean)
+          .some((value) => value?.toLocaleLowerCase("th-TH").includes(query)),
+    )
+    .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt))
+    .slice(0, 100)
 }
 
 function provinceName(provinceCode: string) {

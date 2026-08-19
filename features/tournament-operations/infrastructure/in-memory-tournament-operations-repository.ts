@@ -8,6 +8,7 @@ import type {
   TournamentLifecycleTransition,
   TournamentMutationAudit,
   TournamentOperationsRepository,
+  AdminTournamentFilters,
 } from "./tournament-operations-repository"
 
 export class InMemoryTournamentOperationsRepository implements TournamentOperationsRepository {
@@ -38,6 +39,21 @@ export class InMemoryTournamentOperationsRepository implements TournamentOperati
     return [...this.tournaments.values()].filter(
       (tournament) => tournament.organizerId === organizerId,
     )
+  }
+
+  async listForAdmin(filters: AdminTournamentFilters) {
+    const query = filters.query?.trim().toLocaleLowerCase("th-TH")
+    return [...this.tournaments.values()]
+      .filter((tournament) => !filters.status || tournament.status === filters.status)
+      .filter(
+        (tournament) =>
+          !query ||
+          [tournament.title, tournament.organizerName, tournament.province]
+            .filter(Boolean)
+            .some((value) => value?.toLocaleLowerCase("th-TH").includes(query)),
+      )
+      .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt))
+      .slice(0, 100)
   }
 
   async listByStatus(status: TournamentOperation["status"]) {

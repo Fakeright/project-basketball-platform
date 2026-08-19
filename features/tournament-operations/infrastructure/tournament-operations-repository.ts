@@ -13,6 +13,7 @@ export interface TournamentOperationsRepository {
   ): Promise<TournamentOperation>
   findById(id: string): Promise<TournamentOperation | null>
   listByOrganizer(organizerId: string): Promise<TournamentOperation[]>
+  listForAdmin(filters: AdminTournamentFilters): Promise<TournamentOperation[]>
   listByStatus(status: TournamentOperationStatus): Promise<TournamentOperation[]>
   updateWithVersion(
     id: string,
@@ -24,6 +25,11 @@ export interface TournamentOperationsRepository {
   transitionWithVersion(
     input: TournamentLifecycleTransition,
   ): Promise<TournamentOperation>
+}
+
+export interface AdminTournamentFilters {
+  query?: string
+  status?: TournamentOperationStatus
 }
 
 export interface TournamentMutationAudit {

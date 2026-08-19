@@ -27,6 +27,9 @@ export function AdminSidebar({ actor }: { actor: Actor }) {
             <Link className={navigationClassName} href="/admin/reviews">
               คิวตรวจสอบ
             </Link>
+            <Link className={navigationClassName} href="/admin/tournaments">
+              รายการแข่งขันทั้งหมด
+            </Link>
           </>
         ) : null}
         {isTeamManager || isPlatformAdmin ? (
