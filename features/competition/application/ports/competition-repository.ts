@@ -28,6 +28,37 @@ export interface BracketGenerationContext {
   entries: LockedBracketEntry[]
 }
 
+export interface OrganizerCompetitionWorkspace {
+  tournament: {
+    id: string
+    title: string
+    organizerId: string
+    status: string
+    version: number
+  }
+  approvedTeamCount: number
+  bracket: null | {
+    id: string
+    version: number
+    generationMethod: BracketGenerationMethod | null
+    entriesLockedAt: string | null
+    hasStartedMatch: boolean
+    entries: LockedBracketEntry[]
+    rounds: Array<{
+      id: string
+      name: string
+      sequence: number
+      matches: Array<{
+        id: string
+        sequence: number
+        homeTeamId: string | null
+        awayTeamId: string | null
+        status: string
+      }>
+    }>
+  }
+}
+
 export interface PersistedCompetitionBracket {
   id: string
   tournamentId: string
@@ -81,4 +112,7 @@ export interface CompetitionRepository extends CompetitionRepositoryTransaction 
   inTransaction<T>(
     operation: (repository: CompetitionRepositoryTransaction) => Promise<T>,
   ): Promise<T>
+  findOrganizerWorkspace(
+    tournamentId: string,
+  ): Promise<OrganizerCompetitionWorkspace | null>
 }

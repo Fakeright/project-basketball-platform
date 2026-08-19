@@ -10,6 +10,7 @@ import type {
   LockEntriesInput,
   PersistedCompetitionBracket,
   PersistGeneratedPlanInput,
+  OrganizerCompetitionWorkspace,
 } from "@/features/competition/application/ports/competition-repository"
 
 type CompetitionDatabaseClient = Pick<
@@ -63,6 +64,82 @@ export class PrismaCompetitionRepository implements CompetitionRepository {
       this.prisma,
       this.createId,
     ).findGenerationContext(tournamentId)
+  }
+
+  async findOrganizerWorkspace(
+    tournamentId: string,
+  ): Promise<OrganizerCompetitionWorkspace | null> {
+    const tournament = await this.prisma.tournament.findUnique({
+      where: { id: tournamentId },
+      select: {
+        id: true,
+        title: true,
+        organizerId: true,
+        status: true,
+        version: true,
+        registrations: {
+          where: { status: "APPROVED" },
+          select: { id: true },
+        },
+        brackets: {
+          where: { status: { not: "ARCHIVED" } },
+          take: 1,
+          select: {
+            id: true,
+            version: true,
+            generationMethod: true,
+            entriesLockedAt: true,
+            entries: { orderBy: { drawPosition: "asc" } },
+            rounds: {
+              orderBy: { sequence: "asc" },
+              select: {
+                id: true,
+                name: true,
+                sequence: true,
+                matches: {
+                  orderBy: { sequence: "asc" },
+                  select: {
+                    id: true,
+                    sequence: true,
+                    homeTeamId: true,
+                    awayTeamId: true,
+                    status: true,
+                  },
+                },
+              },
+            },
+            matches: {
+              where: { status: { in: ["IN_PROGRESS", "COMPLETED"] } },
+              select: { id: true },
+            },
+          },
+        },
+      },
+    })
+    if (!tournament) return null
+
+    const bracket = tournament.brackets[0]
+    return {
+      tournament: {
+        id: tournament.id,
+        title: tournament.title,
+        organizerId: tournament.organizerId,
+        status: tournament.status,
+        version: tournament.version,
+      },
+      approvedTeamCount: tournament.registrations.length,
+      bracket: bracket
+        ? {
+            id: bracket.id,
+            version: bracket.version,
+            generationMethod: bracket.generationMethod,
+            entriesLockedAt: bracket.entriesLockedAt?.toISOString() ?? null,
+            hasStartedMatch: bracket.matches.length > 0,
+            entries: bracket.entries,
+            rounds: bracket.rounds,
+          }
+        : null,
+    }
   }
 }
 

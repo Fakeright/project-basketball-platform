@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest"
 
 import { lockBracketEntries } from "@/features/competition/application/lock-bracket-entries"
 import { generateBracketDraft } from "@/features/competition/application/generate-bracket"
+import { getOrganizerCompetition } from "@/features/competition/application/get-organizer-competition"
 import type { CompetitionRepository } from "@/features/competition/application/ports/competition-repository"
 import { createTestActor } from "@/tests/fixtures/actor"
 
@@ -25,6 +26,7 @@ function createRepository(
   }
   return {
     ...transaction,
+    findOrganizerWorkspace: vi.fn(),
     inTransaction: vi.fn(
       async (
         operation: (repository: typeof transaction) => Promise<unknown>,
@@ -261,3 +263,46 @@ function lockedEntry(id: string, teamId: string, seed: number) {
     startRoundSequence: 1,
   }
 }
+
+describe("getOrganizerCompetition", () => {
+  it("returns a view-ready workspace to its organizer", async () => {
+    const workspace = {
+      tournament: {
+        id: "tournament-1",
+        title: "COURTSIDE OPEN",
+        organizerId: organizer.id,
+        status: "REGISTRATION_CLOSED",
+        version: 4,
+      },
+      bracket: null,
+      approvedTeamCount: 6,
+    }
+    const competitions = {
+      findOrganizerWorkspace: vi.fn(async () => workspace),
+    } as unknown as CompetitionRepository
+
+    await expect(
+      getOrganizerCompetition("tournament-1", organizer, { competitions }),
+    ).resolves.toEqual(workspace)
+  })
+
+  it("hides another organizer's workspace", async () => {
+    const competitions = {
+      findOrganizerWorkspace: vi.fn(async () => ({
+        tournament: {
+          id: "tournament-1",
+          title: "Private tournament",
+          organizerId: "another-organizer",
+          status: "REGISTRATION_CLOSED",
+          version: 1,
+        },
+        bracket: null,
+        approvedTeamCount: 2,
+      })),
+    } as unknown as CompetitionRepository
+
+    await expect(
+      getOrganizerCompetition("tournament-1", organizer, { competitions }),
+    ).rejects.toThrow("NOT_FOUND")
+  })
+})

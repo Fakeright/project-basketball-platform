@@ -1,6 +1,6 @@
 import { notFound, redirect } from "next/navigation"
 import Link from "next/link"
-import { ClipboardCheck } from "lucide-react"
+import { ClipboardCheck, Workflow } from "lucide-react"
 
 import { TournamentEditor } from "@/components/admin/tournament-editor"
 import { TournamentLifecycleActions } from "@/components/admin/tournament-lifecycle-actions"
@@ -55,13 +55,22 @@ export default async function EditTournamentPage({
               ตรวจสอบรายชื่อทีมและจัดการผลการสมัคร
             </p>
           </div>
-          <Link
-            className="inline-flex h-9 items-center gap-2 rounded-lg bg-primary px-3 text-sm font-medium text-primary-foreground hover:bg-primary/80"
-            href={`/organizer/tournaments/${id}/registrations`}
-          >
-            <ClipboardCheck aria-hidden="true" size={16} />
-            ตรวจสอบการสมัคร
-          </Link>
+          <div className="flex flex-wrap gap-2">
+            <Link
+              className="inline-flex h-9 items-center gap-2 rounded-lg border border-border px-3 text-sm font-medium hover:bg-muted"
+              href={`/organizer/tournaments/${id}/bracket`}
+            >
+              <Workflow aria-hidden="true" size={16} />
+              จัดการสาย
+            </Link>
+            <Link
+              className="inline-flex h-9 items-center gap-2 rounded-lg bg-primary px-3 text-sm font-medium text-primary-foreground hover:bg-primary/80"
+              href={`/organizer/tournaments/${id}/registrations`}
+            >
+              <ClipboardCheck aria-hidden="true" size={16} />
+              ตรวจสอบการสมัคร
+            </Link>
+          </div>
         </div>
       </section>
       <TournamentEditor
