@@ -91,7 +91,7 @@
 - Produces: `BracketMode`, `BracketGenerationMethod`, `CompetitionTournamentStatus`, `LockedBracketEntry`, `CompetitionMatch`, `assertEntriesCanBeLocked`, `assertBracketStructureMutable`, `validateSeeds`, `assertScoreCanBeConfirmed`, `decideMatchAdvancement`
 - Consumes: no framework or infrastructure imports
 
-- [ ] **Step 1: Write failing lifecycle, seed, and score policy tests**
+- [x] **Step 1: Write failing lifecycle, seed, and score policy tests**
 
 ```ts
 import { describe, expect, it } from "vitest"
@@ -142,13 +142,13 @@ describe("competition bracket policy", () => {
 })
 ```
 
-- [ ] **Step 2: Run policy tests and verify missing-module failures**
+- [x] **Step 2: Run policy tests and verify missing-module failures**
 
 Run: `npx vitest run tests/features/competition/bracket-policy.test.ts tests/features/competition/match-result-policy.test.ts`
 
 Expected: FAIL because the competition domain modules do not exist.
 
-- [ ] **Step 3: Define framework-free domain types**
+- [x] **Step 3: Define framework-free domain types**
 
 ```ts
 export type BracketMode = "SYSTEM_GENERATED" | "EXTERNAL_DOCUMENT"
@@ -171,7 +171,7 @@ export interface LockedBracketEntry {
 }
 ```
 
-- [ ] **Step 4: Implement explicit policy errors and advancement decision**
+- [x] **Step 4: Implement explicit policy errors and advancement decision**
 
 ```ts
 export function assertScoreCanBeConfirmed(input: {
@@ -207,13 +207,13 @@ export function decideMatchAdvancement(input: {
 }
 ```
 
-- [ ] **Step 5: Run focused tests**
+- [x] **Step 5: Run focused tests**
 
 Run: `npx vitest run tests/features/competition/bracket-policy.test.ts tests/features/competition/match-result-policy.test.ts`
 
 Expected: PASS.
 
-- [ ] **Step 6: Commit domain policy checkpoint**
+- [x] **Step 6: Commit domain policy checkpoint**
 
 ```powershell
 git add -- features/competition/domain tests/features/competition/bracket-policy.test.ts tests/features/competition/match-result-policy.test.ts
