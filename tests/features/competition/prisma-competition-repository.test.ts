@@ -21,6 +21,44 @@ function createPrismaMock() {
 }
 
 describe("PrismaCompetitionRepository", () => {
+  it("publishes a version-checked draft and records an audit event", async () => {
+    const prisma = createPrismaMock()
+    prisma.bracket.updateMany.mockResolvedValue({ count: 1 })
+    prisma.auditLog.create.mockResolvedValue({})
+    const repository = new PrismaCompetitionRepository(
+      prisma as unknown as PrismaClient,
+    )
+
+    const published = await repository.setPublication({
+      tournamentId: "tournament-1",
+      bracketId: "bracket-1",
+      expectedVersion: 3,
+      published: true,
+      reason: null,
+      actorId: "organizer-1",
+      adminOverride: false,
+      at: "2026-08-19T07:00:00.000Z",
+    })
+
+    expect(prisma.bracket.updateMany).toHaveBeenCalledWith({
+      where: {
+        id: "bracket-1",
+        tournamentId: "tournament-1",
+        version: 3,
+        status: "DRAFT",
+      },
+      data: {
+        status: "PUBLISHED",
+        publishedAt: new Date("2026-08-19T07:00:00.000Z"),
+        version: { increment: 1 },
+      },
+    })
+    expect(prisma.auditLog.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ action: "BRACKET_PUBLISHED" }),
+    })
+    expect(published.version).toBe(4)
+  })
+
   it("persists entries, rounds, linked matches, and an audit event atomically", async () => {
     const prisma = createPrismaMock()
     prisma.bracket.updateMany.mockResolvedValue({ count: 1 })

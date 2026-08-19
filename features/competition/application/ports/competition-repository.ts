@@ -40,6 +40,7 @@ export interface OrganizerCompetitionWorkspace {
   bracket: null | {
     id: string
     version: number
+    status: string
     generationMethod: BracketGenerationMethod | null
     entriesLockedAt: string | null
     hasStartedMatch: boolean
@@ -57,6 +58,29 @@ export interface OrganizerCompetitionWorkspace {
       }>
     }>
   }
+}
+
+export interface BracketPublicationContext {
+  tournamentId: string
+  organizerId: string
+  bracketId: string
+  bracketVersion: number
+  bracketStatus: string
+  entryCount: number
+  roundCount: number
+  matchCount: number
+  hasStartedMatch: boolean
+}
+
+export interface SetBracketPublicationInput {
+  tournamentId: string
+  bracketId: string
+  expectedVersion: number
+  published: boolean
+  reason: string | null
+  actorId: string
+  adminOverride: boolean
+  at: string
 }
 
 export interface PersistedCompetitionBracket {
@@ -103,6 +127,12 @@ export interface CompetitionRepositoryTransaction {
   findGenerationContext(
     tournamentId: string,
   ): Promise<BracketGenerationContext | null>
+  findPublicationContext(
+    tournamentId: string,
+  ): Promise<BracketPublicationContext | null>
+  setPublication(
+    input: SetBracketPublicationInput,
+  ): Promise<PersistedCompetitionBracket>
   persistGeneratedPlan(
     input: PersistGeneratedPlanInput,
   ): Promise<PersistedCompetitionBracket>

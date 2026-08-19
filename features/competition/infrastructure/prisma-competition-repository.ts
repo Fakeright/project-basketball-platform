@@ -11,6 +11,8 @@ import type {
   PersistedCompetitionBracket,
   PersistGeneratedPlanInput,
   OrganizerCompetitionWorkspace,
+  BracketPublicationContext,
+  SetBracketPublicationInput,
 } from "@/features/competition/application/ports/competition-repository"
 
 type CompetitionDatabaseClient = Pick<
@@ -87,6 +89,7 @@ export class PrismaCompetitionRepository implements CompetitionRepository {
           select: {
             id: true,
             version: true,
+            status: true,
             generationMethod: true,
             entriesLockedAt: true,
             entries: { orderBy: { drawPosition: "asc" } },
@@ -132,6 +135,7 @@ export class PrismaCompetitionRepository implements CompetitionRepository {
         ? {
             id: bracket.id,
             version: bracket.version,
+            status: bracket.status,
             generationMethod: bracket.generationMethod,
             entriesLockedAt: bracket.entriesLockedAt?.toISOString() ?? null,
             hasStartedMatch: bracket.matches.length > 0,
@@ -140,6 +144,21 @@ export class PrismaCompetitionRepository implements CompetitionRepository {
           }
         : null,
     }
+  }
+
+  findPublicationContext(tournamentId: string) {
+    return new PrismaCompetitionOperations(
+      this.prisma,
+      this.createId,
+    ).findPublicationContext(tournamentId)
+  }
+
+  setPublication(input: SetBracketPublicationInput) {
+    return this.prisma.$transaction((transaction) =>
+      new PrismaCompetitionOperations(transaction, this.createId).setPublication(
+        input,
+      ),
+    )
   }
 }
 
@@ -225,6 +244,46 @@ class PrismaCompetitionOperations implements CompetitionRepositoryTransaction {
       drawToken: bracket.drawToken,
       hasStartedMatch: bracket.matches.length > 0,
       entries: bracket.entries,
+    }
+  }
+
+  async findPublicationContext(
+    tournamentId: string,
+  ): Promise<BracketPublicationContext | null> {
+    const tournament = await this.prisma.tournament.findUnique({
+      where: { id: tournamentId },
+      select: {
+        id: true,
+        organizerId: true,
+        brackets: {
+          where: { status: { not: "ARCHIVED" } },
+          take: 1,
+          select: {
+            id: true,
+            version: true,
+            status: true,
+            _count: { select: { entries: true, rounds: true, matches: true } },
+            matches: {
+              where: { status: { in: ["IN_PROGRESS", "COMPLETED"] } },
+              select: { id: true },
+            },
+          },
+        },
+      },
+    })
+    const bracket = tournament?.brackets[0]
+    if (!tournament || !bracket) return null
+
+    return {
+      tournamentId: tournament.id,
+      organizerId: tournament.organizerId,
+      bracketId: bracket.id,
+      bracketVersion: bracket.version,
+      bracketStatus: bracket.status,
+      entryCount: bracket._count.entries,
+      roundCount: bracket._count.rounds,
+      matchCount: bracket._count.matches,
+      hasStartedMatch: bracket.matches.length > 0,
     }
   }
 
@@ -363,6 +422,48 @@ class PrismaCompetitionOperations implements CompetitionRepositoryTransaction {
           drawToken: input.drawToken,
           entryCount: input.entries.length,
           matchCount: input.plan.matches.length,
+          adminOverride: input.adminOverride,
+        }),
+      },
+    })
+
+    return {
+      id: input.bracketId,
+      tournamentId: input.tournamentId,
+      version: input.expectedVersion + 1,
+    }
+  }
+
+  async setPublication(
+    input: SetBracketPublicationInput,
+  ): Promise<PersistedCompetitionBracket> {
+    const beforeStatus = input.published ? "DRAFT" : "PUBLISHED"
+    const afterStatus = input.published ? "PUBLISHED" : "DRAFT"
+    const updated = await this.prisma.bracket.updateMany({
+      where: {
+        id: input.bracketId,
+        tournamentId: input.tournamentId,
+        version: input.expectedVersion,
+        status: beforeStatus,
+      },
+      data: {
+        status: afterStatus,
+        publishedAt: input.published ? new Date(input.at) : null,
+        version: { increment: 1 },
+      },
+    })
+    if (updated.count !== 1) throw new Error("CONFLICT")
+
+    await this.prisma.auditLog.create({
+      data: {
+        actorId: input.actorId,
+        tournamentId: input.tournamentId,
+        action: input.published ? "BRACKET_PUBLISHED" : "BRACKET_UNPUBLISHED",
+        entityType: "Bracket",
+        entityId: input.bracketId,
+        afterJson: toJsonValue({
+          status: afterStatus,
+          reason: input.reason,
           adminOverride: input.adminOverride,
         }),
       },

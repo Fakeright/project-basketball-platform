@@ -27,6 +27,7 @@ const locked: OrganizerCompetitionWorkspace = {
   bracket: {
     id: "bracket-1",
     version: 2,
+    status: "DRAFT",
     generationMethod: null,
     entriesLockedAt: "2026-08-19T05:00:00.000Z",
     hasStartedMatch: false,
@@ -101,6 +102,47 @@ describe("BracketWorkspace", () => {
       }),
     )
     await waitFor(() => expect(refresh).toHaveBeenCalled())
+  })
+
+  it("publishes a generated draft", async () => {
+    const fetchMock = vi.fn(async () => Response.json({ bracket: {} }))
+    vi.stubGlobal("fetch", fetchMock)
+    const user = userEvent.setup()
+    const generated: OrganizerCompetitionWorkspace = {
+      ...locked,
+      bracket: {
+        ...locked.bracket!,
+        rounds: [
+          {
+            id: "round-1",
+            name: "Final",
+            sequence: 1,
+            matches: [
+              {
+                id: "match-1",
+                sequence: 1,
+                homeTeamId: "team-1",
+                awayTeamId: "team-2",
+                status: "SCHEDULED",
+              },
+            ],
+          },
+        ],
+      },
+    }
+    render(<BracketWorkspace workspace={generated} />)
+
+    await user.click(
+      screen.getByRole("button", { name: "เผยแพร่สายการแข่งขัน" }),
+    )
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/organizer/tournaments/tournament-1/bracket/publication",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({ expectedVersion: 2 }),
+      }),
+    )
   })
 })
 

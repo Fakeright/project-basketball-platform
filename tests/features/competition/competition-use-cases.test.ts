@@ -3,6 +3,10 @@ import { describe, expect, it, vi } from "vitest"
 import { lockBracketEntries } from "@/features/competition/application/lock-bracket-entries"
 import { generateBracketDraft } from "@/features/competition/application/generate-bracket"
 import { getOrganizerCompetition } from "@/features/competition/application/get-organizer-competition"
+import {
+  publishBracket,
+  unpublishBracket,
+} from "@/features/competition/application/publish-bracket"
 import type { CompetitionRepository } from "@/features/competition/application/ports/competition-repository"
 import { createTestActor } from "@/tests/fixtures/actor"
 
@@ -23,6 +27,9 @@ function createRepository(
       ],
     })),
     persistGeneratedPlan: vi.fn(),
+    findGenerationContext: vi.fn(),
+    findPublicationContext: vi.fn(),
+    setPublication: vi.fn(),
   }
   return {
     ...transaction,
@@ -304,5 +311,88 @@ describe("getOrganizerCompetition", () => {
     await expect(
       getOrganizerCompetition("tournament-1", organizer, { competitions }),
     ).rejects.toThrow("NOT_FOUND")
+  })
+})
+
+describe("bracket publication", () => {
+  function publicationRepository(overrides: Record<string, unknown> = {}) {
+    const context = {
+      tournamentId: "tournament-1",
+      organizerId: organizer.id,
+      bracketId: "bracket-1",
+      bracketVersion: 3,
+      bracketStatus: "DRAFT",
+      entryCount: 6,
+      roundCount: 3,
+      matchCount: 5,
+      hasStartedMatch: false,
+      ...overrides,
+    }
+    const transaction = {
+      findPublicationContext: vi.fn(async () => context),
+      setPublication: vi.fn(async () => ({
+        id: "bracket-1",
+        tournamentId: "tournament-1",
+        version: 4,
+      })),
+    }
+    const repository = {
+      ...transaction,
+      inTransaction: vi.fn(
+        async (operation: (repository: typeof transaction) => Promise<unknown>) =>
+          operation(transaction),
+      ),
+    } as unknown as CompetitionRepository
+    return { repository, transaction }
+  }
+
+  it("publishes a complete generated draft", async () => {
+    const { repository, transaction } = publicationRepository()
+
+    await expect(
+      publishBracket(
+        { tournamentId: "tournament-1", expectedVersion: 3 },
+        organizer,
+        { competitions: repository, now: () => new Date("2026-08-19T07:00:00Z") },
+      ),
+    ).resolves.toMatchObject({ version: 4 })
+    expect(transaction.setPublication).toHaveBeenCalledWith(
+      expect.objectContaining({ published: true, expectedVersion: 3 }),
+    )
+  })
+
+  it("rejects an incomplete draft", async () => {
+    const { repository } = publicationRepository({ matchCount: 4 })
+
+    await expect(
+      publishBracket(
+        { tournamentId: "tournament-1", expectedVersion: 3 },
+        organizer,
+        { competitions: repository, now: () => new Date() },
+      ),
+    ).rejects.toThrow("BRACKET_DRAFT_INCOMPLETE")
+  })
+
+  it("requires a reason to unpublish and blocks it after a match starts", async () => {
+    const missingReason = publicationRepository({ bracketStatus: "PUBLISHED" })
+    await expect(
+      unpublishBracket(
+        { tournamentId: "tournament-1", expectedVersion: 3, reason: "  " },
+        organizer,
+        { competitions: missingReason.repository, now: () => new Date() },
+      ),
+    ).rejects.toThrow("REASON_REQUIRED")
+
+    const started = publicationRepository({
+      bracketStatus: "PUBLISHED",
+      hasStartedMatch: true,
+    })
+    await expect(
+      unpublishBracket(
+        { tournamentId: "tournament-1", expectedVersion: 3, reason: "แก้สาย" },
+        organizer,
+        { competitions: started.repository, now: () => new Date() },
+      ),
+    ).rejects.toThrow("BRACKET_STRUCTURE_LOCKED")
   })
 })

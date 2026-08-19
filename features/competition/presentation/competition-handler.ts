@@ -34,6 +34,12 @@ const generateBracketSchema = z.discriminatedUnion("method", [
     redraw: z.boolean().default(false),
   }),
 ])
+const publishBracketSchema = z.object({
+  expectedVersion: z.number().int().nonnegative(),
+})
+const unpublishBracketSchema = publishBracketSchema.extend({
+  reason: z.string().trim().min(1).max(500),
+})
 
 interface LockBracketEntriesDependencies extends SafeHttpDiagnostics {
   actorProvider: CurrentActorProvider
@@ -47,6 +53,22 @@ interface GenerateBracketDependencies extends SafeHttpDiagnostics {
   actorProvider: CurrentActorProvider
   generate: (
     input: GenerateBracketDraftInput,
+    actor: Actor,
+  ) => Promise<PersistedCompetitionBracket>
+}
+
+interface PublicationDependencies extends SafeHttpDiagnostics {
+  actorProvider: CurrentActorProvider
+  publish: (
+    input: { tournamentId: string; expectedVersion: number },
+    actor: Actor,
+  ) => Promise<PersistedCompetitionBracket>
+}
+
+interface UnpublicationDependencies extends SafeHttpDiagnostics {
+  actorProvider: CurrentActorProvider
+  unpublish: (
+    input: { tournamentId: string; expectedVersion: number; reason: string },
     actor: Actor,
   ) => Promise<PersistedCompetitionBracket>
 }
@@ -127,6 +149,75 @@ export async function handleGenerateBracket(
   )
 }
 
+export async function handlePublishBracket(
+  tournamentId: string,
+  request: Request,
+  dependencies: PublicationDependencies,
+) {
+  return handlePublication(
+    tournamentId,
+    request,
+    publishBracketSchema,
+    dependencies,
+    dependencies.publish,
+  )
+}
+
+export async function handleUnpublishBracket(
+  tournamentId: string,
+  request: Request,
+  dependencies: UnpublicationDependencies,
+) {
+  return handlePublication(
+    tournamentId,
+    request,
+    unpublishBracketSchema,
+    dependencies,
+    dependencies.unpublish,
+  )
+}
+
+async function handlePublication<TInput extends { expectedVersion: number }>(
+  tournamentId: string,
+  request: Request,
+  schema: z.ZodType<TInput>,
+  dependencies: SafeHttpDiagnostics & { actorProvider: CurrentActorProvider },
+  operation: (
+    input: TInput & { tournamentId: string },
+    actor: Actor,
+  ) => Promise<PersistedCompetitionBracket>,
+) {
+  return withSafeRouteBoundary(
+    "competition.bracket.publication",
+    async () => {
+      const actor = await dependencies.actorProvider.getCurrentActor()
+      if (!actor) {
+        return Response.json({ message: "กรุณาเข้าสู่ระบบ" }, { status: 401 })
+      }
+      const body = await parseJsonRequest(request)
+      const parsed = body.ok ? schema.safeParse(body.value) : null
+      if (!parsed?.success) {
+        return Response.json(
+          { message: "ข้อมูลการเผยแพร่ไม่ถูกต้อง" },
+          { status: 422 },
+        )
+      }
+      try {
+        const bracket = await operation(
+          { tournamentId, ...parsed.data },
+          actor,
+        )
+        return Response.json({ bracket })
+      } catch (error) {
+        const knownResponse = publicationFailureResponse(error)
+        if (knownResponse) return knownResponse
+        throw error
+      }
+    },
+    dependencies,
+  )
+}
+
 function competitionFailureResponse(error: unknown) {
   const code = error instanceof Error ? error.message : "UNKNOWN"
   const responses: Record<string, { status: number; message: string }> = {
@@ -176,6 +267,35 @@ function generationFailureResponse(error: unknown) {
       status: 422,
       message: "ไม่สามารถสุ่มลำดับทีมได้",
     },
+  }
+  const response = responses[code]
+  return response
+    ? Response.json({ message: response.message }, { status: response.status })
+    : null
+}
+
+function publicationFailureResponse(error: unknown) {
+  const code = error instanceof Error ? error.message : "UNKNOWN"
+  const responses: Record<string, { status: number; message: string }> = {
+    NOT_FOUND: { status: 404, message: "ไม่พบรายการแข่งขัน" },
+    FORBIDDEN: { status: 403, message: "คุณไม่มีสิทธิ์ดำเนินการนี้" },
+    CONFLICT: {
+      status: 409,
+      message: "ข้อมูลสายการแข่งขันมีการเปลี่ยนแปลง กรุณาลองใหม่",
+    },
+    BRACKET_DRAFT_INCOMPLETE: {
+      status: 422,
+      message: "สายการแข่งขันยังไม่สมบูรณ์",
+    },
+    BRACKET_PUBLICATION_UNAVAILABLE: {
+      status: 409,
+      message: "ไม่สามารถเปลี่ยนสถานะเผยแพร่ได้",
+    },
+    BRACKET_STRUCTURE_LOCKED: {
+      status: 409,
+      message: "ไม่สามารถยกเลิกเผยแพร่หลังเริ่มแข่งขันแล้ว",
+    },
+    REASON_REQUIRED: { status: 422, message: "กรุณาระบุเหตุผล" },
   }
   const response = responses[code]
   return response

@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest"
 import {
   handleGenerateBracket,
   handleLockBracketEntries,
+  handlePublishBracket,
 } from "@/features/competition/presentation/competition-handler"
 import { createTestActor } from "@/tests/fixtures/actor"
 
@@ -189,6 +190,47 @@ describe("bracket generation route handler", () => {
       {
         actorProvider: { getCurrentActor: vi.fn(async () => organizer) },
         generate: vi.fn(async () => {
+          throw new Error(code)
+        }),
+      },
+    )
+
+    expect(response.status).toBe(status)
+    await expect(response.json()).resolves.toEqual({ message })
+  })
+})
+
+describe("bracket publication route handler", () => {
+  it("publishes with the current version", async () => {
+    const bracket = { id: "bracket-1", tournamentId: "tournament-1", version: 4 }
+    const publish = vi.fn(async () => bracket)
+    const response = await handlePublishBracket(
+      "tournament-1",
+      request({ expectedVersion: 3 }),
+      {
+        actorProvider: { getCurrentActor: vi.fn(async () => organizer) },
+        publish,
+      },
+    )
+
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toEqual({ bracket })
+    expect(publish).toHaveBeenCalledWith(
+      { tournamentId: "tournament-1", expectedVersion: 3 },
+      organizer,
+    )
+  })
+
+  it.each([
+    ["BRACKET_DRAFT_INCOMPLETE", 422, "สายการแข่งขันยังไม่สมบูรณ์"],
+    ["BRACKET_PUBLICATION_UNAVAILABLE", 409, "ไม่สามารถเปลี่ยนสถานะเผยแพร่ได้"],
+  ])("maps publication error %s", async (code, status, message) => {
+    const response = await handlePublishBracket(
+      "tournament-1",
+      request({ expectedVersion: 3 }),
+      {
+        actorProvider: { getCurrentActor: vi.fn(async () => organizer) },
+        publish: vi.fn(async () => {
           throw new Error(code)
         }),
       },

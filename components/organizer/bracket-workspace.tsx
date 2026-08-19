@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { LockKeyhole, Shuffle } from "lucide-react"
+import { Globe2, LockKeyhole, Shuffle } from "lucide-react"
 
 import { BracketPreview } from "@/components/organizer/bracket-preview"
 import { Button } from "@/components/ui/button"
@@ -66,6 +66,14 @@ export function BracketWorkspace({ workspace }: { workspace: OrganizerCompetitio
     void mutate(
       `/api/organizer/tournaments/${workspace.tournament.id}/bracket/generate`,
       body,
+    )
+  }
+
+  function publishBracket() {
+    if (!bracket) return
+    void mutate(
+      `/api/organizer/tournaments/${workspace.tournament.id}/bracket/publication`,
+      { expectedVersion: bracket.version },
     )
   }
 
@@ -173,7 +181,24 @@ export function BracketWorkspace({ workspace }: { workspace: OrganizerCompetitio
       <section className="grid gap-5 py-7 lg:grid-cols-[12rem_minmax(0,1fr)]">
         <StepNumber number="03" title="ตรวจตัวอย่าง" />
         {bracket ? (
-          <BracketPreview bracket={bracket} />
+          <div className="min-w-0">
+            <BracketPreview bracket={bracket} />
+            {bracket.rounds.length > 0 ? (
+              <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-border pt-4">
+                <Button
+                  disabled={pending || bracket.status === "PUBLISHED"}
+                  onClick={publishBracket}
+                  size="lg"
+                >
+                  <Globe2 aria-hidden="true" />
+                  {bracket.status === "PUBLISHED" ? "เผยแพร่แล้ว" : "เผยแพร่สายการแข่งขัน"}
+                </Button>
+                <p className="text-sm text-muted-foreground">
+                  เมื่อเผยแพร่ ผู้ชมจะเห็นสายการแข่งขันนี้ในหน้าสาธารณะ
+                </p>
+              </div>
+            ) : null}
+          </div>
         ) : (
           <p className="text-sm text-muted-foreground">ยังไม่มีสายการแข่งขัน</p>
         )}
