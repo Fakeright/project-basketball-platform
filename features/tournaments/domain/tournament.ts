@@ -18,9 +18,12 @@ export interface Match {
   court: string
   scheduledAt: string | null
   homeTeam: string
+  homeTeamId?: string
   awayTeam: string
+  awayTeamId?: string
   homeScore: number | null
   awayScore: number | null
+  winnerTeamId?: string | null
   roundSequence?: number
   sequence?: number
 }

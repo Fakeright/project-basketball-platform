@@ -186,12 +186,15 @@ export class PrismaTournamentRepository implements TournamentRepository {
           sequence: match.sequence,
           court: match.court ?? "ยังไม่กำหนดสนาม",
           scheduledAt: match.scheduledAt?.toISOString() ?? null,
+          homeTeamId: match.homeTeamId ?? undefined,
           homeTeam:
             teamNames.get(match.homeTeamId ?? "") ?? "รอยืนยันทีม",
+          awayTeamId: match.awayTeamId ?? undefined,
           awayTeam:
             teamNames.get(match.awayTeamId ?? "") ?? "รอยืนยันทีม",
           homeScore: match.result?.homeScore ?? null,
           awayScore: match.result?.awayScore ?? null,
+          winnerTeamId: match.winnerTeamId,
         }
       }),
     })

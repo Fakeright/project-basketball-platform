@@ -1,8 +1,10 @@
 import { BracketView } from "@/components/bracket-view"
+import { CompetitionResultSummary } from "@/components/tournaments/competition-result-summary"
 import { StatePanel } from "@/components/state-panel"
 import { getTournamentCompetitionBySlug } from "@/features/tournaments/application/get-tournament-competition-by-slug"
 import { searchTournaments } from "@/features/tournaments/application/search-tournaments"
 import { getTournamentRepository } from "@/features/tournaments/infrastructure/get-tournament-repository"
+import { getCompetitionSummary } from "@/features/competition/application/get-competition-summary"
 
 export default async function BracketPage({ searchParams }: PageProps<"/bracket">) {
   const repository = getTournamentRepository()
@@ -24,11 +26,16 @@ export default async function BracketPage({ searchParams }: PageProps<"/bracket"
       </header>
       <section className="mt-8">
         {selectedTournament?.matches.length ? (
-          <BracketView
-            entries={selectedTournament.bracketEntries}
-            matches={selectedTournament.matches}
-            source={selectedTournament.bracketSource}
-          />
+          <div className="space-y-10">
+            <BracketView
+              entries={selectedTournament.bracketEntries}
+              matches={selectedTournament.matches}
+              source={selectedTournament.bracketSource}
+            />
+            <CompetitionResultSummary
+              summary={getCompetitionSummary(selectedTournament.matches)}
+            />
+          </div>
         ) : (
           <StatePanel
             action={{ href: "/tournaments", label: "ดูทัวร์นาเมนต์ทั้งหมด" }}

@@ -55,11 +55,21 @@ export function ScheduleTable({ matches }: { matches: Match[] }) {
                           {formatTime(match.scheduledAt)}
                         </td>
                         <td className="px-4 py-4 text-muted-foreground">{match.round}</td>
-                        <td className="px-4 py-4 font-medium">{match.homeTeam}</td>
+                        <td className="px-4 py-4 font-medium">
+                          {match.homeTeam}
+                          {match.winnerTeamId && match.winnerTeamId === match.homeTeamId ? (
+                            <span className="ml-2 text-xs font-medium text-court">ผู้ชนะ</span>
+                          ) : null}
+                        </td>
                         <td className="px-4 py-4 text-center tabular-nums">
                           {formatScore(match.homeScore, match.awayScore)}
                         </td>
-                        <td className="px-4 py-4 font-medium sm:pr-6">{match.awayTeam}</td>
+                        <td className="px-4 py-4 font-medium sm:pr-6">
+                          {match.awayTeam}
+                          {match.winnerTeamId && match.winnerTeamId === match.awayTeamId ? (
+                            <span className="ml-2 text-xs font-medium text-court">ผู้ชนะ</span>
+                          ) : null}
+                        </td>
                       </tr>
                     ))}
                   </tbody>

@@ -1,8 +1,10 @@
 import { ScheduleTable } from "@/components/schedule-table"
+import { CompetitionResultSummary } from "@/components/tournaments/competition-result-summary"
 import { StatePanel } from "@/components/state-panel"
 import { getTournamentCompetitionBySlug } from "@/features/tournaments/application/get-tournament-competition-by-slug"
 import { searchTournaments } from "@/features/tournaments/application/search-tournaments"
 import { getTournamentRepository } from "@/features/tournaments/infrastructure/get-tournament-repository"
+import { getCompetitionSummary } from "@/features/competition/application/get-competition-summary"
 
 export default async function SchedulePage({ searchParams }: PageProps<"/schedule">) {
   const repository = getTournamentRepository()
@@ -14,6 +16,8 @@ export default async function SchedulePage({ searchParams }: PageProps<"/schedul
   const selectedTournament = selectedSlug
     ? await getTournamentCompetitionBySlug(repository, selectedSlug)
     : null
+  const scheduledMatches =
+    selectedTournament?.matches.filter((match) => match.scheduledAt) ?? []
 
   return (
     <div className="py-8 sm:py-12">
@@ -23,8 +27,8 @@ export default async function SchedulePage({ searchParams }: PageProps<"/schedul
         {selectedTournament ? <p className="mt-3 text-sm text-muted-foreground sm:text-base">{selectedTournament.title}</p> : null}
       </header>
       <section className="mt-8">
-        {selectedTournament?.matches.length ? (
-          <ScheduleTable matches={selectedTournament.matches} />
+        {scheduledMatches.length ? (
+          <ScheduleTable matches={scheduledMatches} />
         ) : (
           <StatePanel
             action={{ href: "/tournaments", label: "ดูทัวร์นาเมนต์ทั้งหมด" }}
@@ -33,6 +37,13 @@ export default async function SchedulePage({ searchParams }: PageProps<"/schedul
             title="ยังไม่มีข้อมูลการแข่งขัน"
           />
         )}
+        {selectedTournament ? (
+          <div className="mt-10">
+            <CompetitionResultSummary
+              summary={getCompetitionSummary(selectedTournament.matches)}
+            />
+          </div>
+        ) : null}
       </section>
     </div>
   )
