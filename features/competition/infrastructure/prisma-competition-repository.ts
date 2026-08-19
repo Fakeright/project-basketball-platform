@@ -5,6 +5,7 @@ import type {
   CompetitionRepository,
   CompetitionRepositoryTransaction,
   BracketLockContext,
+  BracketGenerationContext,
   LockedCompetitionWorkspace,
   LockEntriesInput,
   PersistedCompetitionBracket,
@@ -13,7 +14,11 @@ import type {
 
 type CompetitionDatabaseClient = Pick<
   PrismaClient,
-  "bracket" | "bracketEntry" | "bracketRound" | "match" | "auditLog"
+  | "bracket"
+  | "bracketEntry"
+  | "bracketRound"
+  | "match"
+  | "auditLog"
   | "tournament"
 >
 
@@ -51,6 +56,13 @@ export class PrismaCompetitionRepository implements CompetitionRepository {
     return this.prisma.$transaction((transaction) =>
       new PrismaCompetitionOperations(transaction, this.createId).lockEntries(input),
     )
+  }
+
+  findGenerationContext(tournamentId: string) {
+    return new PrismaCompetitionOperations(
+      this.prisma,
+      this.createId,
+    ).findGenerationContext(tournamentId)
   }
 }
 
@@ -96,6 +108,46 @@ class PrismaCompetitionOperations implements CompetitionRepositoryTransaction {
       hasStartedMatch: tournament.brackets.some(
         (bracket) => bracket.matches.length > 0,
       ),
+    }
+  }
+
+  async findGenerationContext(
+    tournamentId: string,
+  ): Promise<BracketGenerationContext | null> {
+    const tournament = await this.prisma.tournament.findUnique({
+      where: { id: tournamentId },
+      select: {
+        id: true,
+        organizerId: true,
+        brackets: {
+          where: { status: { not: "ARCHIVED" } },
+          take: 1,
+          select: {
+            id: true,
+            version: true,
+            generationMethod: true,
+            drawToken: true,
+            entries: { orderBy: { drawPosition: "asc" } },
+            matches: {
+              where: { status: { in: ["IN_PROGRESS", "COMPLETED"] } },
+              select: { id: true },
+            },
+          },
+        },
+      },
+    })
+    const bracket = tournament?.brackets[0]
+    if (!tournament || !bracket) return null
+
+    return {
+      tournamentId: tournament.id,
+      organizerId: tournament.organizerId,
+      bracketId: bracket.id,
+      bracketVersion: bracket.version,
+      generationMethod: bracket.generationMethod,
+      drawToken: bracket.drawToken,
+      hasStartedMatch: bracket.matches.length > 0,
+      entries: bracket.entries,
     }
   }
 
@@ -159,65 +211,91 @@ class PrismaCompetitionOperations implements CompetitionRepositoryTransaction {
   async persistGeneratedPlan(
     input: PersistGeneratedPlanInput,
   ): Promise<PersistedCompetitionBracket> {
-    const bracket = await this.prisma.bracket.create({
-        data: {
-          id: input.bracketId,
-          tournamentId: input.tournamentId,
-          generationMethod: input.generationMethod,
-          entriesLockedAt: new Date(input.at),
-        },
-        select: { id: true, tournamentId: true, version: true },
-      })
-      const roundIds = new Map(
-        input.plan.rounds.map((round) => [round.sequence, this.createId()]),
-      )
-      const matchIds = new Map(
-        input.plan.matches.map((match) => [match.key, this.createId()]),
-      )
+    const updated = await this.prisma.bracket.updateMany({
+      where: {
+        id: input.bracketId,
+        tournamentId: input.tournamentId,
+        version: input.expectedVersion,
+        status: "DRAFT",
+        entriesLockedAt: { not: null },
+      },
+      data: {
+        generationMethod: input.generationMethod,
+        drawToken: input.drawToken,
+        version: { increment: 1 },
+      },
+    })
+    if (updated.count !== 1) throw new Error("CONFLICT")
 
-      await this.prisma.bracketEntry.createMany({
-        data: input.entries.map((entry) => ({ ...entry })),
-      })
-      await this.prisma.bracketRound.createMany({
-        data: input.plan.rounds.map((round) => ({
-          id: requiredId(roundIds, round.sequence),
+    await this.prisma.bracketRound.deleteMany({
+      where: { bracketId: input.bracketId },
+    })
+    await Promise.all(
+      input.entries.map((entry) =>
+        this.prisma.bracketEntry.update({
+          where: { id: entry.id },
+          data: {
+            seed: entry.seed,
+            drawPosition: entry.drawPosition,
+            startRoundSequence: entry.startRoundSequence,
+          },
+        }),
+      ),
+    )
+
+    const roundIds = new Map(
+      input.plan.rounds.map((round) => [round.sequence, this.createId()]),
+    )
+    const matchIds = new Map(
+      input.plan.matches.map((match) => [match.key, this.createId()]),
+    )
+
+    await this.prisma.bracketRound.createMany({
+      data: input.plan.rounds.map((round) => ({
+        id: requiredId(roundIds, round.sequence),
+        bracketId: input.bracketId,
+        name: round.name,
+        sequence: round.sequence,
+      })),
+    })
+    await this.prisma.match.createMany({
+      data: input.plan.matches.map((match) => ({
+        id: requiredId(matchIds, match.key),
+        tournamentId: input.tournamentId,
+        bracketId: input.bracketId,
+        roundId: requiredId(roundIds, match.roundSequence),
+        sequence: match.sequence,
+        homeTeamId: match.homeTeamId,
+        awayTeamId: match.awayTeamId,
+        nextMatchId: match.nextMatchKey
+          ? requiredId(matchIds, match.nextMatchKey)
+          : null,
+        nextSlot: match.nextSlot,
+      })),
+    })
+    await this.prisma.auditLog.create({
+      data: {
+        actorId: input.actorId,
+        tournamentId: input.tournamentId,
+        action: "BRACKET_GENERATED",
+        entityType: "Bracket",
+        entityId: input.bracketId,
+        afterJson: toJsonValue({
           bracketId: input.bracketId,
-          name: round.name,
-          sequence: round.sequence,
-        })),
-      })
-      await this.prisma.match.createMany({
-        data: input.plan.matches.map((match) => ({
-          id: requiredId(matchIds, match.key),
-          tournamentId: input.tournamentId,
-          bracketId: input.bracketId,
-          roundId: requiredId(roundIds, match.roundSequence),
-          sequence: match.sequence,
-          homeTeamId: match.homeTeamId,
-          awayTeamId: match.awayTeamId,
-          nextMatchId: match.nextMatchKey
-            ? requiredId(matchIds, match.nextMatchKey)
-            : null,
-          nextSlot: match.nextSlot,
-        })),
-      })
-      await this.prisma.auditLog.create({
-        data: {
-          actorId: input.actorId,
-          tournamentId: input.tournamentId,
-          action: "BRACKET_GENERATED",
-          entityType: "Bracket",
-          entityId: input.bracketId,
-          afterJson: toJsonValue({
-            bracketId: input.bracketId,
-            generationMethod: input.generationMethod,
-            entryCount: input.entries.length,
-            matchCount: input.plan.matches.length,
-            adminOverride: input.adminOverride,
-          }),
-        },
-      })
-    return bracket
+          generationMethod: input.generationMethod,
+          drawToken: input.drawToken,
+          entryCount: input.entries.length,
+          matchCount: input.plan.matches.length,
+          adminOverride: input.adminOverride,
+        }),
+      },
+    })
+
+    return {
+      id: input.bracketId,
+      tournamentId: input.tournamentId,
+      version: input.expectedVersion + 1,
+    }
   }
 }
 

@@ -1,6 +1,9 @@
 import { describe, expect, it, vi } from "vitest"
 
-import { handleLockBracketEntries } from "@/features/competition/presentation/competition-handler"
+import {
+  handleGenerateBracket,
+  handleLockBracketEntries,
+} from "@/features/competition/presentation/competition-handler"
 import { createTestActor } from "@/tests/fixtures/actor"
 
 const organizer = createTestActor("organizer-1", "TOURNAMENT_ORGANIZER")
@@ -131,5 +134,67 @@ describe("competition route handlers", () => {
     expect(JSON.stringify({ body, logs: logger.error.mock.calls })).not.toContain(
       "private database detail",
     )
+  })
+})
+
+describe("bracket generation route handler", () => {
+  it("validates a complete generation payload", async () => {
+    const generate = vi.fn()
+    const response = await handleGenerateBracket(
+      "tournament-1",
+      request({ method: "SEEDED", expectedVersion: 2, seeds: [] }),
+      {
+        actorProvider: { getCurrentActor: vi.fn(async () => organizer) },
+        generate,
+      },
+    )
+
+    expect(response.status).toBe(422)
+    expect(generate).not.toHaveBeenCalled()
+  })
+
+  it("returns a generated random draft", async () => {
+    const bracket = { id: "bracket-1", tournamentId: "tournament-1", version: 3 }
+    const generate = vi.fn(async () => bracket)
+    const response = await handleGenerateBracket(
+      "tournament-1",
+      request({ method: "RANDOM", expectedVersion: 2, redraw: false }),
+      {
+        actorProvider: { getCurrentActor: vi.fn(async () => organizer) },
+        generate,
+      },
+    )
+
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toEqual({ bracket })
+    expect(generate).toHaveBeenCalledWith(
+      {
+        tournamentId: "tournament-1",
+        method: "RANDOM",
+        expectedVersion: 2,
+        redraw: false,
+      },
+      organizer,
+    )
+  })
+
+  it.each([
+    ["BRACKET_SEED_INVALID", 422, "กรุณากำหนด Seed ให้ครบและไม่ซ้ำกัน"],
+    ["BRACKET_RANDOM_INVALID", 422, "ไม่สามารถสุ่มลำดับทีมได้"],
+    ["CONFLICT", 409, "ข้อมูลสายการแข่งขันมีการเปลี่ยนแปลง กรุณาลองใหม่"],
+  ])("maps generation error %s", async (code, status, message) => {
+    const response = await handleGenerateBracket(
+      "tournament-1",
+      request({ method: "RANDOM", expectedVersion: 2, redraw: false }),
+      {
+        actorProvider: { getCurrentActor: vi.fn(async () => organizer) },
+        generate: vi.fn(async () => {
+          throw new Error(code)
+        }),
+      },
+    )
+
+    expect(response.status).toBe(status)
+    await expect(response.json()).resolves.toEqual({ message })
   })
 })

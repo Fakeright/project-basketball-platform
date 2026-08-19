@@ -6,9 +6,9 @@ import { PrismaCompetitionRepository } from "@/features/competition/infrastructu
 
 function createPrismaMock() {
   const prisma = {
-    bracket: { create: vi.fn() },
-    bracketEntry: { createMany: vi.fn() },
-    bracketRound: { createMany: vi.fn() },
+    bracket: { create: vi.fn(), updateMany: vi.fn() },
+    bracketEntry: { createMany: vi.fn(), update: vi.fn() },
+    bracketRound: { createMany: vi.fn(), deleteMany: vi.fn() },
     match: { createMany: vi.fn() },
     tournament: { findUnique: vi.fn(), updateMany: vi.fn() },
     auditLog: { create: vi.fn() },
@@ -23,8 +23,9 @@ function createPrismaMock() {
 describe("PrismaCompetitionRepository", () => {
   it("persists entries, rounds, linked matches, and an audit event atomically", async () => {
     const prisma = createPrismaMock()
-    prisma.bracket.create.mockResolvedValue({ id: "bracket-1", version: 0 })
-    prisma.bracketEntry.createMany.mockResolvedValue({ count: 2 })
+    prisma.bracket.updateMany.mockResolvedValue({ count: 1 })
+    prisma.bracketEntry.update.mockResolvedValue({})
+    prisma.bracketRound.deleteMany.mockResolvedValue({ count: 0 })
     prisma.bracketRound.createMany.mockResolvedValue({ count: 1 })
     prisma.match.createMany.mockResolvedValue({ count: 1 })
     prisma.auditLog.create.mockResolvedValue({})
@@ -68,7 +69,9 @@ describe("PrismaCompetitionRepository", () => {
     await repository.persistGeneratedPlan({
       tournamentId: "tournament-1",
       bracketId: "bracket-1",
+      expectedVersion: 2,
       generationMethod: "SEEDED",
+      drawToken: null,
       entries,
       plan,
       actorId: "organizer-1",
@@ -77,9 +80,24 @@ describe("PrismaCompetitionRepository", () => {
     })
 
     expect(prisma.$transaction).toHaveBeenCalledOnce()
-    expect(prisma.bracketEntry.createMany).toHaveBeenCalledWith({
-      data: entries.map((entry) => expect.objectContaining(entry)),
+    expect(prisma.bracket.updateMany).toHaveBeenCalledWith({
+      where: {
+        id: "bracket-1",
+        tournamentId: "tournament-1",
+        version: 2,
+        status: "DRAFT",
+        entriesLockedAt: { not: null },
+      },
+      data: {
+        generationMethod: "SEEDED",
+        drawToken: null,
+        version: { increment: 1 },
+      },
     })
+    expect(prisma.bracketRound.deleteMany).toHaveBeenCalledWith({
+      where: { bracketId: "bracket-1" },
+    })
+    expect(prisma.bracketEntry.update).toHaveBeenCalledTimes(2)
     expect(prisma.match.createMany).toHaveBeenCalledWith({
       data: [
         expect.objectContaining({
@@ -100,6 +118,58 @@ describe("PrismaCompetitionRepository", () => {
         entityId: "bracket-1",
       }),
     })
+  })
+
+  it("rejects a stale bracket generation without replacing rounds", async () => {
+    const prisma = createPrismaMock()
+    prisma.bracket.updateMany.mockResolvedValue({ count: 0 })
+    const repository = new PrismaCompetitionRepository(
+      prisma as unknown as PrismaClient,
+    )
+    const entries = [
+      {
+        id: "entry-1",
+        bracketId: "bracket-1",
+        registrationId: "registration-1",
+        teamId: "team-1",
+        teamNameSnapshot: "Team One",
+        seed: 1,
+        drawPosition: 1,
+        startRoundSequence: 1,
+      },
+      {
+        id: "entry-2",
+        bracketId: "bracket-1",
+        registrationId: "registration-2",
+        teamId: "team-2",
+        teamNameSnapshot: "Team Two",
+        seed: 2,
+        drawPosition: 2,
+        startRoundSequence: 1,
+      },
+    ]
+
+    await expect(
+      repository.persistGeneratedPlan({
+        tournamentId: "tournament-1",
+        bracketId: "bracket-1",
+        expectedVersion: 9,
+        generationMethod: "RANDOM",
+        drawToken: "draw-token",
+        entries,
+        plan: generateSingleEliminationBracket({
+          entries: entries.map(({ id, teamId, seed }) => ({
+            entryId: id,
+            teamId,
+            seed,
+          })),
+        }),
+        actorId: "organizer-1",
+        adminOverride: false,
+        at: "2026-08-19T05:00:00.000Z",
+      }),
+    ).rejects.toThrow("CONFLICT")
+    expect(prisma.bracketRound.deleteMany).not.toHaveBeenCalled()
   })
 
   it("locks approved registration snapshots after a version-checked tournament update", async () => {

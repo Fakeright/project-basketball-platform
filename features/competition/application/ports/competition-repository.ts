@@ -7,12 +7,25 @@ import type {
 export interface PersistGeneratedPlanInput {
   tournamentId: string
   bracketId: string
+  expectedVersion: number
   generationMethod: BracketGenerationMethod
+  drawToken: string | null
   entries: readonly LockedBracketEntry[]
   plan: GeneratedBracketPlan
   actorId: string
   adminOverride: boolean
   at: string
+}
+
+export interface BracketGenerationContext {
+  tournamentId: string
+  organizerId: string
+  bracketId: string
+  bracketVersion: number
+  generationMethod: BracketGenerationMethod | null
+  drawToken: string | null
+  hasStartedMatch: boolean
+  entries: LockedBracketEntry[]
 }
 
 export interface PersistedCompetitionBracket {
@@ -56,6 +69,9 @@ export interface LockEntriesInput {
 export interface CompetitionRepositoryTransaction {
   findLockContext(tournamentId: string): Promise<BracketLockContext | null>
   lockEntries(input: LockEntriesInput): Promise<LockedCompetitionWorkspace>
+  findGenerationContext(
+    tournamentId: string,
+  ): Promise<BracketGenerationContext | null>
   persistGeneratedPlan(
     input: PersistGeneratedPlanInput,
   ): Promise<PersistedCompetitionBracket>

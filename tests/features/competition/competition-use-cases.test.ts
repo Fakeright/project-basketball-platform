@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest"
 
 import { lockBracketEntries } from "@/features/competition/application/lock-bracket-entries"
+import { generateBracketDraft } from "@/features/competition/application/generate-bracket"
 import type { CompetitionRepository } from "@/features/competition/application/ports/competition-repository"
 import { createTestActor } from "@/tests/fixtures/actor"
 
@@ -86,3 +87,177 @@ describe("lockBracketEntries", () => {
     })
   })
 })
+
+describe("generateBracketDraft", () => {
+  function generationRepository() {
+    const transaction = {
+      findLockContext: vi.fn(),
+      lockEntries: vi.fn(),
+      findGenerationContext: vi.fn(async () => ({
+        tournamentId: "tournament-1",
+        organizerId: organizer.id,
+        bracketId: "bracket-1",
+        bracketVersion: 2,
+        drawToken: null,
+        generationMethod: null,
+        hasStartedMatch: false,
+        entries: [
+          lockedEntry("entry-1", "team-1", 1),
+          lockedEntry("entry-2", "team-2", 2),
+        ],
+      })),
+      persistGeneratedPlan: vi.fn(async () => ({
+        id: "bracket-1",
+        tournamentId: "tournament-1",
+        version: 3,
+      })),
+    }
+    return {
+      transaction,
+      repository: {
+        ...transaction,
+        inTransaction: vi.fn(
+          async (operation: (repository: typeof transaction) => Promise<unknown>) =>
+            operation(transaction),
+        ),
+      } as unknown as CompetitionRepository,
+    }
+  }
+
+  it("generates and persists a complete seeded draft", async () => {
+    const { repository, transaction } = generationRepository()
+
+    const result = await generateBracketDraft(
+      {
+        tournamentId: "tournament-1",
+        expectedVersion: 2,
+        method: "SEEDED",
+        seeds: [
+          { entryId: "entry-1", seed: 2 },
+          { entryId: "entry-2", seed: 1 },
+        ],
+      },
+      organizer,
+      {
+        competitions: repository,
+        now: () => new Date("2026-08-19T06:00:00Z"),
+        createDrawToken: () => "unused-token",
+        shuffle: vi.fn(),
+      },
+    )
+
+    expect(result).toMatchObject({ id: "bracket-1", version: 3 })
+    expect(transaction.persistGeneratedPlan).toHaveBeenCalledWith(
+      expect.objectContaining({
+        bracketId: "bracket-1",
+        expectedVersion: 2,
+        generationMethod: "SEEDED",
+        drawToken: null,
+        entries: [
+          expect.objectContaining({ id: "entry-1", seed: 2 }),
+          expect.objectContaining({ id: "entry-2", seed: 1 }),
+        ],
+      }),
+    )
+  })
+
+  it("rejects an incomplete seed list", async () => {
+    const { repository, transaction } = generationRepository()
+
+    await expect(
+      generateBracketDraft(
+        {
+          tournamentId: "tournament-1",
+          expectedVersion: 2,
+          method: "SEEDED",
+          seeds: [{ entryId: "entry-1", seed: 1 }],
+        },
+        organizer,
+        {
+          competitions: repository,
+          now: () => new Date(),
+          createDrawToken: () => "unused-token",
+          shuffle: vi.fn(),
+        },
+      ),
+    ).rejects.toThrow("BRACKET_SEED_INVALID")
+    expect(transaction.persistGeneratedPlan).not.toHaveBeenCalled()
+  })
+
+  it("uses an injected shuffle and persists its draw token", async () => {
+    const { repository, transaction } = generationRepository()
+    const shuffle = vi.fn((entries: readonly { id: string }[]) => [...entries].reverse())
+
+    await generateBracketDraft(
+      {
+        tournamentId: "tournament-1",
+        expectedVersion: 2,
+        method: "RANDOM",
+        redraw: false,
+      },
+      organizer,
+      {
+        competitions: repository,
+        now: () => new Date("2026-08-19T06:00:00Z"),
+        createDrawToken: () => "draw-token-1",
+        shuffle,
+      },
+    )
+
+    expect(shuffle).toHaveBeenCalledWith(expect.any(Array), "draw-token-1")
+    expect(transaction.persistGeneratedPlan).toHaveBeenCalledWith(
+      expect.objectContaining({
+        drawToken: "draw-token-1",
+        entries: [
+          expect.objectContaining({ id: "entry-1", seed: 2 }),
+          expect.objectContaining({ id: "entry-2", seed: 1 }),
+        ],
+      }),
+    )
+  })
+
+  it("rejects regeneration after a match has started", async () => {
+    const { repository, transaction } = generationRepository()
+    transaction.findGenerationContext.mockResolvedValueOnce({
+      tournamentId: "tournament-1",
+      organizerId: organizer.id,
+      bracketId: "bracket-1",
+      bracketVersion: 2,
+      drawToken: null,
+      generationMethod: null,
+      hasStartedMatch: true,
+      entries: [lockedEntry("entry-1", "team-1", 1), lockedEntry("entry-2", "team-2", 2)],
+    })
+
+    await expect(
+      generateBracketDraft(
+        {
+          tournamentId: "tournament-1",
+          expectedVersion: 2,
+          method: "RANDOM",
+          redraw: false,
+        },
+        organizer,
+        {
+          competitions: repository,
+          now: () => new Date(),
+          createDrawToken: () => "draw-token",
+          shuffle: (entries) => [...entries],
+        },
+      ),
+    ).rejects.toThrow("BRACKET_STRUCTURE_LOCKED")
+  })
+})
+
+function lockedEntry(id: string, teamId: string, seed: number) {
+  return {
+    id,
+    bracketId: "bracket-1",
+    registrationId: `registration-${id}`,
+    teamId,
+    teamNameSnapshot: `Team ${seed}`,
+    seed,
+    drawPosition: seed,
+    startRoundSequence: 1,
+  }
+}
