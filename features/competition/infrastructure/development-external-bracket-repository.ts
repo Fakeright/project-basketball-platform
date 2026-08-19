@@ -204,6 +204,7 @@ export class DevelopmentExternalBracketRepository
       }
       selected.status = "PUBLISHED"
       selected.publishedAt = timestamp
+      workspace.bracketStatus = "PUBLISHED"
       workspace.bracketVersion += 1
       appendAudit(state, input, {
         action: "EXTERNAL_BRACKET_REVISION_PUBLISHED",

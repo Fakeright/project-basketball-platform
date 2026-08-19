@@ -41,6 +41,7 @@ export interface OrganizerCompetitionWorkspace {
     id: string
     version: number
     status: string
+    mode: "SYSTEM_GENERATED" | "EXTERNAL_DOCUMENT"
     generationMethod: BracketGenerationMethod | null
     entriesLockedAt: string | null
     hasStartedMatch: boolean
@@ -101,6 +102,42 @@ export interface MatchScheduleContext {
   hasCourtConflict: boolean
 }
 
+export interface ExternalMatchCreationContext {
+  tournamentId: string
+  organizerId: string
+  tournamentStartsAt: string
+  tournamentEndsAt: string
+  bracketId: string
+  bracketVersion: number
+  bracketStatus: string
+  bracketMode: "SYSTEM_GENERATED" | "EXTERNAL_DOCUMENT"
+  lockedTeamIds: string[]
+  sequenceTaken: boolean
+  hasCourtConflict: boolean
+}
+
+export interface CreateExternalMatchMutation {
+  tournamentId: string
+  bracketId: string
+  roundName: string
+  sequence: number
+  homeTeamId: string
+  awayTeamId: string
+  scheduledAt: string
+  court: string
+  expectedVersion: number
+  actorId: string
+  adminOverride: boolean
+  overrideReason: string | null
+  at: string
+}
+
+export interface CreatedExternalMatch {
+  id: string
+  version: number
+  bracketVersion: number
+}
+
 export interface ScheduleMatchMutation {
   tournamentId: string
   matchId: string
@@ -124,6 +161,7 @@ export interface MatchResultContext {
   tournamentId: string
   organizerId: string
   bracketStatus: string
+  bracketMode: "SYSTEM_GENERATED" | "EXTERNAL_DOCUMENT"
   matchId: string
   matchStatus: string
   matchVersion: number
@@ -244,6 +282,16 @@ export interface CompetitionRepositoryTransaction {
   setPublication(
     input: SetBracketPublicationInput,
   ): Promise<PersistedCompetitionBracket>
+  findExternalMatchCreationContext(input: {
+    tournamentId: string
+    roundName: string
+    sequence: number
+    scheduledAt: string
+    court: string
+  }): Promise<ExternalMatchCreationContext | null>
+  createExternalMatch(
+    input: CreateExternalMatchMutation,
+  ): Promise<CreatedExternalMatch>
   findMatchScheduleContext(input: {
     tournamentId: string
     matchId: string

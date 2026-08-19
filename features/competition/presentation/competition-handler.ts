@@ -3,11 +3,13 @@ import { z } from "zod"
 import type { LockedCompetitionWorkspace } from "@/features/competition/application/ports/competition-repository"
 import type { PersistedCompetitionBracket } from "@/features/competition/application/ports/competition-repository"
 import type { GenerateBracketDraftInput } from "@/features/competition/application/generate-bracket"
+import type { CreateExternalMatchInput } from "@/features/competition/application/create-external-match"
 import type { ScheduleMatchInput } from "@/features/competition/application/schedule-match"
 import type { RecordMatchScoreInput } from "@/features/competition/application/record-match-score"
 import type { ConfirmMatchResultInput } from "@/features/competition/application/confirm-match-result"
 import type { CorrectMatchResultInput } from "@/features/competition/application/correct-match-result"
 import type {
+  CreatedExternalMatch,
   ResultCompetitionMatch,
   ScheduledCompetitionMatch,
 } from "@/features/competition/application/ports/competition-repository"
@@ -49,6 +51,16 @@ const unpublishBracketSchema = publishBracketSchema.extend({
   reason: z.string().trim().min(1).max(500),
 })
 const scheduleMatchSchema = z.object({
+  scheduledAt: z.iso.datetime({ offset: true }),
+  court: z.string().trim().min(1).max(120),
+  expectedVersion: z.number().int().nonnegative(),
+  overrideReason: z.string().trim().max(500).optional(),
+})
+const createExternalMatchSchema = z.object({
+  roundName: z.string().trim().min(1).max(80),
+  sequence: z.number().int().min(1).max(99),
+  homeTeamId: z.string().trim().min(1),
+  awayTeamId: z.string().trim().min(1),
   scheduledAt: z.iso.datetime({ offset: true }),
   court: z.string().trim().min(1).max(120),
   expectedVersion: z.number().int().nonnegative(),
@@ -104,6 +116,14 @@ interface ScheduleMatchDependencies extends SafeHttpDiagnostics {
     input: ScheduleMatchInput,
     actor: Actor,
   ) => Promise<ScheduledCompetitionMatch>
+}
+
+interface CreateExternalMatchDependencies extends SafeHttpDiagnostics {
+  actorProvider: CurrentActorProvider
+  create: (
+    input: CreateExternalMatchInput,
+    actor: Actor,
+  ) => Promise<CreatedExternalMatch>
 }
 
 interface RecordMatchScoreDependencies extends SafeHttpDiagnostics {
@@ -304,6 +324,44 @@ export async function handleScheduleMatch(
         return Response.json({ match })
       } catch (error) {
         const knownResponse = scheduleFailureResponse(error)
+        if (knownResponse) return knownResponse
+        throw error
+      }
+    },
+    dependencies,
+  )
+}
+
+export async function handleCreateExternalMatch(
+  tournamentId: string,
+  request: Request,
+  dependencies: CreateExternalMatchDependencies,
+) {
+  return withSafeRouteBoundary(
+    "competition.external-match.create",
+    async () => {
+      const actor = await dependencies.actorProvider.getCurrentActor()
+      if (!actor) {
+        return Response.json({ message: "กรุณาเข้าสู่ระบบ" }, { status: 401 })
+      }
+      const body = await parseJsonRequest(request)
+      const parsed = body.ok
+        ? createExternalMatchSchema.safeParse(body.value)
+        : null
+      if (!parsed?.success) {
+        return Response.json(
+          { message: "ข้อมูลคู่แข่งขันไม่ถูกต้อง" },
+          { status: 422 },
+        )
+      }
+      try {
+        const match = await dependencies.create(
+          { tournamentId, ...parsed.data },
+          actor,
+        )
+        return Response.json({ match }, { status: 201 })
+      } catch (error) {
+        const knownResponse = externalMatchFailureResponse(error)
         if (knownResponse) return knownResponse
         throw error
       }
@@ -546,6 +604,51 @@ function scheduleFailureResponse(error: unknown) {
     BRACKET_NOT_PUBLISHED: {
       status: 422,
       message: "กรุณาเผยแพร่สายการแข่งขันก่อนจัดตาราง",
+    },
+    REASON_REQUIRED: { status: 422, message: "กรุณาระบุเหตุผล" },
+  }
+  const response = responses[code]
+  return response
+    ? Response.json({ message: response.message }, { status: response.status })
+    : null
+}
+
+function externalMatchFailureResponse(error: unknown) {
+  const code = error instanceof Error ? error.message : "UNKNOWN"
+  const responses: Record<string, { status: number; message: string }> = {
+    NOT_FOUND: { status: 404, message: "ไม่พบรายการแข่งขัน" },
+    FORBIDDEN: { status: 403, message: "คุณไม่มีสิทธิ์ดำเนินการนี้" },
+    CONFLICT: {
+      status: 409,
+      message: "ข้อมูลสายการแข่งขันมีการเปลี่ยนแปลง กรุณาลองใหม่",
+    },
+    EXTERNAL_MATCH_INVALID: {
+      status: 422,
+      message: "ข้อมูลคู่แข่งขันไม่ถูกต้อง",
+    },
+    EXTERNAL_BRACKET_REQUIRED: {
+      status: 409,
+      message: "ต้องเผยแพร่สายการแข่งขันแบบไฟล์ภายนอกก่อน",
+    },
+    MATCH_TEAM_NOT_LOCKED: {
+      status: 422,
+      message: "เลือกทีมได้เฉพาะรายชื่อที่ล็อกไว้",
+    },
+    MATCH_TEAMS_DUPLICATE: {
+      status: 422,
+      message: "ทีมเหย้าและทีมเยือนต้องไม่ซ้ำกัน",
+    },
+    MATCH_SEQUENCE_CONFLICT: {
+      status: 409,
+      message: "ลำดับคู่นี้ถูกใช้แล้วในรอบเดียวกัน",
+    },
+    MATCH_SCHEDULE_CONFLICT: {
+      status: 409,
+      message: "สนามนี้มีการแข่งขันในเวลาดังกล่าวแล้ว",
+    },
+    MATCH_SCHEDULE_OUTSIDE_TOURNAMENT: {
+      status: 422,
+      message: "เวลาต้องอยู่ในช่วงวันแข่งขัน",
     },
     REASON_REQUIRED: { status: 422, message: "กรุณาระบุเหตุผล" },
   }

@@ -1,6 +1,7 @@
 import { notFound, redirect } from "next/navigation"
 
 import { CompetitionWorkspaceNav } from "@/components/organizer/competition-workspace-nav"
+import { ExternalMatchEditor } from "@/components/organizer/external-match-editor"
 import {
   MatchScheduleEditor,
   type EditableMatchSchedule,
@@ -70,7 +71,26 @@ export default async function OrganizerSchedulePage({
       </header>
       <CompetitionWorkspaceNav tournamentId={workspace.tournament.id} />
       <div className="pt-7">
-        <MatchScheduleEditor matches={matches} tournamentId={workspace.tournament.id} />
+        {workspace.bracket?.mode === "EXTERNAL_DOCUMENT" ? (
+          <ExternalMatchEditor
+            bracketVersion={workspace.bracket.version}
+            teams={workspace.bracket.entries.map((entry) => ({
+              id: entry.teamId,
+              name: entry.teamNameSnapshot,
+            }))}
+            tournamentId={workspace.tournament.id}
+          />
+        ) : null}
+        <div
+          className={
+            workspace.bracket?.mode === "EXTERNAL_DOCUMENT" ? "mt-7" : undefined
+          }
+        >
+          <MatchScheduleEditor
+            matches={matches}
+            tournamentId={workspace.tournament.id}
+          />
+        </div>
       </div>
     </section>
   )

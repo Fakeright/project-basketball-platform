@@ -226,13 +226,17 @@ export class PrismaExternalBracketRepository
         where: { bracketId: input.bracketId, status: "PUBLISHED" },
         include: revisionInclude,
       })
+      const publishedAt = this.now()
       const updated = await transaction.bracket.updateMany({
         where: bracketVersionWhere(input),
-        data: { version: { increment: 1 } },
+        data: {
+          status: "PUBLISHED",
+          publishedAt,
+          version: { increment: 1 },
+        },
       })
       if (updated.count !== 1) throw new Error("CONFLICT")
 
-      const publishedAt = this.now()
       if (current) {
         const retired = await transaction.externalBracketRevision.updateMany({
           where: {

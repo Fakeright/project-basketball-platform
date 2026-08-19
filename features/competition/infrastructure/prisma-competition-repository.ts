@@ -22,6 +22,9 @@ import type {
   ResultCompetitionMatch,
   MatchResultCorrectionContext,
   CorrectMatchResultMutation,
+  CreateExternalMatchMutation,
+  CreatedExternalMatch,
+  ExternalMatchCreationContext,
 } from "@/features/competition/application/ports/competition-repository"
 
 type CompetitionDatabaseClient = Pick<
@@ -100,6 +103,7 @@ export class PrismaCompetitionRepository implements CompetitionRepository {
             id: true,
             version: true,
             status: true,
+            mode: true,
             generationMethod: true,
             entriesLockedAt: true,
             entries: { orderBy: { drawPosition: "asc" } },
@@ -152,6 +156,7 @@ export class PrismaCompetitionRepository implements CompetitionRepository {
             id: bracket.id,
             version: bracket.version,
             status: bracket.status,
+            mode: bracket.mode,
             generationMethod: bracket.generationMethod,
             entriesLockedAt: bracket.entriesLockedAt?.toISOString() ?? null,
             hasStartedMatch: bracket.matches.length > 0,
@@ -180,6 +185,28 @@ export class PrismaCompetitionRepository implements CompetitionRepository {
       new PrismaCompetitionOperations(transaction, this.createId).setPublication(
         input,
       ),
+    )
+  }
+
+  findExternalMatchCreationContext(input: {
+    tournamentId: string
+    roundName: string
+    sequence: number
+    scheduledAt: string
+    court: string
+  }) {
+    return new PrismaCompetitionOperations(
+      this.prisma,
+      this.createId,
+    ).findExternalMatchCreationContext(input)
+  }
+
+  createExternalMatch(input: CreateExternalMatchMutation) {
+    return this.prisma.$transaction((transaction) =>
+      new PrismaCompetitionOperations(
+        transaction,
+        this.createId,
+      ).createExternalMatch(input),
     )
   }
 
@@ -560,6 +587,152 @@ class PrismaCompetitionOperations implements CompetitionRepositoryTransaction {
     }
   }
 
+  async findExternalMatchCreationContext(input: {
+    tournamentId: string
+    roundName: string
+    sequence: number
+    scheduledAt: string
+    court: string
+  }): Promise<ExternalMatchCreationContext | null> {
+    const bracket = await this.prisma.bracket.findFirst({
+      where: {
+        tournamentId: input.tournamentId,
+        status: { not: "ARCHIVED" },
+      },
+      select: {
+        id: true,
+        version: true,
+        status: true,
+        mode: true,
+        entries: { select: { teamId: true } },
+        rounds: {
+          where: { name: { equals: input.roundName, mode: "insensitive" } },
+          take: 1,
+          select: {
+            matches: {
+              where: { sequence: input.sequence },
+              take: 1,
+              select: { id: true },
+            },
+          },
+        },
+        tournament: {
+          select: {
+            id: true,
+            organizerId: true,
+            startsAt: true,
+            endsAt: true,
+          },
+        },
+      },
+    })
+    if (!bracket) return null
+
+    const conflict = await this.prisma.match.findFirst({
+      where: {
+        tournamentId: input.tournamentId,
+        scheduledAt: new Date(input.scheduledAt),
+        court: { equals: input.court, mode: "insensitive" },
+        status: { not: "COMPLETED" },
+      },
+      select: { id: true },
+    })
+
+    return {
+      tournamentId: bracket.tournament.id,
+      organizerId: bracket.tournament.organizerId,
+      tournamentStartsAt: bracket.tournament.startsAt.toISOString(),
+      tournamentEndsAt: bracket.tournament.endsAt.toISOString(),
+      bracketId: bracket.id,
+      bracketVersion: bracket.version,
+      bracketStatus: bracket.status,
+      bracketMode: bracket.mode,
+      lockedTeamIds: bracket.entries.map((entry) => entry.teamId),
+      sequenceTaken: Boolean(bracket.rounds[0]?.matches[0]),
+      hasCourtConflict: Boolean(conflict),
+    }
+  }
+
+  async createExternalMatch(
+    input: CreateExternalMatchMutation,
+  ): Promise<CreatedExternalMatch> {
+    const reserved = await this.prisma.bracket.updateMany({
+      where: {
+        id: input.bracketId,
+        tournamentId: input.tournamentId,
+        version: input.expectedVersion,
+        mode: "EXTERNAL_DOCUMENT",
+        status: "PUBLISHED",
+      },
+      data: { version: { increment: 1 } },
+    })
+    if (reserved.count !== 1) throw new Error("CONFLICT")
+
+    let round = await this.prisma.bracketRound.findFirst({
+      where: {
+        bracketId: input.bracketId,
+        name: { equals: input.roundName, mode: "insensitive" },
+      },
+      select: { id: true },
+    })
+    if (!round) {
+      const latestRound = await this.prisma.bracketRound.findFirst({
+        where: { bracketId: input.bracketId },
+        orderBy: { sequence: "desc" },
+        select: { sequence: true },
+      })
+      round = await this.prisma.bracketRound.create({
+        data: {
+          id: this.createId(),
+          bracketId: input.bracketId,
+          name: input.roundName,
+          sequence: (latestRound?.sequence ?? 0) + 1,
+        },
+        select: { id: true },
+      })
+    }
+
+    const matchId = this.createId()
+    await this.prisma.match.create({
+      data: {
+        id: matchId,
+        tournamentId: input.tournamentId,
+        bracketId: input.bracketId,
+        roundId: round.id,
+        sequence: input.sequence,
+        homeTeamId: input.homeTeamId,
+        awayTeamId: input.awayTeamId,
+        scheduledAt: new Date(input.scheduledAt),
+        court: input.court,
+      },
+    })
+    await this.prisma.auditLog.create({
+      data: {
+        actorId: input.actorId,
+        tournamentId: input.tournamentId,
+        action: "EXTERNAL_MATCH_CREATED",
+        entityType: "Match",
+        entityId: matchId,
+        afterJson: toJsonValue({
+          roundName: input.roundName,
+          sequence: input.sequence,
+          homeTeamId: input.homeTeamId,
+          awayTeamId: input.awayTeamId,
+          scheduledAt: input.scheduledAt,
+          court: input.court,
+          overrideReason: input.overrideReason,
+          adminOverride: input.adminOverride,
+        }),
+      },
+    })
+
+    return {
+      id: matchId,
+      version: 0,
+      bracketVersion: input.expectedVersion + 1,
+    }
+  }
+
   async findMatchScheduleContext(input: {
     tournamentId: string
     matchId: string
@@ -666,7 +839,7 @@ class PrismaCompetitionOperations implements CompetitionRepositoryTransaction {
         nextMatchId: true,
         nextSlot: true,
         result: { select: { id: true } },
-        bracket: { select: { status: true } },
+        bracket: { select: { status: true, mode: true } },
         tournament: { select: { id: true, organizerId: true } },
         nextMatch: {
           select: {
@@ -682,6 +855,7 @@ class PrismaCompetitionOperations implements CompetitionRepositoryTransaction {
       tournamentId: match.tournament.id,
       organizerId: match.tournament.organizerId,
       bracketStatus: match.bracket.status,
+      bracketMode: match.bracket.mode,
       matchId: match.id,
       matchStatus: match.status,
       matchVersion: match.version,

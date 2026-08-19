@@ -35,16 +35,20 @@ export async function confirmMatchResult(
       nextMatchId: context.nextMatchId,
       nextSlot: context.nextSlot,
     })
+    const persistedAdvancement =
+      context.bracketMode === "EXTERNAL_DOCUMENT"
+        ? { ...advancement, nextMatchId: null, nextSlot: null }
+        : advancement
     if (
       context.nextSlotTeamId &&
-      context.nextSlotTeamId !== advancement.winnerTeamId
+      context.nextSlotTeamId !== persistedAdvancement.winnerTeamId
     ) {
       throw new Error("MATCH_ADVANCEMENT_CONFLICT")
     }
 
     return competitions.confirmResultAndAdvance({
       ...input,
-      ...advancement,
+      ...persistedAdvancement,
       actorId: actor.id,
       adminOverride: actor.role === "PLATFORM_ADMIN",
       at: dependencies.now().toISOString(),
