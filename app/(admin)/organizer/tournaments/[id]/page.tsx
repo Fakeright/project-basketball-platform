@@ -32,13 +32,20 @@ export default async function EditTournamentPage({
   }
 
   const storage = new SupabaseObjectStorage()
-  const mediaAssets = (await mediaRepository.listActiveAssets(id)).map((asset) => ({
-    ...asset,
-    publicUrl:
-      asset.kind === "POSTER"
-        ? storage.getPublicUrl(asset.bucket, asset.objectPath)
-        : undefined,
-  }))
+  const mediaAssets = (await mediaRepository.listActiveAssets(id))
+    .filter(
+      (
+        asset,
+      ): asset is typeof asset & { kind: "POSTER" | "DOCUMENT" } =>
+        asset.kind !== "BRACKET_DOCUMENT",
+    )
+    .map((asset) => ({
+      ...asset,
+      publicUrl:
+        asset.kind === "POSTER"
+          ? storage.getPublicUrl(asset.bucket, asset.objectPath)
+          : undefined,
+    }))
 
   return (
     <div className="space-y-8">

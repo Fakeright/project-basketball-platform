@@ -95,24 +95,32 @@ enum MatchStatus {
 enum MediaAssetKind {
   POSTER
   DOCUMENT
+  BRACKET_DOCUMENT
+}
+
+enum ExternalBracketRevisionStatus {
+  DRAFT
+  PUBLISHED
+  RETIRED
 }
 
 model User {
-  id                   String              @id @default(cuid())
-  supabaseUserId       String?             @unique
-  email                String              @unique
-  displayName          String
-  role                 Role                @default(PLAYER)
-  organizerProfile     OrganizerProfile?
-  teamMemberships      TeamMember[]
-  ownedTeams           Team[]              @relation("TeamOwner")
-  organizedTournaments Tournament[]        @relation("TournamentOrganizer")
-  reviews              TournamentReview[]  @relation("ReviewAuthor")
-  auditEvents          AuditLog[]          @relation("AuditActor")
-  mediaAssets          MediaAsset[]        @relation("MediaAssetCreator")
-  authRecoveryGrants   AuthRecoveryGrant[]
-  createdAt            DateTime            @default(now())
-  updatedAt            DateTime            @updatedAt
+  id                       String                    @id @default(cuid())
+  supabaseUserId           String?                   @unique
+  email                    String                    @unique
+  displayName              String
+  role                     Role                      @default(PLAYER)
+  organizerProfile         OrganizerProfile?
+  teamMemberships          TeamMember[]
+  ownedTeams               Team[]                    @relation("TeamOwner")
+  organizedTournaments     Tournament[]              @relation("TournamentOrganizer")
+  reviews                  TournamentReview[]        @relation("ReviewAuthor")
+  auditEvents              AuditLog[]                @relation("AuditActor")
+  mediaAssets              MediaAsset[]              @relation("MediaAssetCreator")
+  externalBracketRevisions ExternalBracketRevision[] @relation("ExternalBracketRevisionCreator")
+  authRecoveryGrants       AuthRecoveryGrant[]
+  createdAt                DateTime                  @default(now())
+  updatedAt                DateTime                  @updatedAt
 }
 
 model AuthRecoveryGrant {
@@ -270,22 +278,23 @@ model Registration {
 }
 
 model Bracket {
-  id               String                   @id @default(cuid())
-  tournamentId     String
-  status           BracketStatus            @default(DRAFT)
-  mode             BracketMode              @default(SYSTEM_GENERATED)
-  generationMethod BracketGenerationMethod?
-  drawToken        String?
-  entriesLockedAt  DateTime?
-  publishedAt      DateTime?
-  archivedAt       DateTime?
-  version          Int                      @default(0)
-  tournament       Tournament               @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
-  entries          BracketEntry[]
-  rounds           BracketRound[]
-  matches          Match[]
-  createdAt        DateTime                 @default(now())
-  updatedAt        DateTime                 @updatedAt
+  id                String                    @id @default(cuid())
+  tournamentId      String
+  status            BracketStatus             @default(DRAFT)
+  mode              BracketMode               @default(SYSTEM_GENERATED)
+  generationMethod  BracketGenerationMethod?
+  drawToken         String?
+  entriesLockedAt   DateTime?
+  publishedAt       DateTime?
+  archivedAt        DateTime?
+  version           Int                       @default(0)
+  tournament        Tournament                @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  entries           BracketEntry[]
+  rounds            BracketRound[]
+  matches           Match[]
+  externalRevisions ExternalBracketRevision[]
+  createdAt         DateTime                  @default(now())
+  updatedAt         DateTime                  @updatedAt
 
   @@index([tournamentId, status])
 }
@@ -363,23 +372,42 @@ model MatchResult {
 }
 
 model MediaAsset {
-  id           String         @id @default(cuid())
-  tournamentId String
-  kind         MediaAssetKind
-  bucket       String
-  objectPath   String
-  fileName     String
-  contentType  String
-  byteSize     Int
-  createdById  String
-  tournament   Tournament     @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
-  createdBy    User           @relation("MediaAssetCreator", fields: [createdById], references: [id])
-  createdAt    DateTime       @default(now())
-  deletedAt    DateTime?
+  id                      String                   @id @default(cuid())
+  tournamentId            String
+  kind                    MediaAssetKind
+  bucket                  String
+  objectPath              String
+  fileName                String
+  contentType             String
+  byteSize                Int
+  createdById             String
+  tournament              Tournament               @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  createdBy               User                     @relation("MediaAssetCreator", fields: [createdById], references: [id])
+  externalBracketRevision ExternalBracketRevision?
+  createdAt               DateTime                 @default(now())
+  deletedAt               DateTime?
 
   @@unique([bucket, objectPath])
   @@index([tournamentId, kind])
   @@index([tournamentId, deletedAt])
+}
+
+model ExternalBracketRevision {
+  id           String                        @id @default(cuid())
+  bracketId    String
+  mediaAssetId String                        @unique
+  revision     Int
+  status       ExternalBracketRevisionStatus @default(DRAFT)
+  publishedAt  DateTime?
+  retiredAt    DateTime?
+  createdById  String
+  bracket      Bracket                       @relation(fields: [bracketId], references: [id], onDelete: Cascade)
+  mediaAsset   MediaAsset                    @relation(fields: [mediaAssetId], references: [id], onDelete: Restrict)
+  createdBy    User                          @relation("ExternalBracketRevisionCreator", fields: [createdById], references: [id])
+  createdAt    DateTime                      @default(now())
+
+  @@unique([bracketId, revision])
+  @@index([bracketId, status])
 }
 
 model AuditLog {
