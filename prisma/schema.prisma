@@ -71,6 +71,21 @@ enum BracketStatus {
   ARCHIVED
 }
 
+enum BracketMode {
+  SYSTEM_GENERATED
+  EXTERNAL_DOCUMENT
+}
+
+enum BracketGenerationMethod {
+  SEEDED
+  RANDOM
+}
+
+enum MatchSlot {
+  HOME
+  AWAY
+}
+
 enum MatchStatus {
   SCHEDULED
   IN_PROGRESS
@@ -125,21 +140,22 @@ model OrganizerProfile {
 }
 
 model Team {
-  id            String           @id @default(cuid())
-  name          String
-  provinceCode  String           @db.Char(2)
-  province      Province         @relation(fields: [provinceCode], references: [code], onDelete: Restrict)
-  ownerId       String
-  owner         User             @relation("TeamOwner", fields: [ownerId], references: [id])
-  format        TournamentFormat @default(FIVE_V_FIVE)
-  isActive      Boolean          @default(true)
-  deactivatedAt DateTime?
-  version       Int              @default(0)
-  members       TeamMember[]
-  players       TeamPlayer[]
-  registrations Registration[]
-  createdAt     DateTime         @default(now())
-  updatedAt     DateTime         @updatedAt
+  id             String           @id @default(cuid())
+  name           String
+  provinceCode   String           @db.Char(2)
+  province       Province         @relation(fields: [provinceCode], references: [code], onDelete: Restrict)
+  ownerId        String
+  owner          User             @relation("TeamOwner", fields: [ownerId], references: [id])
+  format         TournamentFormat @default(FIVE_V_FIVE)
+  isActive       Boolean          @default(true)
+  deactivatedAt  DateTime?
+  version        Int              @default(0)
+  members        TeamMember[]
+  players        TeamPlayer[]
+  registrations  Registration[]
+  bracketEntries BracketEntry[]
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
 
   @@index([ownerId])
   @@index([provinceCode])
@@ -234,35 +250,64 @@ model TournamentReview {
 }
 
 model Registration {
-  id           String             @id @default(cuid())
-  tournamentId String
-  teamId       String
-  status       RegistrationStatus @default(PENDING)
-  decisionNote String?
-  decidedAt    DateTime?
-  cancelledAt  DateTime?
-  withdrawnAt  DateTime?
-  version      Int                @default(0)
-  tournament   Tournament         @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
-  team         Team               @relation(fields: [teamId], references: [id])
-  createdAt    DateTime           @default(now())
-  updatedAt    DateTime           @updatedAt
+  id             String             @id @default(cuid())
+  tournamentId   String
+  teamId         String
+  status         RegistrationStatus @default(PENDING)
+  decisionNote   String?
+  decidedAt      DateTime?
+  cancelledAt    DateTime?
+  withdrawnAt    DateTime?
+  version        Int                @default(0)
+  tournament     Tournament         @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  team           Team               @relation(fields: [teamId], references: [id])
+  bracketEntries BracketEntry[]
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
 
   @@index([tournamentId, status])
   @@index([tournamentId, teamId, createdAt])
 }
 
 model Bracket {
-  id           String         @id @default(cuid())
-  tournamentId String
-  status       BracketStatus  @default(DRAFT)
-  tournament   Tournament     @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
-  rounds       BracketRound[]
-  matches      Match[]
-  createdAt    DateTime       @default(now())
-  updatedAt    DateTime       @updatedAt
+  id               String                   @id @default(cuid())
+  tournamentId     String
+  status           BracketStatus            @default(DRAFT)
+  mode             BracketMode              @default(SYSTEM_GENERATED)
+  generationMethod BracketGenerationMethod?
+  drawToken        String?
+  entriesLockedAt  DateTime?
+  publishedAt      DateTime?
+  archivedAt       DateTime?
+  version          Int                      @default(0)
+  tournament       Tournament               @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  entries          BracketEntry[]
+  rounds           BracketRound[]
+  matches          Match[]
+  createdAt        DateTime                 @default(now())
+  updatedAt        DateTime                 @updatedAt
 
   @@index([tournamentId, status])
+}
+
+model BracketEntry {
+  id                 String       @id @default(cuid())
+  bracketId          String
+  registrationId     String
+  teamId             String
+  teamNameSnapshot   String
+  seed               Int
+  drawPosition       Int
+  startRoundSequence Int
+  bracket            Bracket      @relation(fields: [bracketId], references: [id], onDelete: Cascade)
+  registration       Registration @relation(fields: [registrationId], references: [id], onDelete: Restrict)
+  team               Team         @relation(fields: [teamId], references: [id], onDelete: Restrict)
+  createdAt          DateTime     @default(now())
+
+  @@unique([bracketId, registrationId])
+  @@unique([bracketId, teamId])
+  @@unique([bracketId, seed])
+  @@index([bracketId, drawPosition])
 }
 
 model BracketRound {
@@ -277,27 +322,33 @@ model BracketRound {
 }
 
 model Match {
-  id           String       @id @default(cuid())
-  tournamentId String
-  bracketId    String
-  roundId      String
-  sequence     Int
-  scheduledAt  DateTime?
-  court        String?
-  homeTeamId   String?
-  awayTeamId   String?
-  winnerTeamId String?
-  homeScore    Int?
-  awayScore    Int?
-  status       MatchStatus  @default(SCHEDULED)
-  version      Int          @default(0)
-  tournament   Tournament   @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
-  bracket      Bracket      @relation(fields: [bracketId], references: [id], onDelete: Cascade)
-  round        BracketRound @relation(fields: [roundId], references: [id], onDelete: Cascade)
-  result       MatchResult?
+  id            String       @id @default(cuid())
+  tournamentId  String
+  bracketId     String
+  roundId       String
+  sequence      Int
+  scheduledAt   DateTime?
+  court         String?
+  homeTeamId    String?
+  awayTeamId    String?
+  winnerTeamId  String?
+  homeScore     Int?
+  awayScore     Int?
+  status        MatchStatus  @default(SCHEDULED)
+  version       Int          @default(0)
+  nextMatchId   String?
+  nextSlot      MatchSlot?
+  tournament    Tournament   @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  bracket       Bracket      @relation(fields: [bracketId], references: [id], onDelete: Cascade)
+  round         BracketRound @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  nextMatch     Match?       @relation("MatchAdvancement", fields: [nextMatchId], references: [id], onDelete: SetNull)
+  sourceMatches Match[]      @relation("MatchAdvancement")
+  result        MatchResult?
+  updatedAt     DateTime     @default(now()) @updatedAt
 
   @@unique([roundId, sequence])
   @@index([tournamentId, scheduledAt])
+  @@index([nextMatchId])
 }
 
 model MatchResult {
