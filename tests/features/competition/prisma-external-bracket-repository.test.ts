@@ -255,7 +255,9 @@ describe("PrismaExternalBracketRepository", () => {
         mode: "EXTERNAL_DOCUMENT",
         status: "PUBLISHED",
         matches: [{ id: "match-1" }],
-        revisions: [{ ...revisionRow, status: "PUBLISHED", publishedAt: now }],
+        externalRevisions: [
+          { ...revisionRow, status: "PUBLISHED", publishedAt: now },
+        ],
       }],
     })
     transaction.tournament.findFirst.mockResolvedValue({
@@ -264,7 +266,9 @@ describe("PrismaExternalBracketRepository", () => {
       slug: "external-cup",
       brackets: [{
         id: "bracket-1",
-        revisions: [{ ...revisionRow, status: "PUBLISHED", publishedAt: now }],
+        externalRevisions: [
+          { ...revisionRow, status: "PUBLISHED", publishedAt: now },
+        ],
       }],
     })
     const adapter = repository(prisma)

@@ -28,7 +28,6 @@ export async function probeBracketFile(input: {
 async function probePdf(data: Uint8Array): Promise<BracketFileProbeResult> {
   const loadingTask = getDocument({
     data: Uint8Array.from(data),
-    isEvalSupported: false,
     useWorkerFetch: false,
   })
 

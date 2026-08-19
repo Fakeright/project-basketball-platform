@@ -239,7 +239,7 @@ export class PrismaExternalBracketRepository
               where: { status: { in: ["IN_PROGRESS", "COMPLETED"] } },
               select: { id: true },
             },
-            revisions: {
+            externalRevisions: {
               orderBy: { revision: "desc" },
               include: revisionInclude,
             },
@@ -249,7 +249,7 @@ export class PrismaExternalBracketRepository
     })
     const bracket = tournament?.brackets[0]
     if (!tournament || !bracket || bracket.mode !== "EXTERNAL_DOCUMENT") return null
-    const revisions = bracket.revisions.map(mapRevision)
+    const revisions = bracket.externalRevisions.map(mapRevision)
     return {
       tournamentId: tournament.id,
       tournamentTitle: tournament.title,
@@ -282,7 +282,7 @@ export class PrismaExternalBracketRepository
           take: 1,
           select: {
             id: true,
-            revisions: {
+            externalRevisions: {
               where: {
                 status: "PUBLISHED",
                 mediaAsset: { deletedAt: null },
@@ -295,7 +295,7 @@ export class PrismaExternalBracketRepository
       },
     })
     const bracket = tournament?.brackets[0]
-    const revision = bracket?.revisions[0]
+    const revision = bracket?.externalRevisions[0]
     if (!tournament || !bracket || !revision) return null
     return {
       tournamentId: tournament.id,
