@@ -18,10 +18,14 @@ import type { TournamentMediaAsset } from "@/features/tournament-media/domain/me
 interface DevelopmentExternalBracketWorkspace
   extends Omit<
     ExternalBracketWorkspaceContext,
-    "revisions" | "publishedRevision" | "bracketMode"
+    | "revisions"
+    | "publishedRevision"
+    | "bracketMode"
+    | "latestConfirmedResultAt"
   > {
   bracketMode: "SYSTEM_GENERATED" | "EXTERNAL_DOCUMENT"
   tournamentSlug: string
+  latestConfirmedResultAt?: string | null
 }
 
 interface DevelopmentAuditEvent {
@@ -335,7 +339,12 @@ function toWorkspaceContext(
   if (workspace.bracketMode !== "EXTERNAL_DOCUMENT") {
     throw new Error("BRACKET_MODE_NOT_EXTERNAL")
   }
-  return { ...workspace, bracketMode: "EXTERNAL_DOCUMENT", ...toWorkspace(state, workspace) }
+  return {
+    ...workspace,
+    bracketMode: "EXTERNAL_DOCUMENT",
+    latestConfirmedResultAt: workspace.latestConfirmedResultAt ?? null,
+    ...toWorkspace(state, workspace),
+  }
 }
 
 function appendAudit(

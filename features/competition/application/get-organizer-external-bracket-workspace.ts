@@ -1,6 +1,7 @@
 import { authorize } from "@/features/identity/application/authorize"
 import type { Actor } from "@/features/identity/domain/actor"
 import type { ObjectStorage } from "@/features/tournament-media/application/ports/object-storage"
+import { isExternalBracketStale } from "@/features/competition/domain/external-bracket-policy"
 
 import type {
   BracketModeSelectionContext,
@@ -17,6 +18,7 @@ export interface OrganizerExternalBracketWorkspace {
   modeContext: BracketModeSelectionContext
   workspace: ExternalBracketWorkspaceContext | null
   publishedPreviewUrl: string | null
+  isPublishedRevisionStale: boolean
 }
 
 export async function getOrganizerExternalBracketWorkspace(
@@ -39,7 +41,12 @@ export async function getOrganizerExternalBracketWorkspace(
   })
 
   if (modeContext.bracketMode === "SYSTEM_GENERATED") {
-    return { modeContext, workspace: null, publishedPreviewUrl: null }
+    return {
+      modeContext,
+      workspace: null,
+      publishedPreviewUrl: null,
+      isPublishedRevisionStale: false,
+    }
   }
 
   const workspace =
@@ -54,5 +61,16 @@ export async function getOrganizerExternalBracketWorkspace(
       )
     : null
 
-  return { modeContext, workspace, publishedPreviewUrl }
+  return {
+    modeContext,
+    workspace,
+    publishedPreviewUrl,
+    isPublishedRevisionStale: Boolean(
+      workspace.publishedRevision?.publishedAt &&
+        isExternalBracketStale({
+          publishedAt: workspace.publishedRevision.publishedAt,
+          latestConfirmedResultAt: workspace.latestConfirmedResultAt,
+        }),
+    ),
+  }
 }

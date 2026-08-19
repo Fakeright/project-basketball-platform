@@ -3,6 +3,7 @@ import { ExternalBracketPreview } from "@/components/organizer/external-bracket-
 import { ExternalBracketRevisionList } from "@/components/organizer/external-bracket-revision-list"
 import { ExternalBracketUploader } from "@/components/organizer/external-bracket-uploader"
 import type { OrganizerExternalBracketWorkspace as Workspace } from "@/features/competition/application/get-organizer-external-bracket-workspace"
+import { AlertTriangle } from "lucide-react"
 
 export function ExternalBracketWorkspace({
   tournamentId,
@@ -34,6 +35,23 @@ export function ExternalBracketWorkspace({
           <h2 className="mt-1 text-base font-semibold">ไฟล์ที่เผยแพร่</h2>
         </div>
         <div className="min-w-0">
+          {state.isPublishedRevisionStale ? (
+            <div
+              className="mb-4 flex items-start gap-3 border-l-4 border-amber-500 bg-amber-500/10 p-4 text-sm"
+              role="status"
+            >
+              <AlertTriangle aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
+              <div>
+                <p className="font-semibold">ผลการแข่งขันใหม่กว่าไฟล์ที่เผยแพร่</p>
+                <a
+                  className="mt-1 inline-block font-medium underline underline-offset-4"
+                  href="#external-bracket-upload"
+                >
+                  อัปโหลดฉบับใหม่หรือเผยแพร่ revision
+                </a>
+              </div>
+            </div>
+          ) : null}
           {workspace?.publishedRevision && publishedPreviewUrl ? (
             <ExternalBracketPreview
               previewUrl={publishedPreviewUrl}
@@ -47,7 +65,10 @@ export function ExternalBracketWorkspace({
         </div>
       </section>
 
-      <section className="grid gap-5 py-7 lg:grid-cols-[12rem_minmax(0,1fr)]">
+      <section
+        className="grid gap-5 py-7 lg:grid-cols-[12rem_minmax(0,1fr)]"
+        id="external-bracket-upload"
+      >
         <div>
           <p className="text-xs font-semibold text-court">04</p>
           <h2 className="mt-1 text-base font-semibold">อัปโหลดฉบับใหม่</h2>

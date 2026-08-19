@@ -36,6 +36,7 @@ export interface ExternalBracketWorkspaceContext extends ExternalBracketWorkspac
   bracketStatus: string
   bracketMode: "EXTERNAL_DOCUMENT"
   hasStartedMatch: boolean
+  latestConfirmedResultAt: string | null
 }
 
 export interface BracketModeSelectionContext {

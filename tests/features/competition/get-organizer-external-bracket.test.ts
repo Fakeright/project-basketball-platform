@@ -69,6 +69,7 @@ describe("getOrganizerExternalBracketWorkspace", () => {
       bracketStatus: "PUBLISHED",
       bracketMode: "EXTERNAL_DOCUMENT" as const,
       hasStartedMatch: false,
+      latestConfirmedResultAt: "2026-08-19T09:00:00.000Z",
     }
     externalBrackets.findModeSelectionContext = vi
       .fn()
@@ -97,6 +98,7 @@ describe("getOrganizerExternalBracketWorkspace", () => {
     expect(result.publishedPreviewUrl).toBe(
       "https://signed.example.test/bracket.pdf",
     )
+    expect(result.isPublishedRevisionStale).toBe(true)
   })
 })
 

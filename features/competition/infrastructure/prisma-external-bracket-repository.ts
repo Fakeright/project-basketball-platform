@@ -350,7 +350,10 @@ export class PrismaExternalBracketRepository
             status: true,
             matches: {
               where: { status: { in: ["IN_PROGRESS", "COMPLETED"] } },
-              select: { id: true },
+              select: {
+                id: true,
+                result: { select: { confirmedAt: true } },
+              },
             },
             externalRevisions: {
               orderBy: { revision: "desc" },
@@ -372,6 +375,7 @@ export class PrismaExternalBracketRepository
       bracketStatus: bracket.status,
       bracketMode: bracket.mode,
       hasStartedMatch: bracket.matches.length > 0,
+      latestConfirmedResultAt: latestConfirmedResultAt(bracket.matches),
       revisions,
       publishedRevision:
         revisions.find((revision) => revision.status === "PUBLISHED") ?? null,
@@ -507,6 +511,17 @@ function mapRevision(row: ExternalRevisionRow): ExternalBracketRevision {
       deletedAt: row.mediaAsset.deletedAt?.toISOString() ?? null,
     },
   }
+}
+
+function latestConfirmedResultAt(
+  matches: Array<{ result?: { confirmedAt: Date } | null }>,
+) {
+  const timestamps = matches.flatMap((match) =>
+    match.result ? [match.result.confirmedAt.getTime()] : [],
+  )
+  return timestamps.length
+    ? new Date(Math.max(...timestamps)).toISOString()
+    : null
 }
 
 function isPrismaUniqueError(error: unknown) {

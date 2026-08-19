@@ -6,6 +6,7 @@ import { BracketModeControl } from "@/components/organizer/bracket-mode-control"
 import { ExternalBracketPreview } from "@/components/organizer/external-bracket-preview"
 import { ExternalBracketRevisionList } from "@/components/organizer/external-bracket-revision-list"
 import { ExternalBracketUploader } from "@/components/organizer/external-bracket-uploader"
+import { ExternalBracketWorkspace } from "@/components/organizer/external-bracket-workspace"
 import type { ExternalBracketRevision } from "@/features/competition/application/ports/external-bracket-repository"
 
 const refresh = vi.fn()
@@ -146,6 +147,43 @@ describe("ExternalBracketUploader", () => {
 })
 
 describe("external bracket revisions", () => {
+  it("warns the organizer when confirmed results are newer than the file", () => {
+    render(
+      <ExternalBracketWorkspace
+        state={{
+          modeContext: {
+            tournamentId: "tournament-1",
+            organizerId: "organizer-1",
+            bracketId: "bracket-1",
+            bracketVersion: 3,
+            bracketStatus: "PUBLISHED",
+            bracketMode: "EXTERNAL_DOCUMENT",
+            hasStartedMatch: true,
+          },
+          workspace: {
+            tournamentId: "tournament-1",
+            tournamentTitle: "External Cup",
+            organizerId: "organizer-1",
+            bracketId: "bracket-1",
+            bracketVersion: 3,
+            bracketStatus: "PUBLISHED",
+            bracketMode: "EXTERNAL_DOCUMENT",
+            hasStartedMatch: true,
+            latestConfirmedResultAt: "2026-08-19T09:00:00.000Z",
+            revisions: [publishedRevision],
+            publishedRevision,
+          },
+          publishedPreviewUrl: "https://example.test/bracket-v1.pdf",
+          isPublishedRevisionStale: true,
+        }}
+        tournamentId="tournament-1"
+      />,
+    )
+
+    expect(screen.getByText("ผลการแข่งขันใหม่กว่าไฟล์ที่เผยแพร่")).toBeTruthy()
+    expect(screen.getByRole("link", { name: /อัปโหลดฉบับใหม่/ })).toBeTruthy()
+  })
+
   it("shows the published preview and revision history", () => {
     render(
       <>
