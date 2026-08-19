@@ -24,7 +24,11 @@ export default async function BracketPage({ searchParams }: PageProps<"/bracket"
       </header>
       <section className="mt-8">
         {selectedTournament?.matches.length ? (
-          <BracketView matches={selectedTournament.matches} />
+          <BracketView
+            entries={selectedTournament.bracketEntries}
+            matches={selectedTournament.matches}
+            source={selectedTournament.bracketSource}
+          />
         ) : (
           <StatePanel
             action={{ href: "/tournaments", label: "ดูทัวร์นาเมนต์ทั้งหมด" }}

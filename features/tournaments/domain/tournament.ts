@@ -21,6 +21,8 @@ export interface Match {
   awayTeam: string
   homeScore: number | null
   awayScore: number | null
+  roundSequence?: number
+  sequence?: number
 }
 
 export interface TournamentDocument {
@@ -49,4 +51,9 @@ export interface Tournament {
   documents: TournamentDocument[]
   teams: string[]
   matches: Match[]
+  bracketSource?: "SYSTEM_GENERATED" | "EXTERNAL_DOCUMENT"
+  bracketEntries?: Array<{
+    teamName: string
+    startRoundSequence: number
+  }>
 }

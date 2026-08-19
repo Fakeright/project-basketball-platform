@@ -29,10 +29,22 @@ const publishedMatchesInclude = {
       is: { status: "PUBLISHED" },
     },
   },
-  orderBy: [{ scheduledAt: "asc" }, { sequence: "asc" }],
+  orderBy: [{ round: { sequence: "asc" } }, { sequence: "asc" }],
   include: {
-    bracket: { select: { status: true } },
-    round: { select: { name: true } },
+    bracket: {
+      select: {
+        status: true,
+        mode: true,
+        entries: {
+          select: {
+            teamId: true,
+            teamNameSnapshot: true,
+            startRoundSequence: true,
+          },
+        },
+      },
+    },
+    round: { select: { name: true, sequence: true } },
     result: { select: { homeScore: true, awayScore: true } },
   },
 } satisfies Prisma.Tournament$matchesArgs
@@ -141,19 +153,37 @@ export class PrismaTournamentRepository implements TournamentRepository {
   private mapCompetitionTournament(
     row: PublicCompetitionRow | PublicDetailRow,
   ): Tournament {
-    const teamNames = new Map(
-      row.registrations.map(({ team }) => [team.id, team.name]),
-    )
+    const publishedMatches = row.matches
+      .filter((match) => match.bracket.status === "PUBLISHED")
+      .sort(
+        (left, right) =>
+          left.round.sequence - right.round.sequence ||
+          left.sequence - right.sequence,
+      )
+    const bracketSource = publishedMatches[0]?.bracket.mode
+    const bracketEntries = publishedMatches[0]?.bracket.entries.map((entry) => ({
+      teamName: entry.teamNameSnapshot,
+      startRoundSequence: entry.startRoundSequence,
+    }))
 
     return mapTournamentBase(row, {
       posterUrl: getPosterUrl(row.mediaAssets, this.storage),
       teams: row.registrations.map(({ team }) => team.name),
-      matches: row.matches
-        .filter((match) => match.bracket.status === "PUBLISHED")
-        .map((match) => ({
+      ...(bracketSource ? { bracketSource } : {}),
+      ...(bracketEntries ? { bracketEntries } : {}),
+      matches: publishedMatches.map((match) => {
+        const teamNames = new Map(
+          match.bracket.entries.map((entry) => [
+            entry.teamId,
+            entry.teamNameSnapshot,
+          ]),
+        )
+        return {
           id: match.id,
           tournamentSlug: row.slug,
           round: match.round.name,
+          roundSequence: match.round.sequence,
+          sequence: match.sequence,
           court: match.court ?? "ยังไม่กำหนดสนาม",
           scheduledAt: match.scheduledAt?.toISOString() ?? null,
           homeTeam:
@@ -162,7 +192,8 @@ export class PrismaTournamentRepository implements TournamentRepository {
             teamNames.get(match.awayTeamId ?? "") ?? "รอยืนยันทีม",
           homeScore: match.result?.homeScore ?? null,
           awayScore: match.result?.awayScore ?? null,
-        })),
+        }
+      }),
     })
   }
 
@@ -257,7 +288,11 @@ function containsText(value: string) {
 function mapTournamentBase(
   row: PublicDiscoveryRow | PublicCompetitionRow | PublicDetailRow,
   additions: Partial<
-    Pick<Tournament, "posterUrl" | "documents" | "teams" | "matches">
+    Pick<
+      Tournament,
+      "posterUrl" | "documents" | "teams" | "matches" | "bracketSource"
+      | "bracketEntries"
+    >
   >,
 ): Tournament {
   return {
@@ -277,6 +312,12 @@ function mapTournamentBase(
     documents: additions.documents ?? [],
     teams: additions.teams ?? [],
     matches: additions.matches ?? [],
+    ...(additions.bracketSource
+      ? { bracketSource: additions.bracketSource }
+      : {}),
+    ...(additions.bracketEntries
+      ? { bracketEntries: additions.bracketEntries }
+      : {}),
     ...(additions.posterUrl ? { posterUrl: additions.posterUrl } : {}),
   }
 }

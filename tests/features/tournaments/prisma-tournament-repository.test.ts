@@ -42,8 +42,23 @@ const publicTournamentRow = {
       awayTeamId: "team-2",
       homeScore: 99,
       awayScore: 98,
-      bracket: { status: "PUBLISHED" as const },
-      round: { name: "รอบชิงชนะเลิศ" },
+      bracket: {
+        status: "PUBLISHED" as const,
+        mode: "SYSTEM_GENERATED" as const,
+        entries: [
+          {
+            teamId: "team-1",
+            teamNameSnapshot: "Bangkok Five (Locked)",
+            startRoundSequence: 2,
+          },
+          {
+            teamId: "team-2",
+            teamNameSnapshot: "Chiang Mai Hoops (Locked)",
+            startRoundSequence: 1,
+          },
+        ],
+      },
+      round: { name: "รอบชิงชนะเลิศ", sequence: 2 },
       result: {
         homeScore: 72,
         awayScore: 68,
@@ -169,8 +184,8 @@ describe("PrismaTournamentRepository", () => {
         matches: [
           expect.objectContaining({
             id: "match-1",
-            homeTeam: "Bangkok Ballers",
-            awayTeam: "Chiang Mai Hoops",
+            homeTeam: "Bangkok Five (Locked)",
+            awayTeam: "Chiang Mai Hoops (Locked)",
             homeScore: 72,
             awayScore: 68,
           }),
@@ -279,9 +294,24 @@ describe("PrismaTournamentRepository", () => {
         matches: [
           expect.objectContaining({
             id: "match-1",
+            homeTeam: "Bangkok Five (Locked)",
+            awayTeam: "Chiang Mai Hoops (Locked)",
+            roundSequence: 2,
+            sequence: 1,
             homeScore: 72,
             awayScore: 68,
           }),
+        ],
+        bracketSource: "SYSTEM_GENERATED",
+        bracketEntries: [
+          {
+            teamName: "Bangkok Five (Locked)",
+            startRoundSequence: 2,
+          },
+          {
+            teamName: "Chiang Mai Hoops (Locked)",
+            startRoundSequence: 1,
+          },
         ],
         teams: ["Bangkok Ballers", "Chiang Mai Hoops"],
       }),
