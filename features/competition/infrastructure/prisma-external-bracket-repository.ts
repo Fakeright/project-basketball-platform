@@ -13,6 +13,7 @@ import type {
   ExternalBracketWorkspace,
   PublishExternalRevisionInput,
   RetireExternalRevisionInput,
+  SelectBracketModeInput,
 } from "@/features/competition/application/ports/external-bracket-repository"
 
 const revisionInclude = {
@@ -33,6 +34,113 @@ export class PrismaExternalBracketRepository
     private readonly createId: () => string = randomUUID,
     private readonly now: () => Date = () => new Date(),
   ) {}
+
+  async findModeSelectionContext(tournamentId: string) {
+    const tournament = await this.prisma.tournament.findUnique({
+      where: { id: tournamentId },
+      select: {
+        id: true,
+        organizerId: true,
+        brackets: {
+          where: { status: { not: "ARCHIVED" } },
+          take: 1,
+          select: {
+            id: true,
+            version: true,
+            status: true,
+            mode: true,
+            matches: {
+              where: {
+                OR: [
+                  { status: { in: ["IN_PROGRESS", "COMPLETED"] } },
+                  { result: { isNot: null } },
+                ],
+              },
+              select: { id: true },
+            },
+          },
+        },
+      },
+    })
+    const bracket = tournament?.brackets[0]
+    if (!tournament || !bracket) return null
+    return {
+      tournamentId: tournament.id,
+      organizerId: tournament.organizerId,
+      bracketId: bracket.id,
+      bracketVersion: bracket.version,
+      bracketStatus: bracket.status,
+      bracketMode: bracket.mode,
+      hasStartedMatch: bracket.matches.length > 0,
+    }
+  }
+
+  selectMode(input: SelectBracketModeInput) {
+    return this.prisma.$transaction(async (transaction) => {
+      await lockBracket(transaction, input.bracketId, input.tournamentId)
+      const bracket = await transaction.bracket.findFirst({
+        where: { id: input.bracketId, tournamentId: input.tournamentId },
+        select: {
+          mode: true,
+          status: true,
+          matches: {
+            where: {
+              OR: [
+                { status: { in: ["IN_PROGRESS", "COMPLETED"] } },
+                { result: { isNot: null } },
+              ],
+            },
+            select: { id: true },
+          },
+        },
+      })
+      if (!bracket) throw new Error("NOT_FOUND")
+      if (bracket.status !== "DRAFT" || bracket.matches.length > 0) {
+        throw new Error("BRACKET_MODE_LOCKED")
+      }
+
+      await transaction.match.deleteMany({ where: { bracketId: input.bracketId } })
+      await transaction.bracketRound.deleteMany({ where: { bracketId: input.bracketId } })
+      const updated = await transaction.bracket.updateMany({
+        where: {
+          id: input.bracketId,
+          tournamentId: input.tournamentId,
+          status: "DRAFT",
+          version: input.expectedVersion,
+        },
+        data: {
+          mode: input.targetMode,
+          generationMethod: null,
+          drawToken: null,
+          version: { increment: 1 },
+        },
+      })
+      if (updated.count !== 1) throw new Error("CONFLICT")
+
+      await transaction.auditLog.create({
+        data: {
+          actorId: input.actorId,
+          tournamentId: input.tournamentId,
+          action: "BRACKET_MODE_CHANGED",
+          entityType: "Bracket",
+          entityId: input.bracketId,
+          beforeJson: toJsonValue({ mode: bracket.mode, version: input.expectedVersion }),
+          afterJson: toJsonValue({
+            mode: input.targetMode,
+            version: input.expectedVersion + 1,
+            reason: input.reason,
+            adminOverride: input.adminOverride,
+          }),
+          createdAt: new Date(input.at),
+        },
+      })
+      return {
+        bracketId: input.bracketId,
+        bracketVersion: input.expectedVersion + 1,
+        bracketMode: input.targetMode,
+      }
+    })
+  }
 
   async commitUploadedRevision(input: CommitExternalRevisionInput) {
     if (
@@ -85,6 +193,7 @@ export class PrismaExternalBracketRepository
                 revision,
                 mediaAssetId: asset.id,
                 adminOverride: input.adminOverride,
+                reason: input.reason,
               }),
             },
           })

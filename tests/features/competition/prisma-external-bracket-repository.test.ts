@@ -51,6 +51,8 @@ function createPrismaMock() {
         return { count: 1 }
       }),
     },
+    match: { deleteMany: vi.fn().mockResolvedValue({ count: 2 }) },
+    bracketRound: { deleteMany: vi.fn().mockResolvedValue({ count: 1 }) },
     mediaAsset: { create: vi.fn().mockResolvedValue(mediaRow) },
     externalBracketRevision: {
       aggregate: vi.fn().mockResolvedValue({ _max: { revision: 1 } }),
@@ -97,9 +99,66 @@ const uploadInput = {
   },
   actorId: "organizer-1",
   adminOverride: false,
+  reason: null,
 }
 
 describe("PrismaExternalBracketRepository", () => {
+  it("changes mode with a version guard and clears generated draft structure atomically", async () => {
+    const { prisma, transaction } = createPrismaMock()
+    transaction.bracket.findFirst.mockResolvedValueOnce({
+      id: "bracket-1",
+      tournamentId: "tournament-1",
+      version: 3,
+      mode: "SYSTEM_GENERATED",
+      status: "DRAFT",
+      matches: [],
+    })
+
+    const result = await repository(prisma).selectMode({
+      tournamentId: "tournament-1",
+      bracketId: "bracket-1",
+      targetMode: "EXTERNAL_DOCUMENT",
+      expectedVersion: 3,
+      actorId: "organizer-1",
+      adminOverride: false,
+      reason: null,
+      at: now.toISOString(),
+    })
+
+    expect(transaction.match.deleteMany).toHaveBeenCalledWith({
+      where: { bracketId: "bracket-1" },
+    })
+    expect(transaction.bracketRound.deleteMany).toHaveBeenCalledWith({
+      where: { bracketId: "bracket-1" },
+    })
+    expect(transaction.bracket.updateMany).toHaveBeenCalledWith({
+      where: {
+        id: "bracket-1",
+        tournamentId: "tournament-1",
+        status: "DRAFT",
+        version: 3,
+      },
+      data: {
+        mode: "EXTERNAL_DOCUMENT",
+        generationMethod: null,
+        drawToken: null,
+        version: { increment: 1 },
+      },
+    })
+    expect(transaction.auditLog.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        action: "BRACKET_MODE_CHANGED",
+        beforeJson: expect.objectContaining({ mode: "SYSTEM_GENERATED" }),
+        afterJson: expect.objectContaining({ mode: "EXTERNAL_DOCUMENT" }),
+      }),
+    })
+    expect(result).toEqual({
+      bracketId: "bracket-1",
+      bracketVersion: 4,
+      bracketMode: "EXTERNAL_DOCUMENT",
+    })
+  })
+
   it("locks the bracket and commits the next revision, media metadata, and audit atomically", async () => {
     const { prisma, transaction } = createPrismaMock()
 

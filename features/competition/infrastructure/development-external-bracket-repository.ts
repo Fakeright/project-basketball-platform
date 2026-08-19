@@ -11,11 +11,16 @@ import type {
   ExternalBracketWorkspaceContext,
   PublishExternalRevisionInput,
   RetireExternalRevisionInput,
+  SelectBracketModeInput,
 } from "@/features/competition/application/ports/external-bracket-repository"
 import type { TournamentMediaAsset } from "@/features/tournament-media/domain/media-asset"
 
 interface DevelopmentExternalBracketWorkspace
-  extends Omit<ExternalBracketWorkspaceContext, "revisions" | "publishedRevision"> {
+  extends Omit<
+    ExternalBracketWorkspaceContext,
+    "revisions" | "publishedRevision" | "bracketMode"
+  > {
+  bracketMode: "SYSTEM_GENERATED" | "EXTERNAL_DOCUMENT"
   tournamentSlug: string
 }
 
@@ -59,6 +64,61 @@ export class DevelopmentExternalBracketRepository
     private readonly createId: () => string = randomUUID,
     private readonly now: () => Date = () => new Date(),
   ) {}
+
+  async findModeSelectionContext(tournamentId: string) {
+    const state = await readState(this.statePath)
+    const workspace = state.externalBracketWorkspaces.find(
+      (candidate) =>
+        candidate.tournamentId === tournamentId &&
+        candidate.bracketStatus !== "ARCHIVED",
+    )
+    if (!workspace) return null
+    return {
+      tournamentId: workspace.tournamentId,
+      organizerId: workspace.organizerId,
+      bracketId: workspace.bracketId,
+      bracketVersion: workspace.bracketVersion,
+      bracketStatus: workspace.bracketStatus,
+      bracketMode: workspace.bracketMode,
+      hasStartedMatch: workspace.hasStartedMatch,
+    }
+  }
+
+  selectMode(input: SelectBracketModeInput) {
+    return this.mutate((state) => {
+      const workspace = state.externalBracketWorkspaces.find(
+        (candidate) =>
+          candidate.tournamentId === input.tournamentId &&
+          candidate.bracketId === input.bracketId &&
+          candidate.bracketStatus !== "ARCHIVED",
+      )
+      if (!workspace) throw new Error("NOT_FOUND")
+      assertVersion(workspace, input.expectedVersion)
+      if (workspace.bracketStatus !== "DRAFT" || workspace.hasStartedMatch) {
+        throw new Error("BRACKET_MODE_LOCKED")
+      }
+      const previousMode = workspace.bracketMode
+      workspace.bracketMode = input.targetMode
+      workspace.bracketVersion += 1
+      appendAudit(state, input, {
+        action: "BRACKET_MODE_CHANGED",
+        entityId: input.bracketId,
+        before: { mode: previousMode, version: input.expectedVersion },
+        after: {
+          mode: input.targetMode,
+          version: workspace.bracketVersion,
+          reason: input.reason,
+          adminOverride: input.adminOverride,
+        },
+        createdAt: input.at,
+      })
+      return {
+        bracketId: input.bracketId,
+        bracketVersion: workspace.bracketVersion,
+        bracketMode: input.targetMode,
+      }
+    })
+  }
 
   commitUploadedRevision(input: CommitExternalRevisionInput) {
     return this.mutate((state) => {
@@ -111,6 +171,7 @@ export class DevelopmentExternalBracketRepository
           revision: revisionNumber,
           mediaAssetId: mediaAsset.id,
           adminOverride: input.adminOverride,
+          reason: input.reason,
         },
         createdAt: timestamp,
       })
@@ -270,7 +331,10 @@ function toWorkspaceContext(
   state: NormalizedState,
   workspace: DevelopmentExternalBracketWorkspace,
 ): ExternalBracketWorkspaceContext {
-  return { ...workspace, ...toWorkspace(state, workspace) }
+  if (workspace.bracketMode !== "EXTERNAL_DOCUMENT") {
+    throw new Error("BRACKET_MODE_NOT_EXTERNAL")
+  }
+  return { ...workspace, bracketMode: "EXTERNAL_DOCUMENT", ...toWorkspace(state, workspace) }
 }
 
 function appendAudit(

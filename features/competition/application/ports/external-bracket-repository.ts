@@ -38,6 +38,33 @@ export interface ExternalBracketWorkspaceContext extends ExternalBracketWorkspac
   hasStartedMatch: boolean
 }
 
+export interface BracketModeSelectionContext {
+  tournamentId: string
+  organizerId: string
+  bracketId: string
+  bracketVersion: number
+  bracketStatus: string
+  bracketMode: "SYSTEM_GENERATED" | "EXTERNAL_DOCUMENT"
+  hasStartedMatch: boolean
+}
+
+export interface SelectBracketModeInput {
+  tournamentId: string
+  bracketId: string
+  targetMode: "SYSTEM_GENERATED" | "EXTERNAL_DOCUMENT"
+  expectedVersion: number
+  actorId: string
+  adminOverride: boolean
+  reason: string | null
+  at: string
+}
+
+export interface SelectedBracketMode {
+  bracketId: string
+  bracketVersion: number
+  bracketMode: "SYSTEM_GENERATED" | "EXTERNAL_DOCUMENT"
+}
+
 export interface PublicExternalBracket {
   tournamentId: string
   tournamentTitle: string
@@ -55,6 +82,7 @@ export interface CommitExternalRevisionInput {
   }
   actorId: string
   adminOverride: boolean
+  reason: string | null
 }
 
 export interface PublishExternalRevisionInput {
@@ -70,6 +98,10 @@ export interface PublishExternalRevisionInput {
 export type RetireExternalRevisionInput = PublishExternalRevisionInput
 
 export interface ExternalBracketRepository {
+  findModeSelectionContext(
+    tournamentId: string,
+  ): Promise<BracketModeSelectionContext | null>
+  selectMode(input: SelectBracketModeInput): Promise<SelectedBracketMode>
   commitUploadedRevision(
     input: CommitExternalRevisionInput,
   ): Promise<ExternalBracketRevision>
