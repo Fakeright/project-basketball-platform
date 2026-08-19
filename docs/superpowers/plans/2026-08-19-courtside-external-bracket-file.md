@@ -498,11 +498,11 @@ git commit -m "feat(competition): publish external bracket files"
 - Modify: `docs/ROADMAP.md`
 - Modify: `docs/superpowers/plans/2026-08-19-courtside-external-bracket-file.md`
 
-- [ ] **Step 1: Update authoritative project documentation**
+- [x] **Step 1: Update authoritative project documentation**
 
 Document both bracket modes, private bucket `tournament-brackets`, file limits, revision publication, manual external matches and stale-file behavior. Move only verified capabilities to `เสร็จแล้ว`; keep notifications, analytics and deployment work in their existing states.
 
-- [ ] **Step 2: Run full automated verification**
+- [x] **Step 2: Run full automated verification**
 
 ```powershell
 npm run test
@@ -518,6 +518,8 @@ Expected: all independent checks pass. Report database/storage limitations expli
 
 - [ ] **Step 3: Run development database and Storage QA**
 
+Migration `20260819130000_add_external_bracket_revisions` ถูก apply กับ development database แล้ว และยืนยันว่า bucket `tournament-brackets` เป็น private bucket ที่จำกัดชนิดไฟล์และขนาด 20 MB สร้าง fixture รายการหกทีมและทดสอบ PNG revision 1, PDF draft revision 2, การคง revision 1 บนหน้าสาธารณะก่อนเผยแพร่ และการเปลี่ยนเป็น revision 2 หลังเผยแพร่แล้ว การปฏิเสธไฟล์เสีย/เกินขนาด การสร้างคู่ manual การไม่ advance และ stale warning ผ่าน automated tests; protected workflow ยังไม่ได้ทดสอบผ่าน browser ด้วย Supabase session
+
 On the approved development Supabase project:
 
 1. Verify private bucket `tournament-brackets` exists with no anonymous write policy.
@@ -530,9 +532,11 @@ On the approved development Supabase project:
 
 - [ ] **Step 4: Run browser QA**
 
+ตรวจหน้าสาธารณะจริงที่ 375px, 768px และ 1440px ทั้ง light/dark แล้ว ไม่พบ page-level horizontal overflow หรือ console error และตรวจ image/PDF preview กับ fallback link สำเร็จ ส่วนหน้า Organizer ที่ต้อง login ตรวจ responsive และ interaction ด้วย RTL แล้ว แต่ยังไม่ได้ทำ browser end-to-end ด้วยบัญชี Supabase
+
 Use Playwright/browser screenshots at approximately 375px, 768px and 1440px in light/dark mode. Verify no overlap, no page-level horizontal overflow, PDF/image fallback, keyboard upload/publish controls and stable pending/error layouts.
 
-- [ ] **Step 5: Mark checklist based on evidence**
+- [x] **Step 5: Mark checklist based on evidence**
 
 Check only steps actually completed. Record any external service limitation directly beneath the affected step.
 
