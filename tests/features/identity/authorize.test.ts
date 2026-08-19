@@ -97,6 +97,7 @@ describe("authorize", () => {
     "bracket.generate",
     "match.schedule",
     "result.record",
+    "result.confirm",
   ])("allows an organizer to perform owned %s actions", (permission) => {
     expect(() =>
       authorize(organizer, permission, { organizerId: organizer.id }),

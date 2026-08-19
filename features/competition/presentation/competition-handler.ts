@@ -4,7 +4,12 @@ import type { LockedCompetitionWorkspace } from "@/features/competition/applicat
 import type { PersistedCompetitionBracket } from "@/features/competition/application/ports/competition-repository"
 import type { GenerateBracketDraftInput } from "@/features/competition/application/generate-bracket"
 import type { ScheduleMatchInput } from "@/features/competition/application/schedule-match"
-import type { ScheduledCompetitionMatch } from "@/features/competition/application/ports/competition-repository"
+import type { RecordMatchScoreInput } from "@/features/competition/application/record-match-score"
+import type { ConfirmMatchResultInput } from "@/features/competition/application/confirm-match-result"
+import type {
+  ResultCompetitionMatch,
+  ScheduledCompetitionMatch,
+} from "@/features/competition/application/ports/competition-repository"
 import type { Actor, CurrentActorProvider } from "@/features/identity/domain/actor"
 import {
   parseJsonRequest,
@@ -48,6 +53,14 @@ const scheduleMatchSchema = z.object({
   expectedVersion: z.number().int().nonnegative(),
   overrideReason: z.string().trim().max(500).optional(),
 })
+const matchScoreSchema = z.object({
+  homeScore: z.number().int().nonnegative(),
+  awayScore: z.number().int().nonnegative(),
+  expectedVersion: z.number().int().nonnegative(),
+})
+const confirmMatchResultSchema = matchScoreSchema.extend({
+  confirm: z.literal(true),
+})
 
 interface LockBracketEntriesDependencies extends SafeHttpDiagnostics {
   actorProvider: CurrentActorProvider
@@ -87,6 +100,22 @@ interface ScheduleMatchDependencies extends SafeHttpDiagnostics {
     input: ScheduleMatchInput,
     actor: Actor,
   ) => Promise<ScheduledCompetitionMatch>
+}
+
+interface RecordMatchScoreDependencies extends SafeHttpDiagnostics {
+  actorProvider: CurrentActorProvider
+  record: (
+    input: RecordMatchScoreInput,
+    actor: Actor,
+  ) => Promise<ResultCompetitionMatch>
+}
+
+interface ConfirmMatchResultDependencies extends SafeHttpDiagnostics {
+  actorProvider: CurrentActorProvider
+  confirm: (
+    input: ConfirmMatchResultInput,
+    actor: Actor,
+  ) => Promise<ResultCompetitionMatch>
 }
 
 export async function handleLockBracketEntries(
@@ -271,6 +300,99 @@ export async function handleScheduleMatch(
   )
 }
 
+export async function handleRecordMatchScore(
+  tournamentId: string,
+  matchId: string,
+  request: Request,
+  dependencies: RecordMatchScoreDependencies,
+) {
+  return handleMatchResultMutation(
+    tournamentId,
+    matchId,
+    request,
+    matchScoreSchema,
+    dependencies,
+    dependencies.record,
+    "competition.match.score",
+  )
+}
+
+export async function handleConfirmMatchResult(
+  tournamentId: string,
+  matchId: string,
+  request: Request,
+  dependencies: ConfirmMatchResultDependencies,
+) {
+  return handleMatchResultMutation(
+    tournamentId,
+    matchId,
+    request,
+    confirmMatchResultSchema,
+    dependencies,
+    (input, actor) =>
+      dependencies.confirm(
+        {
+          tournamentId: input.tournamentId,
+          matchId: input.matchId,
+          homeScore: input.homeScore,
+          awayScore: input.awayScore,
+          expectedVersion: input.expectedVersion,
+        },
+        actor,
+      ),
+    "competition.match.confirm",
+  )
+}
+
+async function handleMatchResultMutation<
+  TInput extends {
+    homeScore: number
+    awayScore: number
+    expectedVersion: number
+  },
+>(
+  tournamentId: string,
+  matchId: string,
+  request: Request,
+  schema: z.ZodType<TInput>,
+  dependencies: SafeHttpDiagnostics & { actorProvider: CurrentActorProvider },
+  operation: (
+    input: TInput & { tournamentId: string; matchId: string },
+    actor: Actor,
+  ) => Promise<ResultCompetitionMatch>,
+  operationName: string,
+) {
+  return withSafeRouteBoundary(
+    operationName,
+    async () => {
+      const actor = await dependencies.actorProvider.getCurrentActor()
+      if (!actor) {
+        return Response.json({ message: "กรุณาเข้าสู่ระบบ" }, { status: 401 })
+      }
+      const body = await parseJsonRequest(request)
+      const parsed = body.ok ? schema.safeParse(body.value) : null
+      if (!parsed?.success) {
+        return Response.json(
+          { message: "ข้อมูลคะแนนไม่ถูกต้อง" },
+          { status: 422 },
+        )
+      }
+      try {
+        const match = await operation(
+          { tournamentId, matchId, ...parsed.data },
+          actor,
+        )
+        return Response.json({ match })
+      } catch (error) {
+        const knownResponse = resultFailureResponse(error)
+        if (knownResponse) return knownResponse
+        throw error
+      }
+    },
+    dependencies,
+  )
+}
+
 function competitionFailureResponse(error: unknown) {
   const code = error instanceof Error ? error.message : "UNKNOWN"
   const responses: Record<string, { status: number; message: string }> = {
@@ -386,6 +508,46 @@ function scheduleFailureResponse(error: unknown) {
       message: "กรุณาเผยแพร่สายการแข่งขันก่อนจัดตาราง",
     },
     REASON_REQUIRED: { status: 422, message: "กรุณาระบุเหตุผล" },
+  }
+  const response = responses[code]
+  return response
+    ? Response.json({ message: response.message }, { status: response.status })
+    : null
+}
+
+function resultFailureResponse(error: unknown) {
+  const code = error instanceof Error ? error.message : "UNKNOWN"
+  const responses: Record<string, { status: number; message: string }> = {
+    NOT_FOUND: { status: 404, message: "ไม่พบคู่แข่งขัน" },
+    FORBIDDEN: { status: 403, message: "คุณไม่มีสิทธิ์ดำเนินการนี้" },
+    CONFLICT: {
+      status: 409,
+      message: "ข้อมูลคู่แข่งขันมีการเปลี่ยนแปลง กรุณาลองใหม่",
+    },
+    MATCH_SCORE_INVALID: {
+      status: 422,
+      message: "คะแนนต้องเป็นจำนวนเต็มไม่ติดลบและห้ามเสมอ",
+    },
+    MATCH_ADVANCEMENT_CONFLICT: {
+      status: 409,
+      message: "ช่องทีมในคู่ถัดไปถูกใช้งานแล้ว",
+    },
+    MATCH_TEAMS_INCOMPLETE: {
+      status: 422,
+      message: "คู่แข่งขันยังมีทีมไม่ครบ",
+    },
+    MATCH_RESULT_LOCKED: {
+      status: 409,
+      message: "ไม่สามารถแก้คะแนนของคู่นี้ได้",
+    },
+    MATCH_RESULT_CONFIRMED: {
+      status: 409,
+      message: "ผลการแข่งขันนี้ได้รับการยืนยันแล้ว",
+    },
+    BRACKET_NOT_PUBLISHED: {
+      status: 422,
+      message: "กรุณาเผยแพร่สายการแข่งขันก่อนบันทึกผล",
+    },
   }
   const response = responses[code]
   return response

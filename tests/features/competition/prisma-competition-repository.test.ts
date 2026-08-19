@@ -16,6 +16,7 @@ function createPrismaMock() {
     },
     tournament: { findUnique: vi.fn(), updateMany: vi.fn() },
     auditLog: { create: vi.fn() },
+    matchResult: { create: vi.fn() },
     $transaction: vi.fn(
       async (operation: (client: typeof prisma) => Promise<unknown>) =>
         operation(prisma),
@@ -25,6 +26,84 @@ function createPrismaMock() {
 }
 
 describe("PrismaCompetitionRepository", () => {
+  it("confirms a result and advances the winner atomically", async () => {
+    const prisma = createPrismaMock()
+    prisma.match.updateMany
+      .mockResolvedValueOnce({ count: 1 })
+      .mockResolvedValueOnce({ count: 1 })
+    prisma.matchResult.create.mockResolvedValue({})
+    prisma.auditLog.create.mockResolvedValue({})
+    const repository = new PrismaCompetitionRepository(
+      prisma as unknown as PrismaClient,
+      () => "result-1",
+    )
+
+    const match = await repository.confirmResultAndAdvance({
+      tournamentId: "tournament-1",
+      matchId: "match-1",
+      homeScore: 72,
+      awayScore: 68,
+      expectedVersion: 2,
+      winnerTeamId: "team-home",
+      nextMatchId: "match-2",
+      nextSlot: "AWAY",
+      actorId: "organizer-1",
+      adminOverride: false,
+      at: "2026-08-19T09:05:00.000Z",
+    })
+
+    expect(prisma.$transaction).toHaveBeenCalledOnce()
+    expect(prisma.matchResult.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        id: "result-1",
+        matchId: "match-1",
+        winnerTeamId: "team-home",
+      }),
+    })
+    expect(prisma.match.updateMany).toHaveBeenLastCalledWith({
+      where: {
+        id: "match-2",
+        tournamentId: "tournament-1",
+        status: "SCHEDULED",
+        result: { is: null },
+        OR: [{ awayTeamId: null }, { awayTeamId: "team-home" }],
+      },
+      data: { awayTeamId: "team-home", version: { increment: 1 } },
+    })
+    expect(match).toMatchObject({
+      status: "COMPLETED",
+      winnerTeamId: "team-home",
+      version: 3,
+    })
+  })
+
+  it("throws when the downstream slot cannot accept the winner", async () => {
+    const prisma = createPrismaMock()
+    prisma.match.updateMany
+      .mockResolvedValueOnce({ count: 1 })
+      .mockResolvedValueOnce({ count: 0 })
+    prisma.matchResult.create.mockResolvedValue({})
+    const repository = new PrismaCompetitionRepository(
+      prisma as unknown as PrismaClient,
+    )
+
+    await expect(
+      repository.confirmResultAndAdvance({
+        tournamentId: "tournament-1",
+        matchId: "match-1",
+        homeScore: 72,
+        awayScore: 68,
+        expectedVersion: 2,
+        winnerTeamId: "team-home",
+        nextMatchId: "match-2",
+        nextSlot: "HOME",
+        actorId: "organizer-1",
+        adminOverride: false,
+        at: "2026-08-19T09:05:00.000Z",
+      }),
+    ).rejects.toThrow("MATCH_ADVANCEMENT_CONFLICT")
+  })
+
   it("schedules a version-checked match and records an audit event", async () => {
     const prisma = createPrismaMock()
     prisma.match.updateMany.mockResolvedValue({ count: 1 })

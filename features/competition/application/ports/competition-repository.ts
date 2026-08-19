@@ -58,6 +58,9 @@ export interface OrganizerCompetitionWorkspace {
         scheduledAt: string | null
         court: string | null
         version: number
+        homeScore: number | null
+        awayScore: number | null
+        winnerTeamId: string | null
       }>
     }>
   }
@@ -114,6 +117,47 @@ export interface ScheduledCompetitionMatch {
   id: string
   scheduledAt: string
   court: string
+  version: number
+}
+
+export interface MatchResultContext {
+  tournamentId: string
+  organizerId: string
+  bracketStatus: string
+  matchId: string
+  matchStatus: string
+  matchVersion: number
+  homeTeamId: string | null
+  awayTeamId: string | null
+  nextMatchId: string | null
+  nextSlot: "HOME" | "AWAY" | null
+  nextSlotTeamId: string | null
+  resultConfirmed: boolean
+}
+
+export interface RecordMatchScoreMutation {
+  tournamentId: string
+  matchId: string
+  homeScore: number
+  awayScore: number
+  expectedVersion: number
+  actorId: string
+  adminOverride: boolean
+  at: string
+}
+
+export interface ConfirmMatchResultMutation extends RecordMatchScoreMutation {
+  winnerTeamId: string
+  nextMatchId: string | null
+  nextSlot: "HOME" | "AWAY" | null
+}
+
+export interface ResultCompetitionMatch {
+  id: string
+  status: string
+  homeScore: number
+  awayScore: number
+  winnerTeamId: string | null
   version: number
 }
 
@@ -176,6 +220,16 @@ export interface CompetitionRepositoryTransaction {
   scheduleMatch(
     input: ScheduleMatchMutation,
   ): Promise<ScheduledCompetitionMatch>
+  findResultContext(input: {
+    tournamentId: string
+    matchId: string
+  }): Promise<MatchResultContext | null>
+  recordScore(
+    input: RecordMatchScoreMutation,
+  ): Promise<ResultCompetitionMatch>
+  confirmResultAndAdvance(
+    input: ConfirmMatchResultMutation,
+  ): Promise<ResultCompetitionMatch>
   persistGeneratedPlan(
     input: PersistGeneratedPlanInput,
   ): Promise<PersistedCompetitionBracket>

@@ -8,6 +8,8 @@ import {
   unpublishBracket,
 } from "@/features/competition/application/publish-bracket"
 import { scheduleMatch } from "@/features/competition/application/schedule-match"
+import { recordMatchScore } from "@/features/competition/application/record-match-score"
+import { confirmMatchResult } from "@/features/competition/application/confirm-match-result"
 import type { CompetitionRepository } from "@/features/competition/application/ports/competition-repository"
 import { createTestActor } from "@/tests/fixtures/actor"
 
@@ -488,5 +490,128 @@ describe("scheduleMatch", () => {
         { competitions: repository, now: () => new Date() },
       ),
     ).rejects.toThrow("MATCH_SCHEDULE_OUTSIDE_TOURNAMENT")
+  })
+})
+
+describe("match results", () => {
+  function resultRepository(overrides: Record<string, unknown> = {}) {
+    const transaction = {
+      findResultContext: vi.fn(async () => ({
+        tournamentId: "tournament-1",
+        organizerId: organizer.id,
+        bracketStatus: "PUBLISHED",
+        matchId: "match-1",
+        matchStatus: "SCHEDULED",
+        matchVersion: 2,
+        homeTeamId: "team-home",
+        awayTeamId: "team-away",
+        nextMatchId: "match-2",
+        nextSlot: "HOME" as const,
+        nextSlotTeamId: null,
+        resultConfirmed: false,
+        ...overrides,
+      })),
+      recordScore: vi.fn(async () => ({
+        id: "match-1",
+        status: "IN_PROGRESS",
+        homeScore: 10,
+        awayScore: 10,
+        winnerTeamId: null,
+        version: 3,
+      })),
+      confirmResultAndAdvance: vi.fn(async () => ({
+        id: "match-1",
+        status: "COMPLETED",
+        homeScore: 72,
+        awayScore: 68,
+        winnerTeamId: "team-home",
+        version: 3,
+      })),
+    }
+    return {
+      transaction,
+      repository: {
+        ...transaction,
+        inTransaction: vi.fn(
+          async (operation: (repository: typeof transaction) => Promise<unknown>) =>
+            operation(transaction),
+        ),
+      } as unknown as CompetitionRepository,
+    }
+  }
+
+  it("records a tied draft score without advancing a team", async () => {
+    const { repository, transaction } = resultRepository()
+    const match = await recordMatchScore(
+      {
+        tournamentId: "tournament-1",
+        matchId: "match-1",
+        homeScore: 10,
+        awayScore: 10,
+        expectedVersion: 2,
+      },
+      organizer,
+      { competitions: repository, now: () => new Date("2026-08-19T09:00:00Z") },
+    )
+
+    expect(match.winnerTeamId).toBeNull()
+    expect(transaction.recordScore).toHaveBeenCalledOnce()
+    expect(transaction.confirmResultAndAdvance).not.toHaveBeenCalled()
+  })
+
+  it("confirms a winner and advances it to the linked slot", async () => {
+    const { repository, transaction } = resultRepository()
+    const match = await confirmMatchResult(
+      {
+        tournamentId: "tournament-1",
+        matchId: "match-1",
+        homeScore: 72,
+        awayScore: 68,
+        expectedVersion: 2,
+      },
+      organizer,
+      { competitions: repository, now: () => new Date("2026-08-19T09:05:00Z") },
+    )
+
+    expect(match.winnerTeamId).toBe("team-home")
+    expect(transaction.confirmResultAndAdvance).toHaveBeenCalledWith(
+      expect.objectContaining({
+        winnerTeamId: "team-home",
+        nextMatchId: "match-2",
+        nextSlot: "HOME",
+      }),
+    )
+  })
+
+  it("rejects tied confirmation and an occupied downstream slot", async () => {
+    const tied = resultRepository()
+    await expect(
+      confirmMatchResult(
+        {
+          tournamentId: "tournament-1",
+          matchId: "match-1",
+          homeScore: 70,
+          awayScore: 70,
+          expectedVersion: 2,
+        },
+        organizer,
+        { competitions: tied.repository, now: () => new Date() },
+      ),
+    ).rejects.toThrow("MATCH_SCORE_INVALID")
+
+    const occupied = resultRepository({ nextSlotTeamId: "another-team" })
+    await expect(
+      confirmMatchResult(
+        {
+          tournamentId: "tournament-1",
+          matchId: "match-1",
+          homeScore: 70,
+          awayScore: 60,
+          expectedVersion: 2,
+        },
+        organizer,
+        { competitions: occupied.repository, now: () => new Date() },
+      ),
+    ).rejects.toThrow("MATCH_ADVANCEMENT_CONFLICT")
   })
 })

@@ -1,6 +1,6 @@
 import type { MatchSlot } from "./competition"
 
-export function assertScoreCanBeConfirmed(input: {
+export function assertDraftScore(input: {
   homeScore: number
   awayScore: number
 }): void {
@@ -8,7 +8,18 @@ export function assertScoreCanBeConfirmed(input: {
     !Number.isInteger(input.homeScore) ||
     !Number.isInteger(input.awayScore) ||
     input.homeScore < 0 ||
-    input.awayScore < 0 ||
+    input.awayScore < 0
+  ) {
+    throw new Error("MATCH_SCORE_INVALID")
+  }
+}
+
+export function assertScoreCanBeConfirmed(input: {
+  homeScore: number
+  awayScore: number
+}): void {
+  assertDraftScore(input)
+  if (
     input.homeScore === input.awayScore
   ) {
     throw new Error("MATCH_SCORE_INVALID")

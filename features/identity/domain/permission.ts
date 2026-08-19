@@ -39,6 +39,7 @@ const organizerPermissions = [
   "bracket.generate",
   "match.schedule",
   "result.record",
+  "result.confirm",
 ] as const satisfies readonly Permission[];
 
 export const permissionsByRole: Readonly<Record<Role, ReadonlySet<Permission>>> =

@@ -5,6 +5,8 @@ import {
   handleLockBracketEntries,
   handlePublishBracket,
   handleScheduleMatch,
+  handleRecordMatchScore,
+  handleConfirmMatchResult,
 } from "@/features/competition/presentation/competition-handler"
 import { createTestActor } from "@/tests/fixtures/actor"
 
@@ -309,6 +311,80 @@ describe("match schedule route handler", () => {
       {
         actorProvider: { getCurrentActor: vi.fn(async () => organizer) },
         schedule: vi.fn(async () => {
+          throw new Error(code)
+        }),
+      },
+    )
+
+    expect(response.status).toBe(status)
+    await expect(response.json()).resolves.toEqual({ message })
+  })
+})
+
+describe("match result route handlers", () => {
+  it("records a draft score", async () => {
+    const match = {
+      id: "match-1",
+      status: "IN_PROGRESS",
+      homeScore: 10,
+      awayScore: 10,
+      winnerTeamId: null,
+      version: 3,
+    }
+    const record = vi.fn(async () => match)
+    const response = await handleRecordMatchScore(
+      "tournament-1",
+      "match-1",
+      request({ homeScore: 10, awayScore: 10, expectedVersion: 2 }),
+      {
+        actorProvider: { getCurrentActor: vi.fn(async () => organizer) },
+        record,
+      },
+    )
+
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toEqual({ match })
+  })
+
+  it("requires explicit confirmation", async () => {
+    const confirm = vi.fn()
+    const response = await handleConfirmMatchResult(
+      "tournament-1",
+      "match-1",
+      request({
+        homeScore: 72,
+        awayScore: 68,
+        expectedVersion: 2,
+        confirm: false,
+      }),
+      {
+        actorProvider: { getCurrentActor: vi.fn(async () => organizer) },
+        confirm,
+      },
+    )
+
+    expect(response.status).toBe(422)
+    expect(confirm).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    ["MATCH_SCORE_INVALID", 422, "คะแนนต้องเป็นจำนวนเต็มไม่ติดลบและห้ามเสมอ"],
+    ["MATCH_ADVANCEMENT_CONFLICT", 409, "ช่องทีมในคู่ถัดไปถูกใช้งานแล้ว"],
+    ["MATCH_TEAMS_INCOMPLETE", 422, "คู่แข่งขันยังมีทีมไม่ครบ"],
+    ["MATCH_RESULT_CONFIRMED", 409, "ผลการแข่งขันนี้ได้รับการยืนยันแล้ว"],
+  ])("maps result error %s", async (code, status, message) => {
+    const response = await handleConfirmMatchResult(
+      "tournament-1",
+      "match-1",
+      request({
+        homeScore: 72,
+        awayScore: 68,
+        expectedVersion: 2,
+        confirm: true,
+      }),
+      {
+        actorProvider: { getCurrentActor: vi.fn(async () => organizer) },
+        confirm: vi.fn(async () => {
           throw new Error(code)
         }),
       },

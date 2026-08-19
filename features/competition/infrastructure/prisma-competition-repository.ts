@@ -16,6 +16,10 @@ import type {
   MatchScheduleContext,
   ScheduleMatchMutation,
   ScheduledCompetitionMatch,
+  MatchResultContext,
+  RecordMatchScoreMutation,
+  ConfirmMatchResultMutation,
+  ResultCompetitionMatch,
 } from "@/features/competition/application/ports/competition-repository"
 
 type CompetitionDatabaseClient = Pick<
@@ -24,6 +28,7 @@ type CompetitionDatabaseClient = Pick<
   | "bracketEntry"
   | "bracketRound"
   | "match"
+  | "matchResult"
   | "auditLog"
   | "tournament"
 >
@@ -113,6 +118,9 @@ export class PrismaCompetitionRepository implements CompetitionRepository {
                     scheduledAt: true,
                     court: true,
                     version: true,
+                    homeScore: true,
+                    awayScore: true,
+                    winnerTeamId: true,
                   },
                 },
               },
@@ -190,6 +198,30 @@ export class PrismaCompetitionRepository implements CompetitionRepository {
       new PrismaCompetitionOperations(transaction, this.createId).scheduleMatch(
         input,
       ),
+    )
+  }
+
+  findResultContext(input: { tournamentId: string; matchId: string }) {
+    return new PrismaCompetitionOperations(
+      this.prisma,
+      this.createId,
+    ).findResultContext(input)
+  }
+
+  recordScore(input: RecordMatchScoreMutation) {
+    return this.prisma.$transaction((transaction) =>
+      new PrismaCompetitionOperations(transaction, this.createId).recordScore(
+        input,
+      ),
+    )
+  }
+
+  confirmResultAndAdvance(input: ConfirmMatchResultMutation) {
+    return this.prisma.$transaction((transaction) =>
+      new PrismaCompetitionOperations(
+        transaction,
+        this.createId,
+      ).confirmResultAndAdvance(input),
     )
   }
 }
@@ -597,6 +629,186 @@ class PrismaCompetitionOperations implements CompetitionRepositoryTransaction {
       court: input.court,
       version: input.expectedVersion + 1,
     }
+  }
+
+  async findResultContext(input: {
+    tournamentId: string
+    matchId: string
+  }): Promise<MatchResultContext | null> {
+    const match = await this.prisma.match.findFirst({
+      where: { id: input.matchId, tournamentId: input.tournamentId },
+      select: {
+        id: true,
+        status: true,
+        version: true,
+        homeTeamId: true,
+        awayTeamId: true,
+        nextMatchId: true,
+        nextSlot: true,
+        result: { select: { id: true } },
+        bracket: { select: { status: true } },
+        tournament: { select: { id: true, organizerId: true } },
+        nextMatch: {
+          select: {
+            homeTeamId: true,
+            awayTeamId: true,
+          },
+        },
+      },
+    })
+    if (!match) return null
+
+    return {
+      tournamentId: match.tournament.id,
+      organizerId: match.tournament.organizerId,
+      bracketStatus: match.bracket.status,
+      matchId: match.id,
+      matchStatus: match.status,
+      matchVersion: match.version,
+      homeTeamId: match.homeTeamId,
+      awayTeamId: match.awayTeamId,
+      nextMatchId: match.nextMatchId,
+      nextSlot: match.nextSlot,
+      nextSlotTeamId:
+        match.nextSlot === "HOME"
+          ? match.nextMatch?.homeTeamId ?? null
+          : match.nextSlot === "AWAY"
+            ? match.nextMatch?.awayTeamId ?? null
+            : null,
+      resultConfirmed: Boolean(match.result),
+    }
+  }
+
+  async recordScore(
+    input: RecordMatchScoreMutation,
+  ): Promise<ResultCompetitionMatch> {
+    const updated = await this.prisma.match.updateMany({
+      where: {
+        id: input.matchId,
+        tournamentId: input.tournamentId,
+        version: input.expectedVersion,
+        status: { in: ["SCHEDULED", "IN_PROGRESS"] },
+        result: { is: null },
+      },
+      data: {
+        homeScore: input.homeScore,
+        awayScore: input.awayScore,
+        status: "IN_PROGRESS",
+        winnerTeamId: null,
+        version: { increment: 1 },
+      },
+    })
+    if (updated.count !== 1) throw new Error("CONFLICT")
+
+    await this.prisma.auditLog.create({
+      data: {
+        actorId: input.actorId,
+        tournamentId: input.tournamentId,
+        action: "MATCH_SCORE_RECORDED",
+        entityType: "Match",
+        entityId: input.matchId,
+        afterJson: toJsonValue({
+          homeScore: input.homeScore,
+          awayScore: input.awayScore,
+          adminOverride: input.adminOverride,
+        }),
+      },
+    })
+
+    return resultMatch(input, "IN_PROGRESS", null)
+  }
+
+  async confirmResultAndAdvance(
+    input: ConfirmMatchResultMutation,
+  ): Promise<ResultCompetitionMatch> {
+    const updated = await this.prisma.match.updateMany({
+      where: {
+        id: input.matchId,
+        tournamentId: input.tournamentId,
+        version: input.expectedVersion,
+        status: { in: ["SCHEDULED", "IN_PROGRESS"] },
+        result: { is: null },
+      },
+      data: {
+        homeScore: input.homeScore,
+        awayScore: input.awayScore,
+        winnerTeamId: input.winnerTeamId,
+        status: "COMPLETED",
+        version: { increment: 1 },
+      },
+    })
+    if (updated.count !== 1) throw new Error("CONFLICT")
+
+    await this.prisma.matchResult.create({
+      data: {
+        id: this.createId(),
+        matchId: input.matchId,
+        confirmedBy: input.actorId,
+        homeScore: input.homeScore,
+        awayScore: input.awayScore,
+        winnerTeamId: input.winnerTeamId,
+        confirmedAt: new Date(input.at),
+      },
+    })
+
+    if (input.nextMatchId && input.nextSlot) {
+      const slotField =
+        input.nextSlot === "HOME" ? "homeTeamId" : "awayTeamId"
+      const advanced = await this.prisma.match.updateMany({
+        where: {
+          id: input.nextMatchId,
+          tournamentId: input.tournamentId,
+          status: "SCHEDULED",
+          result: { is: null },
+          OR: [
+            { [slotField]: null },
+            { [slotField]: input.winnerTeamId },
+          ],
+        },
+        data: {
+          [slotField]: input.winnerTeamId,
+          version: { increment: 1 },
+        },
+      })
+      if (advanced.count !== 1) {
+        throw new Error("MATCH_ADVANCEMENT_CONFLICT")
+      }
+    }
+
+    await this.prisma.auditLog.create({
+      data: {
+        actorId: input.actorId,
+        tournamentId: input.tournamentId,
+        action: "MATCH_RESULT_CONFIRMED",
+        entityType: "Match",
+        entityId: input.matchId,
+        afterJson: toJsonValue({
+          homeScore: input.homeScore,
+          awayScore: input.awayScore,
+          winnerTeamId: input.winnerTeamId,
+          nextMatchId: input.nextMatchId,
+          nextSlot: input.nextSlot,
+          adminOverride: input.adminOverride,
+        }),
+      },
+    })
+
+    return resultMatch(input, "COMPLETED", input.winnerTeamId)
+  }
+}
+
+function resultMatch(
+  input: RecordMatchScoreMutation,
+  status: string,
+  winnerTeamId: string | null,
+): ResultCompetitionMatch {
+  return {
+    id: input.matchId,
+    status,
+    homeScore: input.homeScore,
+    awayScore: input.awayScore,
+    winnerTeamId,
+    version: input.expectedVersion + 1,
   }
 }
 

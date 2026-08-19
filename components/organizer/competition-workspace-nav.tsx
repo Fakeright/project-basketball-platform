@@ -15,6 +15,10 @@ export function CompetitionWorkspaceNav({ tournamentId }: { tournamentId: string
       href: `/organizer/tournaments/${tournamentId}/schedule`,
       label: "ตารางแข่งขัน",
     },
+    {
+      href: `/organizer/tournaments/${tournamentId}/results`,
+      label: "ผลการแข่งขัน",
+    },
   ]
 
   return (
