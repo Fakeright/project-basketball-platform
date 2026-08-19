@@ -2,9 +2,13 @@ import { notFound, redirect } from "next/navigation"
 
 import { BracketWorkspace } from "@/components/organizer/bracket-workspace"
 import { CompetitionWorkspaceNav } from "@/components/organizer/competition-workspace-nav"
+import { ExternalBracketWorkspace } from "@/components/organizer/external-bracket-workspace"
+import { getOrganizerExternalBracketWorkspace } from "@/features/competition/application/get-organizer-external-bracket-workspace"
 import { getOrganizerCompetition } from "@/features/competition/application/get-organizer-competition"
 import { getCompetitionRepository } from "@/features/competition/infrastructure/get-competition-repository"
+import { getExternalBracketRepository } from "@/features/competition/infrastructure/get-external-bracket-repository"
 import { createNextCookieCurrentActorProvider } from "@/features/identity/infrastructure/next-cookie-current-actor-provider"
+import { SupabaseObjectStorage } from "@/features/tournament-media/infrastructure/supabase-object-storage"
 
 export default async function OrganizerBracketPage({
   params,
@@ -14,10 +18,17 @@ export default async function OrganizerBracketPage({
 
   const { id } = await params
   let workspace
+  let externalBracketState = null
   try {
     workspace = await getOrganizerCompetition(id, actor, {
       competitions: getCompetitionRepository(),
     })
+    if (workspace.bracket) {
+      externalBracketState = await getOrganizerExternalBracketWorkspace(id, actor, {
+        externalBrackets: getExternalBracketRepository(),
+        storage: new SupabaseObjectStorage(),
+      })
+    }
   } catch (error) {
     if (
       error instanceof Error &&
@@ -38,7 +49,18 @@ export default async function OrganizerBracketPage({
         </p>
       </header>
       <CompetitionWorkspaceNav tournamentId={workspace.tournament.id} />
-      <BracketWorkspace workspace={workspace} />
+      {!externalBracketState ||
+      externalBracketState.modeContext.bracketMode === "SYSTEM_GENERATED" ? (
+        <BracketWorkspace
+          modeContext={externalBracketState?.modeContext}
+          workspace={workspace}
+        />
+      ) : (
+        <ExternalBracketWorkspace
+          state={externalBracketState}
+          tournamentId={workspace.tournament.id}
+        />
+      )}
     </section>
   )
 }

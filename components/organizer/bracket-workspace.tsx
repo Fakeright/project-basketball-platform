@@ -5,11 +5,19 @@ import { useRouter } from "next/navigation"
 import { Globe2, LockKeyhole, Shuffle } from "lucide-react"
 
 import { BracketPreview } from "@/components/organizer/bracket-preview"
+import { BracketModeControl } from "@/components/organizer/bracket-mode-control"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import type { BracketModeSelectionContext } from "@/features/competition/application/ports/external-bracket-repository"
 import type { OrganizerCompetitionWorkspace } from "@/features/competition/application/ports/competition-repository"
 
-export function BracketWorkspace({ workspace }: { workspace: OrganizerCompetitionWorkspace }) {
+export function BracketWorkspace({
+  workspace,
+  modeContext,
+}: {
+  workspace: OrganizerCompetitionWorkspace
+  modeContext?: BracketModeSelectionContext
+}) {
   const router = useRouter()
   const bracket = workspace.bracket
   const [method, setMethod] = useState<"SEEDED" | "RANDOM">(
@@ -112,8 +120,20 @@ export function BracketWorkspace({ workspace }: { workspace: OrganizerCompetitio
         )}
       </section>
 
+      {bracket && modeContext ? (
+        <section className="grid gap-5 py-7 lg:grid-cols-[12rem_minmax(0,1fr)]">
+          <StepNumber number="02" title="เลือกรูปแบบสาย" />
+          <BracketModeControl
+            currentMode={modeContext.bracketMode}
+            expectedVersion={modeContext.bracketVersion}
+            locked={modeContext.hasStartedMatch}
+            tournamentId={workspace.tournament.id}
+          />
+        </section>
+      ) : null}
+
       <section className="grid gap-5 py-7 lg:grid-cols-[12rem_1fr]">
-        <StepNumber number="02" title="เลือกวิธีจัดสาย" />
+        <StepNumber number={modeContext ? "03" : "02"} title="เลือกวิธีจัดสาย" />
         {bracket ? (
           <div className="space-y-5">
             <fieldset className="flex flex-wrap gap-5">
@@ -179,7 +199,7 @@ export function BracketWorkspace({ workspace }: { workspace: OrganizerCompetitio
       </section>
 
       <section className="grid gap-5 py-7 lg:grid-cols-[12rem_minmax(0,1fr)]">
-        <StepNumber number="03" title="ตรวจตัวอย่าง" />
+        <StepNumber number={modeContext ? "04" : "03"} title="ตรวจตัวอย่าง" />
         {bracket ? (
           <div className="min-w-0">
             <BracketPreview bracket={bracket} />
