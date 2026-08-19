@@ -4,6 +4,9 @@ import type { Prisma, PrismaClient } from "@/lib/generated/prisma/client"
 import type {
   CompetitionRepository,
   CompetitionRepositoryTransaction,
+  BracketLockContext,
+  LockedCompetitionWorkspace,
+  LockEntriesInput,
   PersistedCompetitionBracket,
   PersistGeneratedPlanInput,
 } from "@/features/competition/application/ports/competition-repository"
@@ -11,6 +14,7 @@ import type {
 type CompetitionDatabaseClient = Pick<
   PrismaClient,
   "bracket" | "bracketEntry" | "bracketRound" | "match" | "auditLog"
+  | "tournament"
 >
 
 export class PrismaCompetitionRepository implements CompetitionRepository {
@@ -35,6 +39,19 @@ export class PrismaCompetitionRepository implements CompetitionRepository {
       ).persistGeneratedPlan(input),
     )
   }
+
+  findLockContext(tournamentId: string) {
+    return new PrismaCompetitionOperations(
+      this.prisma,
+      this.createId,
+    ).findLockContext(tournamentId)
+  }
+
+  lockEntries(input: LockEntriesInput) {
+    return this.prisma.$transaction((transaction) =>
+      new PrismaCompetitionOperations(transaction, this.createId).lockEntries(input),
+    )
+  }
 }
 
 class PrismaCompetitionOperations implements CompetitionRepositoryTransaction {
@@ -42,6 +59,102 @@ class PrismaCompetitionOperations implements CompetitionRepositoryTransaction {
     private readonly prisma: CompetitionDatabaseClient,
     private readonly createId: () => string,
   ) {}
+
+  async findLockContext(tournamentId: string): Promise<BracketLockContext | null> {
+    const tournament = await this.prisma.tournament.findUnique({
+      where: { id: tournamentId },
+      include: {
+        registrations: {
+          where: { status: "APPROVED" },
+          orderBy: { createdAt: "asc" },
+          include: { team: { select: { name: true } } },
+        },
+        brackets: {
+          where: { status: { not: "ARCHIVED" } },
+          include: {
+            matches: {
+              where: { status: { in: ["IN_PROGRESS", "COMPLETED"] } },
+              select: { id: true },
+            },
+          },
+        },
+      },
+    })
+    if (!tournament) return null
+
+    return {
+      tournamentId: tournament.id,
+      organizerId: tournament.organizerId,
+      tournamentStatus: tournament.status,
+      capacity: tournament.capacity,
+      version: tournament.version,
+      approvedEntries: tournament.registrations.map((registration) => ({
+        registrationId: registration.id,
+        teamId: registration.teamId,
+        teamName: registration.team.name,
+      })),
+      hasStartedMatch: tournament.brackets.some(
+        (bracket) => bracket.matches.length > 0,
+      ),
+    }
+  }
+
+  async lockEntries(
+    input: LockEntriesInput,
+  ): Promise<LockedCompetitionWorkspace> {
+    const context = await this.findLockContext(input.tournamentId)
+    if (!context) throw new Error("NOT_FOUND")
+
+    const updated = await this.prisma.tournament.updateMany({
+      where: {
+        id: input.tournamentId,
+        version: input.expectedVersion,
+        status: "REGISTRATION_CLOSED",
+      },
+      data: { version: { increment: 1 } },
+    })
+    if (updated.count !== 1) throw new Error("CONFLICT")
+
+    const bracket = await this.prisma.bracket.create({
+      data: {
+        tournamentId: input.tournamentId,
+        entriesLockedAt: new Date(input.at),
+      },
+      select: { id: true, tournamentId: true, version: true },
+    })
+    const entries = context.approvedEntries.map((entry, index) => ({
+      id: this.createId(),
+      bracketId: bracket.id,
+      registrationId: entry.registrationId,
+      teamId: entry.teamId,
+      teamNameSnapshot: entry.teamName,
+      seed: index + 1,
+      drawPosition: index + 1,
+      startRoundSequence: 1,
+    }))
+    await this.prisma.bracketEntry.createMany({ data: entries })
+    await this.prisma.auditLog.create({
+      data: {
+        actorId: input.actorId,
+        tournamentId: input.tournamentId,
+        action: "BRACKET_ENTRIES_LOCKED",
+        entityType: "Bracket",
+        entityId: bracket.id,
+        afterJson: toJsonValue({
+          entryCount: entries.length,
+          adminOverride: input.adminOverride,
+        }),
+      },
+    })
+
+    return {
+      ...bracket,
+      entries: entries.map(({ teamId, teamNameSnapshot }) => ({
+        teamId,
+        teamNameSnapshot,
+      })),
+    }
+  }
 
   async persistGeneratedPlan(
     input: PersistGeneratedPlanInput,

@@ -10,6 +10,7 @@ function createPrismaMock() {
     bracketEntry: { createMany: vi.fn() },
     bracketRound: { createMany: vi.fn() },
     match: { createMany: vi.fn() },
+    tournament: { findUnique: vi.fn(), updateMany: vi.fn() },
     auditLog: { create: vi.fn() },
     $transaction: vi.fn(
       async (operation: (client: typeof prisma) => Promise<unknown>) =>
@@ -99,5 +100,78 @@ describe("PrismaCompetitionRepository", () => {
         entityId: "bracket-1",
       }),
     })
+  })
+
+  it("locks approved registration snapshots after a version-checked tournament update", async () => {
+    const prisma = createPrismaMock()
+    prisma.tournament.findUnique.mockResolvedValue({
+      id: "tournament-1",
+      organizerId: "organizer-1",
+      status: "REGISTRATION_CLOSED",
+      capacity: 6,
+      version: 3,
+      registrations: [
+        {
+          id: "registration-1",
+          teamId: "team-1",
+          team: { name: "Team One" },
+        },
+        {
+          id: "registration-2",
+          teamId: "team-2",
+          team: { name: "Team Two" },
+        },
+      ],
+      brackets: [],
+    })
+    prisma.tournament.updateMany.mockResolvedValue({ count: 1 })
+    prisma.bracket.create.mockResolvedValue({
+      id: "bracket-1",
+      tournamentId: "tournament-1",
+      version: 0,
+    })
+    prisma.bracketEntry.createMany.mockResolvedValue({ count: 2 })
+    prisma.auditLog.create.mockResolvedValue({})
+    const repository = new PrismaCompetitionRepository(
+      prisma as unknown as PrismaClient,
+      (() => {
+        const ids = ["entry-1", "entry-2"]
+        return () => ids.shift() ?? "unexpected-id"
+      })(),
+    )
+
+    const locked = await repository.lockEntries({
+      tournamentId: "tournament-1",
+      expectedVersion: 3,
+      actorId: "organizer-1",
+      at: "2026-08-19T05:00:00.000Z",
+      adminOverride: false,
+    })
+
+    expect(prisma.tournament.updateMany).toHaveBeenCalledWith({
+      where: {
+        id: "tournament-1",
+        version: 3,
+        status: "REGISTRATION_CLOSED",
+      },
+      data: { version: { increment: 1 } },
+    })
+    expect(prisma.bracketEntry.createMany).toHaveBeenCalledWith({
+      data: [
+        expect.objectContaining({
+          registrationId: "registration-1",
+          teamId: "team-1",
+          teamNameSnapshot: "Team One",
+          seed: 1,
+        }),
+        expect.objectContaining({
+          registrationId: "registration-2",
+          teamId: "team-2",
+          teamNameSnapshot: "Team Two",
+          seed: 2,
+        }),
+      ],
+    })
+    expect(locked.entries).toHaveLength(2)
   })
 })

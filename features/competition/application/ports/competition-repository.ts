@@ -21,7 +21,41 @@ export interface PersistedCompetitionBracket {
   version: number
 }
 
+export interface BracketLockContext {
+  tournamentId: string
+  organizerId: string
+  tournamentStatus: string
+  capacity: number
+  version: number
+  approvedEntries: Array<{
+    registrationId: string
+    teamId: string
+    teamName: string
+  }>
+  hasStartedMatch: boolean
+}
+
+export interface LockedCompetitionWorkspace {
+  id: string
+  tournamentId: string
+  version: number
+  entries: Array<{
+    teamId: string
+    teamNameSnapshot: string
+  }>
+}
+
+export interface LockEntriesInput {
+  tournamentId: string
+  expectedVersion: number
+  actorId: string
+  at: string
+  adminOverride: boolean
+}
+
 export interface CompetitionRepositoryTransaction {
+  findLockContext(tournamentId: string): Promise<BracketLockContext | null>
+  lockEntries(input: LockEntriesInput): Promise<LockedCompetitionWorkspace>
   persistGeneratedPlan(
     input: PersistGeneratedPlanInput,
   ): Promise<PersistedCompetitionBracket>
