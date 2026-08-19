@@ -231,7 +231,7 @@ git commit -m "feat(competition): define bracket integrity policies"
 - Produces: `generateSingleEliminationBracket(input): GeneratedBracketPlan`
 - `GeneratedBracketPlan` contains rounds, real matches, entry start rounds, and `matchCount === entries.length - 1`
 
-- [ ] **Step 1: Write failing known-vector and Bye tests**
+- [x] **Step 1: Write failing known-vector and Bye tests**
 
 ```ts
 import { describe, expect, it } from "vitest"
@@ -271,13 +271,13 @@ describe("single elimination generator", () => {
 })
 ```
 
-- [ ] **Step 2: Run generator tests and verify failure**
+- [x] **Step 2: Run generator tests and verify failure**
 
 Run: `npx vitest run tests/features/competition/bracket-generator.test.ts`
 
 Expected: FAIL because `bracket-generator.ts` is missing.
 
-- [ ] **Step 3: Implement mirrored seed order recursively**
+- [x] **Step 3: Implement mirrored seed order recursively**
 
 ```ts
 export function mirroredSeedOrder(size: number): number[] {
@@ -290,7 +290,7 @@ export function mirroredSeedOrder(size: number): number[] {
 }
 ```
 
-- [ ] **Step 4: Implement real-match planning without fake Bye results**
+- [x] **Step 4: Implement real-match planning without fake Bye results**
 
 The implementation must allocate stable references by `{ roundSequence, sequence }`, propagate direct Bye entrants into their next slots, then create only nodes that will eventually contain two real entrants/winners. Every non-final match receives `nextMatchRef` and `nextSlot`.
 
@@ -317,13 +317,13 @@ export interface GeneratedBracketPlan {
 
 Assert after generation that keys are unique, all next references resolve, the final has no destination, and match count equals `entries.length - 1`; otherwise throw `BRACKET_PLAN_INVALID` before returning.
 
-- [ ] **Step 5: Run generator tests**
+- [x] **Step 5: Run generator tests**
 
 Run: `npx vitest run tests/features/competition/bracket-generator.test.ts`
 
 Expected: PASS for 2, 6, 10, 14, and 32 teams plus full seed vectors.
 
-- [ ] **Step 6: Commit generator checkpoint**
+- [x] **Step 6: Commit generator checkpoint**
 
 ```powershell
 git add -- features/competition/domain/bracket-generator.ts tests/features/competition/bracket-generator.test.ts
