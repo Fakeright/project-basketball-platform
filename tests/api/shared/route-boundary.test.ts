@@ -4,6 +4,7 @@ const mocks = vi.hoisted(() => ({
   createActorProvider: vi.fn(),
   getCurrentActor: vi.fn(),
   getTournamentRepository: vi.fn(),
+  getCompetitionRepository: vi.fn(),
   getMediaRepository: vi.fn(),
   createStorage: vi.fn(),
   getPrismaClient: vi.fn(),
@@ -20,6 +21,13 @@ vi.mock(
   "@/features/tournament-operations/infrastructure/get-tournament-operations-repository",
   () => ({
     getTournamentOperationsRepository: mocks.getTournamentRepository,
+  }),
+)
+
+vi.mock(
+  "@/features/competition/infrastructure/get-competition-repository",
+  () => ({
+    getCompetitionRepository: mocks.getCompetitionRepository,
   }),
 )
 
@@ -46,6 +54,7 @@ vi.mock("@/lib/server/prisma", () => ({
 }))
 
 import { POST as createTournamentRoute } from "@/app/api/admin/tournaments/route"
+import { POST as lockBracketEntriesRoute } from "@/app/api/organizer/tournaments/[id]/bracket/entries/route"
 import { POST as uploadTournamentMediaRoute } from "@/app/api/admin/tournaments/[id]/media/route"
 import { POST as createTeamRoute } from "@/app/api/teams/route"
 import { ObjectStorageError } from "@/features/tournament-media/application/ports/object-storage"
@@ -61,6 +70,7 @@ beforeEach(() => {
     getCurrentActor: mocks.getCurrentActor,
   })
   mocks.getTournamentRepository.mockResolvedValue({})
+  mocks.getCompetitionRepository.mockReturnValue({})
   mocks.getMediaRepository.mockResolvedValue({})
   mocks.createStorage.mockReturnValue({})
   mocks.getPrismaClient.mockReturnValue({})
@@ -145,6 +155,31 @@ describe("actual mutation route boundaries", () => {
       "ObjectStorageError",
       "UNAVAILABLE",
       503,
+    )
+  })
+
+  it("contains a repository factory failure in the bracket entry route", async () => {
+    const diagnosticLogger = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined)
+    mocks.getCompetitionRepository.mockImplementationOnce(() => {
+      throw namedError("CompetitionFactoryError", "private connection detail")
+    })
+
+    const response = await lockBracketEntriesRoute(
+      new Request(
+        "http://localhost/api/organizer/tournaments/tournament-1/bracket/entries",
+        { method: "POST", body: "{}" },
+      ),
+      { params: Promise.resolve({ id: "tournament-1" }) },
+    )
+
+    await expectSafeRouteFailure(
+      response,
+      diagnosticLogger,
+      "competition.entries.lock",
+      "CompetitionFactoryError",
+      "private connection detail",
     )
   })
 })

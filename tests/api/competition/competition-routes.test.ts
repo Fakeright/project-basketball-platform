@@ -1,0 +1,135 @@
+import { describe, expect, it, vi } from "vitest"
+
+import { handleLockBracketEntries } from "@/features/competition/presentation/competition-handler"
+import { createTestActor } from "@/tests/fixtures/actor"
+
+const organizer = createTestActor("organizer-1", "TOURNAMENT_ORGANIZER")
+
+function request(body: unknown) {
+  return new Request("http://localhost/api/organizer/tournaments/tournament-1/bracket/entries", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body),
+  })
+}
+
+describe("competition route handlers", () => {
+  it("returns 401 when locking entries without an actor", async () => {
+    const lockEntries = vi.fn()
+    const response = await handleLockBracketEntries(
+      "tournament-1",
+      request({ expectedVersion: 2 }),
+      {
+        actorProvider: { getCurrentActor: vi.fn(async () => null) },
+        lockEntries,
+      },
+    )
+
+    expect(response.status).toBe(401)
+    expect(lockEntries).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    { name: "malformed JSON", body: '{"expectedVersion":' },
+    { name: "a negative version", body: JSON.stringify({ expectedVersion: -1 }) },
+    { name: "a fractional version", body: JSON.stringify({ expectedVersion: 1.5 }) },
+  ])("returns 422 for $name", async ({ body }) => {
+    const lockEntries = vi.fn()
+    const response = await handleLockBracketEntries(
+      "tournament-1",
+      new Request("http://localhost/api/competition", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body,
+      }),
+      {
+        actorProvider: { getCurrentActor: vi.fn(async () => organizer) },
+        lockEntries,
+      },
+    )
+
+    expect(response.status).toBe(422)
+    await expect(response.json()).resolves.toEqual({
+      message: "ข้อมูลการล็อกรายชื่อทีมไม่ถูกต้อง",
+    })
+    expect(lockEntries).not.toHaveBeenCalled()
+  })
+
+  it("returns the locked workspace", async () => {
+    const workspace = {
+      id: "bracket-1",
+      tournamentId: "tournament-1",
+      version: 0,
+      entries: [{ teamId: "team-1", teamNameSnapshot: "Bangkok Five" }],
+    }
+    const lockEntries = vi.fn(async () => workspace)
+    const response = await handleLockBracketEntries(
+      "tournament-1",
+      request({ expectedVersion: 2 }),
+      {
+        actorProvider: { getCurrentActor: vi.fn(async () => organizer) },
+        lockEntries,
+      },
+    )
+
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toEqual({ workspace })
+    expect(lockEntries).toHaveBeenCalledWith(
+      { tournamentId: "tournament-1", expectedVersion: 2 },
+      organizer,
+    )
+  })
+
+  it.each([
+    ["NOT_FOUND", 404, "ไม่พบรายการแข่งขัน"],
+    ["CONFLICT", 409, "ข้อมูลรายการแข่งขันมีการเปลี่ยนแปลง กรุณาลองใหม่"],
+    ["BRACKET_STRUCTURE_LOCKED", 409, "ไม่สามารถแก้ไขสายการแข่งขันหลังเริ่มแข่งขันแล้ว"],
+    ["BRACKET_ENTRY_LOCK_UNAVAILABLE", 422, "สถานะรายการแข่งขันยังไม่พร้อมล็อกรายชื่อทีม"],
+    ["BRACKET_ENTRY_COUNT_INVALID", 422, "จำนวนทีมที่อนุมัติไม่พร้อมสำหรับสร้างสายการแข่งขัน"],
+  ])("maps %s to %i", async (code, status, message) => {
+    const response = await handleLockBracketEntries(
+      "tournament-1",
+      request({ expectedVersion: 2 }),
+      {
+        actorProvider: { getCurrentActor: vi.fn(async () => organizer) },
+        lockEntries: vi.fn(async () => {
+          throw new Error(code)
+        }),
+      },
+    )
+
+    expect(response.status).toBe(status)
+    await expect(response.json()).resolves.toEqual({ message })
+  })
+
+  it("returns safe diagnostics for an unexpected failure", async () => {
+    const logger = { error: vi.fn() }
+    const response = await handleLockBracketEntries(
+      "tournament-1",
+      request({ expectedVersion: 2 }),
+      {
+        actorProvider: { getCurrentActor: vi.fn(async () => organizer) },
+        lockEntries: vi.fn(async () => {
+          throw new Error("private database detail")
+        }),
+        createCorrelationId: () => "competition-correlation",
+        logger,
+      },
+    )
+    const body = await response.json()
+
+    expect(response.status).toBe(500)
+    expect(body).toEqual({
+      message: "ไม่สามารถดำเนินการได้ในขณะนี้",
+      correlationId: "competition-correlation",
+    })
+    expect(logger.error).toHaveBeenCalledWith({
+      operation: "competition.entries.lock",
+      correlationId: "competition-correlation",
+      errorType: "Error",
+    })
+    expect(JSON.stringify({ body, logs: logger.error.mock.calls })).not.toContain(
+      "private database detail",
+    )
+  })
+})
