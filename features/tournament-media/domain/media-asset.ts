@@ -1,4 +1,8 @@
-export const mediaAssetKinds = ["POSTER", "DOCUMENT"] as const
+export const mediaAssetKinds = [
+  "POSTER",
+  "DOCUMENT",
+  "BRACKET_DOCUMENT",
+] as const
 
 export type MediaAssetKind = (typeof mediaAssetKinds)[number]
 

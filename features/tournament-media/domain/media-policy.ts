@@ -13,6 +13,10 @@ const mediaConstraints = {
       "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     ],
   },
+  BRACKET_DOCUMENT: {
+    maximumBytes: 20_000_000,
+    contentTypes: ["application/pdf", "image/jpeg", "image/png", "image/webp"],
+  },
 } as const
 
 export function validateMediaFile(
