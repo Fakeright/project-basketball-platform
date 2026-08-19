@@ -6,6 +6,7 @@ import type { GenerateBracketDraftInput } from "@/features/competition/applicati
 import type { ScheduleMatchInput } from "@/features/competition/application/schedule-match"
 import type { RecordMatchScoreInput } from "@/features/competition/application/record-match-score"
 import type { ConfirmMatchResultInput } from "@/features/competition/application/confirm-match-result"
+import type { CorrectMatchResultInput } from "@/features/competition/application/correct-match-result"
 import type {
   ResultCompetitionMatch,
   ScheduledCompetitionMatch,
@@ -61,6 +62,9 @@ const matchScoreSchema = z.object({
 const confirmMatchResultSchema = matchScoreSchema.extend({
   confirm: z.literal(true),
 })
+const correctMatchResultSchema = confirmMatchResultSchema.extend({
+  reason: z.string().trim().min(1).max(500),
+})
 
 interface LockBracketEntriesDependencies extends SafeHttpDiagnostics {
   actorProvider: CurrentActorProvider
@@ -114,6 +118,14 @@ interface ConfirmMatchResultDependencies extends SafeHttpDiagnostics {
   actorProvider: CurrentActorProvider
   confirm: (
     input: ConfirmMatchResultInput,
+    actor: Actor,
+  ) => Promise<ResultCompetitionMatch>
+}
+
+interface CorrectMatchResultDependencies extends SafeHttpDiagnostics {
+  actorProvider: CurrentActorProvider
+  correct: (
+    input: CorrectMatchResultInput,
     actor: Actor,
   ) => Promise<ResultCompetitionMatch>
 }
@@ -344,6 +356,34 @@ export async function handleConfirmMatchResult(
   )
 }
 
+export async function handleCorrectMatchResult(
+  tournamentId: string,
+  matchId: string,
+  request: Request,
+  dependencies: CorrectMatchResultDependencies,
+) {
+  return handleMatchResultMutation(
+    tournamentId,
+    matchId,
+    request,
+    correctMatchResultSchema,
+    dependencies,
+    (input, actor) =>
+      dependencies.correct(
+        {
+          tournamentId: input.tournamentId,
+          matchId: input.matchId,
+          homeScore: input.homeScore,
+          awayScore: input.awayScore,
+          expectedVersion: input.expectedVersion,
+          reason: input.reason,
+        },
+        actor,
+      ),
+    "competition.match.result-correction",
+  )
+}
+
 async function handleMatchResultMutation<
   TInput extends {
     homeScore: number
@@ -544,6 +584,15 @@ function resultFailureResponse(error: unknown) {
       status: 409,
       message: "ผลการแข่งขันนี้ได้รับการยืนยันแล้ว",
     },
+    MATCH_RESULT_NOT_CONFIRMED: {
+      status: 409,
+      message: "ผลการแข่งขันนี้ยังไม่ได้รับการยืนยัน",
+    },
+    RESULT_CORRECTION_DOWNSTREAM_LOCKED: {
+      status: 409,
+      message: "ไม่สามารถเปลี่ยนผู้ชนะหลังคู่ถัดไปเริ่มแล้ว",
+    },
+    REASON_REQUIRED: { status: 422, message: "กรุณาระบุเหตุผล" },
     BRACKET_NOT_PUBLISHED: {
       status: 422,
       message: "กรุณาเผยแพร่สายการแข่งขันก่อนบันทึกผล",

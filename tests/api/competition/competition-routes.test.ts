@@ -7,6 +7,7 @@ import {
   handleScheduleMatch,
   handleRecordMatchScore,
   handleConfirmMatchResult,
+  handleCorrectMatchResult,
 } from "@/features/competition/presentation/competition-handler"
 import { createTestActor } from "@/tests/fixtures/actor"
 
@@ -322,6 +323,53 @@ describe("match schedule route handler", () => {
 })
 
 describe("match result route handlers", () => {
+  it("requires explicit confirmation and a reason for admin correction", async () => {
+    const correct = vi.fn()
+    const response = await handleCorrectMatchResult(
+      "tournament-1",
+      "match-1",
+      request({
+        homeScore: 68,
+        awayScore: 72,
+        expectedVersion: 3,
+        reason: " ",
+        confirm: true,
+      }),
+      {
+        actorProvider: { getCurrentActor: vi.fn(async () => organizer) },
+        correct,
+      },
+    )
+
+    expect(response.status).toBe(422)
+    expect(correct).not.toHaveBeenCalled()
+  })
+
+  it("maps a locked downstream correction to conflict", async () => {
+    const response = await handleCorrectMatchResult(
+      "tournament-1",
+      "match-1",
+      request({
+        homeScore: 68,
+        awayScore: 72,
+        expectedVersion: 3,
+        reason: "คะแนนผิด",
+        confirm: true,
+      }),
+      {
+        actorProvider: { getCurrentActor: vi.fn(async () => organizer) },
+        correct: vi.fn(async () => {
+          throw new Error("RESULT_CORRECTION_DOWNSTREAM_LOCKED")
+        }),
+      },
+    )
+
+    expect(response.status).toBe(409)
+    await expect(response.json()).resolves.toEqual({
+      message: "ไม่สามารถเปลี่ยนผู้ชนะหลังคู่ถัดไปเริ่มแล้ว",
+    })
+  })
+
   it("records a draft score", async () => {
     const match = {
       id: "match-1",

@@ -161,6 +161,39 @@ export interface ResultCompetitionMatch {
   version: number
 }
 
+export interface MatchResultCorrectionContext {
+  tournamentId: string
+  organizerId: string
+  matchId: string
+  matchVersion: number
+  matchStatus: string
+  homeTeamId: string
+  awayTeamId: string
+  currentWinnerTeamId: string
+  nextMatchId: string | null
+  nextSlot: "HOME" | "AWAY" | null
+  nextMatchStatus: string | null
+  nextSlotTeamId: string | null
+  nextResultConfirmed: boolean
+  nextHasScore: boolean
+}
+
+export interface CorrectMatchResultMutation {
+  tournamentId: string
+  matchId: string
+  homeScore: number
+  awayScore: number
+  expectedVersion: number
+  previousWinnerTeamId: string
+  winnerTeamId: string
+  nextMatchId: string | null
+  nextSlot: "HOME" | "AWAY" | null
+  replaceDownstreamSlot: boolean
+  reason: string
+  actorId: string
+  at: string
+}
+
 export interface PersistedCompetitionBracket {
   id: string
   tournamentId: string
@@ -229,6 +262,13 @@ export interface CompetitionRepositoryTransaction {
   ): Promise<ResultCompetitionMatch>
   confirmResultAndAdvance(
     input: ConfirmMatchResultMutation,
+  ): Promise<ResultCompetitionMatch>
+  findResultCorrectionContext(input: {
+    tournamentId: string
+    matchId: string
+  }): Promise<MatchResultCorrectionContext | null>
+  correctResult(
+    input: CorrectMatchResultMutation,
   ): Promise<ResultCompetitionMatch>
   persistGeneratedPlan(
     input: PersistGeneratedPlanInput,

@@ -43,6 +43,7 @@ const allPermissions: Permission[] = [
   "match.schedule",
   "result.record",
   "result.confirm",
+  "result.correct",
   "audit.read",
   "role.manage",
 ];
@@ -125,6 +126,14 @@ describe("authorize", () => {
   it("rejects an organizer reviewing an owned tournament", () => {
     expect(() =>
       authorize(organizer, "tournament.review", {
+        organizerId: organizer.id,
+      }),
+    ).toThrow("FORBIDDEN");
+  });
+
+  it("rejects an organizer correcting a confirmed result", () => {
+    expect(() =>
+      authorize(organizer, "result.correct", {
         organizerId: organizer.id,
       }),
     ).toThrow("FORBIDDEN");

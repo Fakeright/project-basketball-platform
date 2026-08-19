@@ -10,10 +10,12 @@ import {
 import { scheduleMatch } from "@/features/competition/application/schedule-match"
 import { recordMatchScore } from "@/features/competition/application/record-match-score"
 import { confirmMatchResult } from "@/features/competition/application/confirm-match-result"
+import { correctMatchResult } from "@/features/competition/application/correct-match-result"
 import type { CompetitionRepository } from "@/features/competition/application/ports/competition-repository"
 import { createTestActor } from "@/tests/fixtures/actor"
 
 const organizer = createTestActor("organizer-1", "TOURNAMENT_ORGANIZER")
+const admin = createTestActor("admin-1", "PLATFORM_ADMIN")
 
 function createRepository(
   context: Awaited<ReturnType<CompetitionRepository["findLockContext"]>>,
@@ -613,5 +615,117 @@ describe("match results", () => {
         { competitions: occupied.repository, now: () => new Date() },
       ),
     ).rejects.toThrow("MATCH_ADVANCEMENT_CONFLICT")
+  })
+
+  function correctionRepository(overrides: Record<string, unknown> = {}) {
+    const transaction = {
+      findResultCorrectionContext: vi.fn(async () => ({
+        tournamentId: "tournament-1",
+        organizerId: organizer.id,
+        matchId: "match-1",
+        matchVersion: 3,
+        matchStatus: "COMPLETED",
+        homeTeamId: "team-home",
+        awayTeamId: "team-away",
+        currentWinnerTeamId: "team-home",
+        nextMatchId: "match-2",
+        nextSlot: "HOME" as const,
+        nextMatchStatus: "SCHEDULED",
+        nextSlotTeamId: "team-home",
+        nextResultConfirmed: false,
+        nextHasScore: false,
+        ...overrides,
+      })),
+      correctResult: vi.fn(async () => ({
+        id: "match-1",
+        status: "COMPLETED",
+        homeScore: 68,
+        awayScore: 72,
+        winnerTeamId: "team-away",
+        version: 4,
+      })),
+    }
+    return {
+      transaction,
+      repository: {
+        ...transaction,
+        inTransaction: vi.fn(
+          async (operation: (repository: typeof transaction) => Promise<unknown>) =>
+            operation(transaction),
+        ),
+      } as unknown as CompetitionRepository,
+    }
+  }
+
+  it("allows a platform admin to correct a winner and replace the downstream slot", async () => {
+    const { repository, transaction } = correctionRepository()
+
+    const match = await correctMatchResult(
+      {
+        tournamentId: "tournament-1",
+        matchId: "match-1",
+        homeScore: 68,
+        awayScore: 72,
+        expectedVersion: 3,
+        reason: "แก้คะแนนตามใบบันทึกการแข่งขัน",
+      },
+      admin,
+      { competitions: repository, now: () => new Date("2026-08-19T10:00:00Z") },
+    )
+
+    expect(match.winnerTeamId).toBe("team-away")
+    expect(transaction.correctResult).toHaveBeenCalledWith(
+      expect.objectContaining({
+        previousWinnerTeamId: "team-home",
+        winnerTeamId: "team-away",
+        replaceDownstreamSlot: true,
+        reason: "แก้คะแนนตามใบบันทึกการแข่งขัน",
+      }),
+    )
+  })
+
+  it("requires an admin and a nonblank correction reason", async () => {
+    const correction = correctionRepository()
+    const input = {
+      tournamentId: "tournament-1",
+      matchId: "match-1",
+      homeScore: 68,
+      awayScore: 72,
+      expectedVersion: 3,
+      reason: " ",
+    }
+
+    await expect(
+      correctMatchResult(input, admin, {
+        competitions: correction.repository,
+        now: () => new Date(),
+      }),
+    ).rejects.toThrow("REASON_REQUIRED")
+    await expect(
+      correctMatchResult({ ...input, reason: "คะแนนผิด" }, organizer, {
+        competitions: correction.repository,
+        now: () => new Date(),
+      }),
+    ).rejects.toThrow("FORBIDDEN")
+  })
+
+  it("blocks a winner change after the downstream match has started", async () => {
+    const correction = correctionRepository({ nextMatchStatus: "IN_PROGRESS" })
+
+    await expect(
+      correctMatchResult(
+        {
+          tournamentId: "tournament-1",
+          matchId: "match-1",
+          homeScore: 68,
+          awayScore: 72,
+          expectedVersion: 3,
+          reason: "คะแนนผิด",
+        },
+        admin,
+        { competitions: correction.repository, now: () => new Date() },
+      ),
+    ).rejects.toThrow("RESULT_CORRECTION_DOWNSTREAM_LOCKED")
+    expect(correction.transaction.correctResult).not.toHaveBeenCalled()
   })
 })

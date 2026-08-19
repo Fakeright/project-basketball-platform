@@ -16,7 +16,7 @@ function createPrismaMock() {
     },
     tournament: { findUnique: vi.fn(), updateMany: vi.fn() },
     auditLog: { create: vi.fn() },
-    matchResult: { create: vi.fn() },
+    matchResult: { create: vi.fn(), updateMany: vi.fn() },
     $transaction: vi.fn(
       async (operation: (client: typeof prisma) => Promise<unknown>) =>
         operation(prisma),
@@ -26,6 +26,67 @@ function createPrismaMock() {
 }
 
 describe("PrismaCompetitionRepository", () => {
+  it("corrects a confirmed winner and replaces the exact downstream slot atomically", async () => {
+    const prisma = createPrismaMock()
+    prisma.match.updateMany
+      .mockResolvedValueOnce({ count: 1 })
+      .mockResolvedValueOnce({ count: 1 })
+    prisma.matchResult.updateMany.mockResolvedValue({ count: 1 })
+    prisma.auditLog.create.mockResolvedValue({})
+    const repository = new PrismaCompetitionRepository(
+      prisma as unknown as PrismaClient,
+    )
+
+    const match = await repository.correctResult({
+      tournamentId: "tournament-1",
+      matchId: "match-1",
+      homeScore: 68,
+      awayScore: 72,
+      expectedVersion: 3,
+      previousWinnerTeamId: "team-home",
+      winnerTeamId: "team-away",
+      nextMatchId: "match-2",
+      nextSlot: "HOME",
+      replaceDownstreamSlot: true,
+      reason: "แก้คะแนนตามใบบันทึกการแข่งขัน",
+      actorId: "admin-1",
+      at: "2026-08-19T10:00:00.000Z",
+    })
+
+    expect(prisma.$transaction).toHaveBeenCalledOnce()
+    expect(prisma.matchResult.updateMany).toHaveBeenCalledWith({
+      where: { matchId: "match-1", winnerTeamId: "team-home" },
+      data: {
+        homeScore: 68,
+        awayScore: 72,
+        winnerTeamId: "team-away",
+        confirmedBy: "admin-1",
+        confirmedAt: new Date("2026-08-19T10:00:00.000Z"),
+      },
+    })
+    expect(prisma.match.updateMany).toHaveBeenLastCalledWith({
+      where: {
+        id: "match-2",
+        tournamentId: "tournament-1",
+        status: "SCHEDULED",
+        homeScore: null,
+        awayScore: null,
+        result: { is: null },
+        homeTeamId: "team-home",
+      },
+      data: { homeTeamId: "team-away", version: { increment: 1 } },
+    })
+    expect(prisma.auditLog.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        action: "MATCH_RESULT_CORRECTED",
+        afterJson: expect.objectContaining({
+          reason: "แก้คะแนนตามใบบันทึกการแข่งขัน",
+        }),
+      }),
+    })
+    expect(match).toMatchObject({ winnerTeamId: "team-away", version: 4 })
+  })
+
   it("confirms a result and advances the winner atomically", async () => {
     const prisma = createPrismaMock()
     prisma.match.updateMany

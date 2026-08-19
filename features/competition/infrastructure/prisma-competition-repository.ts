@@ -20,6 +20,8 @@ import type {
   RecordMatchScoreMutation,
   ConfirmMatchResultMutation,
   ResultCompetitionMatch,
+  MatchResultCorrectionContext,
+  CorrectMatchResultMutation,
 } from "@/features/competition/application/ports/competition-repository"
 
 type CompetitionDatabaseClient = Pick<
@@ -222,6 +224,24 @@ export class PrismaCompetitionRepository implements CompetitionRepository {
         transaction,
         this.createId,
       ).confirmResultAndAdvance(input),
+    )
+  }
+
+  findResultCorrectionContext(input: {
+    tournamentId: string
+    matchId: string
+  }) {
+    return new PrismaCompetitionOperations(
+      this.prisma,
+      this.createId,
+    ).findResultCorrectionContext(input)
+  }
+
+  correctResult(input: CorrectMatchResultMutation) {
+    return this.prisma.$transaction((transaction) =>
+      new PrismaCompetitionOperations(transaction, this.createId).correctResult(
+        input,
+      ),
     )
   }
 }
@@ -718,6 +738,157 @@ class PrismaCompetitionOperations implements CompetitionRepositoryTransaction {
     return resultMatch(input, "IN_PROGRESS", null)
   }
 
+  async findResultCorrectionContext(input: {
+    tournamentId: string
+    matchId: string
+  }): Promise<MatchResultCorrectionContext | null> {
+    const match = await this.prisma.match.findFirst({
+      where: { id: input.matchId, tournamentId: input.tournamentId },
+      select: {
+        id: true,
+        version: true,
+        status: true,
+        homeTeamId: true,
+        awayTeamId: true,
+        winnerTeamId: true,
+        nextMatchId: true,
+        nextSlot: true,
+        tournament: { select: { id: true, organizerId: true } },
+        result: { select: { id: true } },
+        nextMatch: {
+          select: {
+            status: true,
+            homeTeamId: true,
+            awayTeamId: true,
+            homeScore: true,
+            awayScore: true,
+            result: { select: { id: true } },
+          },
+        },
+      },
+    })
+    if (
+      !match ||
+      !match.homeTeamId ||
+      !match.awayTeamId ||
+      !match.winnerTeamId ||
+      !match.result
+    ) {
+      return null
+    }
+
+    return {
+      tournamentId: match.tournament.id,
+      organizerId: match.tournament.organizerId,
+      matchId: match.id,
+      matchVersion: match.version,
+      matchStatus: match.status,
+      homeTeamId: match.homeTeamId,
+      awayTeamId: match.awayTeamId,
+      currentWinnerTeamId: match.winnerTeamId,
+      nextMatchId: match.nextMatchId,
+      nextSlot: match.nextSlot,
+      nextMatchStatus: match.nextMatch?.status ?? null,
+      nextSlotTeamId:
+        match.nextSlot === "HOME"
+          ? match.nextMatch?.homeTeamId ?? null
+          : match.nextSlot === "AWAY"
+            ? match.nextMatch?.awayTeamId ?? null
+            : null,
+      nextResultConfirmed: Boolean(match.nextMatch?.result),
+      nextHasScore: Boolean(
+        match.nextMatch &&
+          (match.nextMatch.homeScore !== null ||
+            match.nextMatch.awayScore !== null),
+      ),
+    }
+  }
+
+  async correctResult(
+    input: CorrectMatchResultMutation,
+  ): Promise<ResultCompetitionMatch> {
+    const corrected = await this.prisma.match.updateMany({
+      where: {
+        id: input.matchId,
+        tournamentId: input.tournamentId,
+        version: input.expectedVersion,
+        status: "COMPLETED",
+        winnerTeamId: input.previousWinnerTeamId,
+      },
+      data: {
+        homeScore: input.homeScore,
+        awayScore: input.awayScore,
+        winnerTeamId: input.winnerTeamId,
+        version: { increment: 1 },
+      },
+    })
+    if (corrected.count !== 1) throw new Error("CONFLICT")
+
+    const correctedResult = await this.prisma.matchResult.updateMany({
+      where: {
+        matchId: input.matchId,
+        winnerTeamId: input.previousWinnerTeamId,
+      },
+      data: {
+        homeScore: input.homeScore,
+        awayScore: input.awayScore,
+        winnerTeamId: input.winnerTeamId,
+        confirmedBy: input.actorId,
+        confirmedAt: new Date(input.at),
+      },
+    })
+    if (correctedResult.count !== 1) throw new Error("CONFLICT")
+
+    if (
+      input.replaceDownstreamSlot &&
+      input.nextMatchId &&
+      input.nextSlot
+    ) {
+      const slotField =
+        input.nextSlot === "HOME" ? "homeTeamId" : "awayTeamId"
+      const replaced = await this.prisma.match.updateMany({
+        where: {
+          id: input.nextMatchId,
+          tournamentId: input.tournamentId,
+          status: "SCHEDULED",
+          homeScore: null,
+          awayScore: null,
+          result: { is: null },
+          [slotField]: input.previousWinnerTeamId,
+        },
+        data: {
+          [slotField]: input.winnerTeamId,
+          version: { increment: 1 },
+        },
+      })
+      if (replaced.count !== 1) {
+        throw new Error("RESULT_CORRECTION_DOWNSTREAM_LOCKED")
+      }
+    }
+
+    await this.prisma.auditLog.create({
+      data: {
+        actorId: input.actorId,
+        tournamentId: input.tournamentId,
+        action: "MATCH_RESULT_CORRECTED",
+        entityType: "Match",
+        entityId: input.matchId,
+        beforeJson: toJsonValue({
+          winnerTeamId: input.previousWinnerTeamId,
+        }),
+        afterJson: toJsonValue({
+          homeScore: input.homeScore,
+          awayScore: input.awayScore,
+          winnerTeamId: input.winnerTeamId,
+          downstreamSlotReplaced: input.replaceDownstreamSlot,
+          reason: input.reason,
+        }),
+      },
+    })
+
+    return resultMatch(input, "COMPLETED", input.winnerTeamId)
+  }
+
   async confirmResultAndAdvance(
     input: ConfirmMatchResultMutation,
   ): Promise<ResultCompetitionMatch> {
@@ -798,7 +969,12 @@ class PrismaCompetitionOperations implements CompetitionRepositoryTransaction {
 }
 
 function resultMatch(
-  input: RecordMatchScoreMutation,
+  input: {
+    matchId: string
+    homeScore: number
+    awayScore: number
+    expectedVersion: number
+  },
   status: string,
   winnerTeamId: string | null,
 ): ResultCompetitionMatch {

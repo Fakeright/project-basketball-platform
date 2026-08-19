@@ -22,6 +22,7 @@ export const permissions = [
   "match.schedule",
   "result.record",
   "result.confirm",
+  "result.correct",
   "audit.read",
   "role.manage",
 ] as const;
