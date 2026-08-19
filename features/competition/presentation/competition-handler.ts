@@ -3,6 +3,8 @@ import { z } from "zod"
 import type { LockedCompetitionWorkspace } from "@/features/competition/application/ports/competition-repository"
 import type { PersistedCompetitionBracket } from "@/features/competition/application/ports/competition-repository"
 import type { GenerateBracketDraftInput } from "@/features/competition/application/generate-bracket"
+import type { ScheduleMatchInput } from "@/features/competition/application/schedule-match"
+import type { ScheduledCompetitionMatch } from "@/features/competition/application/ports/competition-repository"
 import type { Actor, CurrentActorProvider } from "@/features/identity/domain/actor"
 import {
   parseJsonRequest,
@@ -40,6 +42,12 @@ const publishBracketSchema = z.object({
 const unpublishBracketSchema = publishBracketSchema.extend({
   reason: z.string().trim().min(1).max(500),
 })
+const scheduleMatchSchema = z.object({
+  scheduledAt: z.iso.datetime({ offset: true }),
+  court: z.string().trim().min(1).max(120),
+  expectedVersion: z.number().int().nonnegative(),
+  overrideReason: z.string().trim().max(500).optional(),
+})
 
 interface LockBracketEntriesDependencies extends SafeHttpDiagnostics {
   actorProvider: CurrentActorProvider
@@ -71,6 +79,14 @@ interface UnpublicationDependencies extends SafeHttpDiagnostics {
     input: { tournamentId: string; expectedVersion: number; reason: string },
     actor: Actor,
   ) => Promise<PersistedCompetitionBracket>
+}
+
+interface ScheduleMatchDependencies extends SafeHttpDiagnostics {
+  actorProvider: CurrentActorProvider
+  schedule: (
+    input: ScheduleMatchInput,
+    actor: Actor,
+  ) => Promise<ScheduledCompetitionMatch>
 }
 
 export async function handleLockBracketEntries(
@@ -218,6 +234,43 @@ async function handlePublication<TInput extends { expectedVersion: number }>(
   )
 }
 
+export async function handleScheduleMatch(
+  tournamentId: string,
+  matchId: string,
+  request: Request,
+  dependencies: ScheduleMatchDependencies,
+) {
+  return withSafeRouteBoundary(
+    "competition.match.schedule",
+    async () => {
+      const actor = await dependencies.actorProvider.getCurrentActor()
+      if (!actor) {
+        return Response.json({ message: "กรุณาเข้าสู่ระบบ" }, { status: 401 })
+      }
+      const body = await parseJsonRequest(request)
+      const parsed = body.ok ? scheduleMatchSchema.safeParse(body.value) : null
+      if (!parsed?.success) {
+        return Response.json(
+          { message: "ข้อมูลตารางแข่งขันไม่ถูกต้อง" },
+          { status: 422 },
+        )
+      }
+      try {
+        const match = await dependencies.schedule(
+          { tournamentId, matchId, ...parsed.data },
+          actor,
+        )
+        return Response.json({ match })
+      } catch (error) {
+        const knownResponse = scheduleFailureResponse(error)
+        if (knownResponse) return knownResponse
+        throw error
+      }
+    },
+    dependencies,
+  )
+}
+
 function competitionFailureResponse(error: unknown) {
   const code = error instanceof Error ? error.message : "UNKNOWN"
   const responses: Record<string, { status: number; message: string }> = {
@@ -294,6 +347,43 @@ function publicationFailureResponse(error: unknown) {
     BRACKET_STRUCTURE_LOCKED: {
       status: 409,
       message: "ไม่สามารถยกเลิกเผยแพร่หลังเริ่มแข่งขันแล้ว",
+    },
+    REASON_REQUIRED: { status: 422, message: "กรุณาระบุเหตุผล" },
+  }
+  const response = responses[code]
+  return response
+    ? Response.json({ message: response.message }, { status: response.status })
+    : null
+}
+
+function scheduleFailureResponse(error: unknown) {
+  const code = error instanceof Error ? error.message : "UNKNOWN"
+  const responses: Record<string, { status: number; message: string }> = {
+    NOT_FOUND: { status: 404, message: "ไม่พบคู่แข่งขัน" },
+    FORBIDDEN: { status: 403, message: "คุณไม่มีสิทธิ์ดำเนินการนี้" },
+    CONFLICT: {
+      status: 409,
+      message: "ข้อมูลคู่แข่งขันมีการเปลี่ยนแปลง กรุณาลองใหม่",
+    },
+    MATCH_SCHEDULE_INVALID: {
+      status: 422,
+      message: "ข้อมูลตารางแข่งขันไม่ถูกต้อง",
+    },
+    MATCH_SCHEDULE_CONFLICT: {
+      status: 409,
+      message: "สนามนี้มีการแข่งขันในเวลาดังกล่าวแล้ว",
+    },
+    MATCH_SCHEDULE_OUTSIDE_TOURNAMENT: {
+      status: 422,
+      message: "เวลาต้องอยู่ในช่วงวันแข่งขัน",
+    },
+    MATCH_SCHEDULE_LOCKED: {
+      status: 409,
+      message: "ไม่สามารถแก้ตารางของคู่ที่เริ่มแข่งขันแล้ว",
+    },
+    BRACKET_NOT_PUBLISHED: {
+      status: 422,
+      message: "กรุณาเผยแพร่สายการแข่งขันก่อนจัดตาราง",
     },
     REASON_REQUIRED: { status: 422, message: "กรุณาระบุเหตุผล" },
   }

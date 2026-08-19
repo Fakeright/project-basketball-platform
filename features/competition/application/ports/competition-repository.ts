@@ -55,6 +55,9 @@ export interface OrganizerCompetitionWorkspace {
         homeTeamId: string | null
         awayTeamId: string | null
         status: string
+        scheduledAt: string | null
+        court: string | null
+        version: number
       }>
     }>
   }
@@ -81,6 +84,37 @@ export interface SetBracketPublicationInput {
   actorId: string
   adminOverride: boolean
   at: string
+}
+
+export interface MatchScheduleContext {
+  tournamentId: string
+  organizerId: string
+  tournamentStartsAt: string
+  tournamentEndsAt: string
+  bracketStatus: string
+  matchId: string
+  matchStatus: string
+  matchVersion: number
+  hasCourtConflict: boolean
+}
+
+export interface ScheduleMatchMutation {
+  tournamentId: string
+  matchId: string
+  scheduledAt: string
+  court: string
+  expectedVersion: number
+  overrideReason: string | null
+  actorId: string
+  adminOverride: boolean
+  at: string
+}
+
+export interface ScheduledCompetitionMatch {
+  id: string
+  scheduledAt: string
+  court: string
+  version: number
 }
 
 export interface PersistedCompetitionBracket {
@@ -133,6 +167,15 @@ export interface CompetitionRepositoryTransaction {
   setPublication(
     input: SetBracketPublicationInput,
   ): Promise<PersistedCompetitionBracket>
+  findMatchScheduleContext(input: {
+    tournamentId: string
+    matchId: string
+    scheduledAt: string
+    court: string
+  }): Promise<MatchScheduleContext | null>
+  scheduleMatch(
+    input: ScheduleMatchMutation,
+  ): Promise<ScheduledCompetitionMatch>
   persistGeneratedPlan(
     input: PersistGeneratedPlanInput,
   ): Promise<PersistedCompetitionBracket>

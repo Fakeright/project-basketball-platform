@@ -13,6 +13,9 @@ import type {
   OrganizerCompetitionWorkspace,
   BracketPublicationContext,
   SetBracketPublicationInput,
+  MatchScheduleContext,
+  ScheduleMatchMutation,
+  ScheduledCompetitionMatch,
 } from "@/features/competition/application/ports/competition-repository"
 
 type CompetitionDatabaseClient = Pick<
@@ -107,6 +110,9 @@ export class PrismaCompetitionRepository implements CompetitionRepository {
                     homeTeamId: true,
                     awayTeamId: true,
                     status: true,
+                    scheduledAt: true,
+                    court: true,
+                    version: true,
                   },
                 },
               },
@@ -140,7 +146,13 @@ export class PrismaCompetitionRepository implements CompetitionRepository {
             entriesLockedAt: bracket.entriesLockedAt?.toISOString() ?? null,
             hasStartedMatch: bracket.matches.length > 0,
             entries: bracket.entries,
-            rounds: bracket.rounds,
+            rounds: bracket.rounds.map((round) => ({
+              ...round,
+              matches: round.matches.map((match) => ({
+                ...match,
+                scheduledAt: match.scheduledAt?.toISOString() ?? null,
+              })),
+            })),
           }
         : null,
     }
@@ -156,6 +168,26 @@ export class PrismaCompetitionRepository implements CompetitionRepository {
   setPublication(input: SetBracketPublicationInput) {
     return this.prisma.$transaction((transaction) =>
       new PrismaCompetitionOperations(transaction, this.createId).setPublication(
+        input,
+      ),
+    )
+  }
+
+  findMatchScheduleContext(input: {
+    tournamentId: string
+    matchId: string
+    scheduledAt: string
+    court: string
+  }) {
+    return new PrismaCompetitionOperations(
+      this.prisma,
+      this.createId,
+    ).findMatchScheduleContext(input)
+  }
+
+  scheduleMatch(input: ScheduleMatchMutation) {
+    return this.prisma.$transaction((transaction) =>
+      new PrismaCompetitionOperations(transaction, this.createId).scheduleMatch(
         input,
       ),
     )
@@ -472,6 +504,97 @@ class PrismaCompetitionOperations implements CompetitionRepositoryTransaction {
     return {
       id: input.bracketId,
       tournamentId: input.tournamentId,
+      version: input.expectedVersion + 1,
+    }
+  }
+
+  async findMatchScheduleContext(input: {
+    tournamentId: string
+    matchId: string
+    scheduledAt: string
+    court: string
+  }): Promise<MatchScheduleContext | null> {
+    const match = await this.prisma.match.findFirst({
+      where: { id: input.matchId, tournamentId: input.tournamentId },
+      select: {
+        id: true,
+        status: true,
+        version: true,
+        bracket: { select: { status: true } },
+        tournament: {
+          select: {
+            id: true,
+            organizerId: true,
+            startsAt: true,
+            endsAt: true,
+          },
+        },
+      },
+    })
+    if (!match) return null
+
+    const conflict = await this.prisma.match.findFirst({
+      where: {
+        tournamentId: input.tournamentId,
+        id: { not: input.matchId },
+        scheduledAt: new Date(input.scheduledAt),
+        court: { equals: input.court, mode: "insensitive" },
+        status: { not: "COMPLETED" },
+      },
+      select: { id: true },
+    })
+
+    return {
+      tournamentId: match.tournament.id,
+      organizerId: match.tournament.organizerId,
+      tournamentStartsAt: match.tournament.startsAt.toISOString(),
+      tournamentEndsAt: match.tournament.endsAt.toISOString(),
+      bracketStatus: match.bracket.status,
+      matchId: match.id,
+      matchStatus: match.status,
+      matchVersion: match.version,
+      hasCourtConflict: Boolean(conflict),
+    }
+  }
+
+  async scheduleMatch(
+    input: ScheduleMatchMutation,
+  ): Promise<ScheduledCompetitionMatch> {
+    const updated = await this.prisma.match.updateMany({
+      where: {
+        id: input.matchId,
+        tournamentId: input.tournamentId,
+        version: input.expectedVersion,
+        status: "SCHEDULED",
+      },
+      data: {
+        scheduledAt: new Date(input.scheduledAt),
+        court: input.court,
+        version: { increment: 1 },
+      },
+    })
+    if (updated.count !== 1) throw new Error("CONFLICT")
+
+    await this.prisma.auditLog.create({
+      data: {
+        actorId: input.actorId,
+        tournamentId: input.tournamentId,
+        action: "MATCH_SCHEDULED",
+        entityType: "Match",
+        entityId: input.matchId,
+        afterJson: toJsonValue({
+          scheduledAt: input.scheduledAt,
+          court: input.court,
+          overrideReason: input.overrideReason,
+          adminOverride: input.adminOverride,
+        }),
+      },
+    })
+
+    return {
+      id: input.matchId,
+      scheduledAt: input.scheduledAt,
+      court: input.court,
       version: input.expectedVersion + 1,
     }
   }

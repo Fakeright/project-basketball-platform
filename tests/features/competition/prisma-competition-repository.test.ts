@@ -9,7 +9,11 @@ function createPrismaMock() {
     bracket: { create: vi.fn(), updateMany: vi.fn() },
     bracketEntry: { createMany: vi.fn(), update: vi.fn() },
     bracketRound: { createMany: vi.fn(), deleteMany: vi.fn() },
-    match: { createMany: vi.fn() },
+    match: {
+      createMany: vi.fn(),
+      findFirst: vi.fn(),
+      updateMany: vi.fn(),
+    },
     tournament: { findUnique: vi.fn(), updateMany: vi.fn() },
     auditLog: { create: vi.fn() },
     $transaction: vi.fn(
@@ -21,6 +25,45 @@ function createPrismaMock() {
 }
 
 describe("PrismaCompetitionRepository", () => {
+  it("schedules a version-checked match and records an audit event", async () => {
+    const prisma = createPrismaMock()
+    prisma.match.updateMany.mockResolvedValue({ count: 1 })
+    prisma.auditLog.create.mockResolvedValue({})
+    const repository = new PrismaCompetitionRepository(
+      prisma as unknown as PrismaClient,
+    )
+
+    const scheduled = await repository.scheduleMatch({
+      tournamentId: "tournament-1",
+      matchId: "match-1",
+      scheduledAt: "2026-11-15T05:00:00.000Z",
+      court: "Court A",
+      expectedVersion: 1,
+      overrideReason: null,
+      actorId: "organizer-1",
+      adminOverride: false,
+      at: "2026-08-19T08:00:00.000Z",
+    })
+
+    expect(prisma.match.updateMany).toHaveBeenCalledWith({
+      where: { id: "match-1", tournamentId: "tournament-1", version: 1, status: "SCHEDULED" },
+      data: {
+        scheduledAt: new Date("2026-11-15T05:00:00.000Z"),
+        court: "Court A",
+        version: { increment: 1 },
+      },
+    })
+    expect(prisma.auditLog.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ action: "MATCH_SCHEDULED" }),
+    })
+    expect(scheduled).toEqual({
+      id: "match-1",
+      scheduledAt: "2026-11-15T05:00:00.000Z",
+      court: "Court A",
+      version: 2,
+    })
+  })
+
   it("publishes a version-checked draft and records an audit event", async () => {
     const prisma = createPrismaMock()
     prisma.bracket.updateMany.mockResolvedValue({ count: 1 })

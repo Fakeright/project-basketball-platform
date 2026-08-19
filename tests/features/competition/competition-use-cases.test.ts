@@ -7,6 +7,7 @@ import {
   publishBracket,
   unpublishBracket,
 } from "@/features/competition/application/publish-bracket"
+import { scheduleMatch } from "@/features/competition/application/schedule-match"
 import type { CompetitionRepository } from "@/features/competition/application/ports/competition-repository"
 import { createTestActor } from "@/tests/fixtures/actor"
 
@@ -394,5 +395,98 @@ describe("bracket publication", () => {
         { competitions: started.repository, now: () => new Date() },
       ),
     ).rejects.toThrow("BRACKET_STRUCTURE_LOCKED")
+  })
+})
+
+describe("scheduleMatch", () => {
+  function scheduleRepository(overrides: Record<string, unknown> = {}) {
+    const transaction = {
+      findMatchScheduleContext: vi.fn(async () => ({
+        tournamentId: "tournament-1",
+        organizerId: organizer.id,
+        tournamentStartsAt: "2026-11-15T02:00:00.000Z",
+        tournamentEndsAt: "2026-11-16T11:00:00.000Z",
+        bracketStatus: "PUBLISHED",
+        matchId: "match-1",
+        matchStatus: "SCHEDULED",
+        matchVersion: 1,
+        hasCourtConflict: false,
+        ...overrides,
+      })),
+      scheduleMatch: vi.fn(async () => ({
+        id: "match-1",
+        scheduledAt: "2026-11-15T05:00:00.000Z",
+        court: "Court A",
+        version: 2,
+      })),
+    }
+    return {
+      transaction,
+      repository: {
+        ...transaction,
+        inTransaction: vi.fn(
+          async (operation: (repository: typeof transaction) => Promise<unknown>) =>
+            operation(transaction),
+        ),
+      } as unknown as CompetitionRepository,
+    }
+  }
+
+  it("schedules a published match inside the tournament range", async () => {
+    const { repository, transaction } = scheduleRepository()
+    const result = await scheduleMatch(
+      {
+        tournamentId: "tournament-1",
+        matchId: "match-1",
+        scheduledAt: "2026-11-15T05:00:00.000Z",
+        court: "  Court A  ",
+        expectedVersion: 1,
+      },
+      organizer,
+      { competitions: repository, now: () => new Date("2026-08-19T08:00:00Z") },
+    )
+
+    expect(result.version).toBe(2)
+    expect(transaction.scheduleMatch).toHaveBeenCalledWith(
+      expect.objectContaining({ court: "Court A", expectedVersion: 1 }),
+    )
+  })
+
+  it.each([
+    [{ hasCourtConflict: true }, "MATCH_SCHEDULE_CONFLICT"],
+    [{ matchStatus: "COMPLETED" }, "MATCH_SCHEDULE_LOCKED"],
+    [{ bracketStatus: "DRAFT" }, "BRACKET_NOT_PUBLISHED"],
+  ])("rejects invalid scheduling context", async (overrides, errorCode) => {
+    const { repository } = scheduleRepository(overrides)
+    await expect(
+      scheduleMatch(
+        {
+          tournamentId: "tournament-1",
+          matchId: "match-1",
+          scheduledAt: "2026-11-15T05:00:00.000Z",
+          court: "Court A",
+          expectedVersion: 1,
+        },
+        organizer,
+        { competitions: repository, now: () => new Date() },
+      ),
+    ).rejects.toThrow(errorCode)
+  })
+
+  it("rejects organizer scheduling outside the tournament range", async () => {
+    const { repository } = scheduleRepository()
+    await expect(
+      scheduleMatch(
+        {
+          tournamentId: "tournament-1",
+          matchId: "match-1",
+          scheduledAt: "2026-11-17T05:00:00.000Z",
+          court: "Court A",
+          expectedVersion: 1,
+        },
+        organizer,
+        { competitions: repository, now: () => new Date() },
+      ),
+    ).rejects.toThrow("MATCH_SCHEDULE_OUTSIDE_TOURNAMENT")
   })
 })

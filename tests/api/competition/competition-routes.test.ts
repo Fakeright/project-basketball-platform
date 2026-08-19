@@ -4,6 +4,7 @@ import {
   handleGenerateBracket,
   handleLockBracketEntries,
   handlePublishBracket,
+  handleScheduleMatch,
 } from "@/features/competition/presentation/competition-handler"
 import { createTestActor } from "@/tests/fixtures/actor"
 
@@ -231,6 +232,83 @@ describe("bracket publication route handler", () => {
       {
         actorProvider: { getCurrentActor: vi.fn(async () => organizer) },
         publish: vi.fn(async () => {
+          throw new Error(code)
+        }),
+      },
+    )
+
+    expect(response.status).toBe(status)
+    await expect(response.json()).resolves.toEqual({ message })
+  })
+})
+
+describe("match schedule route handler", () => {
+  it("validates and schedules a match", async () => {
+    const match = {
+      id: "match-1",
+      scheduledAt: "2026-11-15T05:00:00.000Z",
+      court: "Court A",
+      version: 2,
+    }
+    const schedule = vi.fn(async () => match)
+    const response = await handleScheduleMatch(
+      "tournament-1",
+      "match-1",
+      request({
+        scheduledAt: "2026-11-15T05:00:00.000Z",
+        court: "Court A",
+        expectedVersion: 1,
+      }),
+      {
+        actorProvider: { getCurrentActor: vi.fn(async () => organizer) },
+        schedule,
+      },
+    )
+
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toEqual({ match })
+    expect(schedule).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tournamentId: "tournament-1",
+        matchId: "match-1",
+        court: "Court A",
+      }),
+      organizer,
+    )
+  })
+
+  it("rejects an invalid datetime before the use case", async () => {
+    const schedule = vi.fn()
+    const response = await handleScheduleMatch(
+      "tournament-1",
+      "match-1",
+      request({ scheduledAt: "not-a-date", court: "Court A", expectedVersion: 1 }),
+      {
+        actorProvider: { getCurrentActor: vi.fn(async () => organizer) },
+        schedule,
+      },
+    )
+
+    expect(response.status).toBe(422)
+    expect(schedule).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    ["MATCH_SCHEDULE_CONFLICT", 409, "สนามนี้มีการแข่งขันในเวลาดังกล่าวแล้ว"],
+    ["MATCH_SCHEDULE_OUTSIDE_TOURNAMENT", 422, "เวลาต้องอยู่ในช่วงวันแข่งขัน"],
+    ["MATCH_SCHEDULE_LOCKED", 409, "ไม่สามารถแก้ตารางของคู่ที่เริ่มแข่งขันแล้ว"],
+  ])("maps schedule error %s", async (code, status, message) => {
+    const response = await handleScheduleMatch(
+      "tournament-1",
+      "match-1",
+      request({
+        scheduledAt: "2026-11-15T05:00:00.000Z",
+        court: "Court A",
+        expectedVersion: 1,
+      }),
+      {
+        actorProvider: { getCurrentActor: vi.fn(async () => organizer) },
+        schedule: vi.fn(async () => {
           throw new Error(code)
         }),
       },
