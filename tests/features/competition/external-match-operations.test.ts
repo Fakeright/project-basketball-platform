@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest"
 
 import { confirmMatchResult } from "@/features/competition/application/confirm-match-result"
 import { createExternalMatch } from "@/features/competition/application/create-external-match"
+import { updateExternalMatchPurpose } from "@/features/competition/application/update-external-match-purpose"
 import type { CompetitionRepository } from "@/features/competition/application/ports/competition-repository"
 import { createTestActor } from "@/tests/fixtures/actor"
 
@@ -21,6 +22,7 @@ describe("createExternalMatch", () => {
         scheduledAt: "2026-08-20T06:00:00.000Z",
         court: " สนาม A ",
         expectedVersion: 3,
+        purpose: "CHAMPIONSHIP",
       },
       organizer,
       { competitions: repository, now: () => new Date("2026-08-19T10:00:00Z") },
@@ -33,7 +35,31 @@ describe("createExternalMatch", () => {
         court: "สนาม A",
         bracketId: "bracket-1",
         expectedVersion: 3,
+        purpose: "CHAMPIONSHIP",
       }),
+    )
+  })
+
+  it("defaults an omitted purpose to a standard match", async () => {
+    const { repository, transaction } = repositoryWithContext()
+
+    await createExternalMatch(
+      {
+        tournamentId: "tournament-1",
+        roundName: "รอบแรก",
+        sequence: 1,
+        homeTeamId: "team-1",
+        awayTeamId: "team-2",
+        scheduledAt: "2026-08-20T06:00:00.000Z",
+        court: "สนาม A",
+        expectedVersion: 3,
+      },
+      organizer,
+      { competitions: repository, now: () => new Date() },
+    )
+
+    expect(transaction.createExternalMatch).toHaveBeenCalledWith(
+      expect.objectContaining({ purpose: "STANDARD" }),
     )
   })
 
@@ -65,12 +91,77 @@ describe("createExternalMatch", () => {
   })
 })
 
+describe("updateExternalMatchPurpose", () => {
+  it("updates an unstarted external match with optimistic versioning", async () => {
+    const { repository, transaction } = repositoryWithContext()
+
+    await updateExternalMatchPurpose(
+      {
+        tournamentId: "tournament-1",
+        matchId: "match-1",
+        purpose: "THIRD_PLACE",
+        expectedVersion: 2,
+      },
+      organizer,
+      { competitions: repository, now: () => new Date("2026-08-20T05:00:00Z") },
+    )
+
+    expect(transaction.updateExternalMatchPurpose).toHaveBeenCalledWith({
+      tournamentId: "tournament-1",
+      matchId: "match-1",
+      purpose: "THIRD_PLACE",
+      previousPurpose: "STANDARD",
+      expectedVersion: 2,
+      actorId: organizer.id,
+      adminOverride: false,
+      overrideReason: null,
+      at: "2026-08-20T05:00:00.000Z",
+    })
+  })
+
+  it.each([
+    [{ bracketMode: "SYSTEM_GENERATED" }, "EXTERNAL_BRACKET_REQUIRED"],
+    [{ matchStatus: "IN_PROGRESS" }, "MATCH_PURPOSE_LOCKED"],
+    [{ hasScore: true }, "MATCH_PURPOSE_LOCKED"],
+    [{ resultConfirmed: true }, "MATCH_PURPOSE_LOCKED"],
+  ])("rejects a locked purpose context", async (override, code) => {
+    const { repository, transaction } = repositoryWithContext()
+    transaction.findExternalMatchPurposeContext.mockResolvedValueOnce({
+      tournamentId: "tournament-1",
+      organizerId: organizer.id,
+      bracketMode: "EXTERNAL_DOCUMENT",
+      matchId: "match-1",
+      matchPurpose: "STANDARD",
+      matchStatus: "SCHEDULED",
+      matchVersion: 2,
+      hasScore: false,
+      resultConfirmed: false,
+      ...override,
+    })
+
+    await expect(
+      updateExternalMatchPurpose(
+        {
+          tournamentId: "tournament-1",
+          matchId: "match-1",
+          purpose: "CHAMPIONSHIP",
+          expectedVersion: 2,
+        },
+        organizer,
+        { competitions: repository, now: () => new Date() },
+      ),
+    ).rejects.toThrow(code)
+    expect(transaction.updateExternalMatchPurpose).not.toHaveBeenCalled()
+  })
+})
+
 describe("confirmMatchResult in external mode", () => {
   it("confirms without advancing a winner into another match", async () => {
     const { repository, transaction } = repositoryWithContext()
     transaction.findResultContext.mockResolvedValue({
       tournamentId: "tournament-1",
       organizerId: organizer.id,
+      tournamentStatus: "IN_PROGRESS",
       bracketStatus: "PUBLISHED",
       bracketMode: "EXTERNAL_DOCUMENT",
       matchId: "match-1",
@@ -123,6 +214,22 @@ function repositoryWithContext(override: Record<string, unknown> = {}) {
       id: "match-1",
       version: 0,
       bracketVersion: 4,
+    }),
+    findExternalMatchPurposeContext: vi.fn().mockResolvedValue({
+      tournamentId: "tournament-1",
+      organizerId: organizer.id,
+      bracketMode: "EXTERNAL_DOCUMENT",
+      matchId: "match-1",
+      matchPurpose: "STANDARD",
+      matchStatus: "SCHEDULED",
+      matchVersion: 2,
+      hasScore: false,
+      resultConfirmed: false,
+    }),
+    updateExternalMatchPurpose: vi.fn().mockResolvedValue({
+      id: "match-1",
+      purpose: "THIRD_PLACE",
+      version: 3,
     }),
     findResultContext: vi.fn(),
     confirmResultAndAdvance: vi.fn().mockResolvedValue({

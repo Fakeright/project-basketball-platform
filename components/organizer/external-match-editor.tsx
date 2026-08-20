@@ -7,7 +7,15 @@ import { ChevronDown, Plus } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { bangkokDateTimeLocalToUtc } from "@/features/admin/presentation/tournament-editor-time"
+import type { MatchPurpose } from "@/features/competition/domain/competition"
 
 interface TeamOption {
   id: string
@@ -26,6 +34,7 @@ export function ExternalMatchEditor({
   const router = useRouter()
   const [homeTeam, setHomeTeam] = useState<TeamOption | null>(null)
   const [awayTeam, setAwayTeam] = useState<TeamOption | null>(null)
+  const [purpose, setPurpose] = useState<MatchPurpose>("STANDARD")
   const [pending, setPending] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
 
@@ -58,6 +67,7 @@ export function ExternalMatchEditor({
             awayTeamId: awayTeam.id,
             scheduledAt,
             court: String(data.get("court") ?? "").trim(),
+            purpose,
             expectedVersion: bracketVersion,
           }),
         },
@@ -72,6 +82,7 @@ export function ExternalMatchEditor({
       form.reset()
       setHomeTeam(null)
       setAwayTeam(null)
+      setPurpose("STANDARD")
       router.refresh()
     } catch {
       setMessage("ไม่สามารถเชื่อมต่อระบบ กรุณาลองใหม่")
@@ -87,7 +98,7 @@ export function ExternalMatchEditor({
         <h2 className="mt-1 text-base font-semibold">เพิ่มคู่แข่งขันจากไฟล์</h2>
       </div>
       <form
-        className="grid gap-4 md:grid-cols-2 xl:grid-cols-[minmax(10rem,1fr)_6rem_minmax(12rem,1fr)_minmax(12rem,1fr)_13rem_10rem_auto] xl:items-end"
+        className="grid gap-4 md:grid-cols-2 xl:grid-cols-[minmax(8rem,1fr)_5rem_minmax(10rem,1fr)_minmax(10rem,1fr)_10rem_11rem_8rem_auto] xl:items-end"
         onSubmit={(event) => {
           event.preventDefault()
           void submit(event.currentTarget)
@@ -121,6 +132,27 @@ export function ExternalMatchEditor({
           สนาม
           <Input maxLength={120} name="court" required />
         </label>
+        <div className="grid min-w-0 gap-1.5">
+          <label className="text-xs font-medium" htmlFor="match-purpose">
+            ประเภทคู่แข่งขัน
+          </label>
+          <Select
+            items={matchPurposeOptions}
+            onValueChange={(value) => setPurpose(value as MatchPurpose)}
+            value={purpose}
+          >
+            <SelectTrigger className="h-10! w-full" id="match-purpose">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {matchPurposeOptions.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
         <Button disabled={pending || teams.length < 2} size="lg" type="submit">
           <Plus aria-hidden="true" />
           {pending ? "กำลังเพิ่ม" : "เพิ่มคู่แข่งขัน"}
@@ -134,6 +166,12 @@ export function ExternalMatchEditor({
     </section>
   )
 }
+
+const matchPurposeOptions = [
+  { label: "คู่แข่งขันทั่วไป", value: "STANDARD" },
+  { label: "ชิงอันดับ 3", value: "THIRD_PLACE" },
+  { label: "ชิงชนะเลิศ", value: "CHAMPIONSHIP" },
+] satisfies Array<{ label: string; value: MatchPurpose }>
 
 function TeamCombobox({
   label,

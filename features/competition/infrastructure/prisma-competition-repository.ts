@@ -25,6 +25,9 @@ import type {
   CreateExternalMatchMutation,
   CreatedExternalMatch,
   ExternalMatchCreationContext,
+  ExternalMatchPurposeContext,
+  UpdateExternalMatchPurposeMutation,
+  UpdatedExternalMatchPurpose,
 } from "@/features/competition/application/ports/competition-repository"
 
 type CompetitionDatabaseClient = Pick<
@@ -127,6 +130,7 @@ export class PrismaCompetitionRepository implements CompetitionRepository {
                     homeScore: true,
                     awayScore: true,
                     winnerTeamId: true,
+                    purpose: true,
                   },
                 },
               },
@@ -207,6 +211,25 @@ export class PrismaCompetitionRepository implements CompetitionRepository {
         transaction,
         this.createId,
       ).createExternalMatch(input),
+    )
+  }
+
+  findExternalMatchPurposeContext(input: {
+    tournamentId: string
+    matchId: string
+  }) {
+    return new PrismaCompetitionOperations(
+      this.prisma,
+      this.createId,
+    ).findExternalMatchPurposeContext(input)
+  }
+
+  updateExternalMatchPurpose(input: UpdateExternalMatchPurposeMutation) {
+    return this.prisma.$transaction((transaction) =>
+      new PrismaCompetitionOperations(
+        transaction,
+        this.createId,
+      ).updateExternalMatchPurpose(input),
     )
   }
 
@@ -695,19 +718,27 @@ class PrismaCompetitionOperations implements CompetitionRepositoryTransaction {
     }
 
     const matchId = this.createId()
-    await this.prisma.match.create({
-      data: {
-        id: matchId,
-        tournamentId: input.tournamentId,
-        bracketId: input.bracketId,
-        roundId: round.id,
-        sequence: input.sequence,
-        homeTeamId: input.homeTeamId,
-        awayTeamId: input.awayTeamId,
-        scheduledAt: new Date(input.scheduledAt),
-        court: input.court,
-      },
-    })
+    try {
+      await this.prisma.match.create({
+        data: {
+          id: matchId,
+          tournamentId: input.tournamentId,
+          bracketId: input.bracketId,
+          roundId: round.id,
+          sequence: input.sequence,
+          purpose: input.purpose,
+          homeTeamId: input.homeTeamId,
+          awayTeamId: input.awayTeamId,
+          scheduledAt: new Date(input.scheduledAt),
+          court: input.court,
+        },
+      })
+    } catch (error) {
+      if (isUniqueConstraintError(error)) {
+        throw new Error("MATCH_PURPOSE_CONFLICT")
+      }
+      throw error
+    }
     await this.prisma.auditLog.create({
       data: {
         actorId: input.actorId,
@@ -722,6 +753,7 @@ class PrismaCompetitionOperations implements CompetitionRepositoryTransaction {
           awayTeamId: input.awayTeamId,
           scheduledAt: input.scheduledAt,
           court: input.court,
+          purpose: input.purpose,
           overrideReason: input.overrideReason,
           adminOverride: input.adminOverride,
         }),
@@ -732,6 +764,94 @@ class PrismaCompetitionOperations implements CompetitionRepositoryTransaction {
       id: matchId,
       version: 0,
       bracketVersion: input.expectedVersion + 1,
+    }
+  }
+
+  async findExternalMatchPurposeContext(input: {
+    tournamentId: string
+    matchId: string
+  }): Promise<ExternalMatchPurposeContext | null> {
+    const match = await this.prisma.match.findFirst({
+      where: {
+        id: input.matchId,
+        tournamentId: input.tournamentId,
+      },
+      select: {
+        id: true,
+        purpose: true,
+        status: true,
+        version: true,
+        homeScore: true,
+        awayScore: true,
+        result: { select: { id: true } },
+        bracket: { select: { mode: true } },
+        tournament: { select: { id: true, organizerId: true } },
+      },
+    })
+    if (!match) return null
+
+    return {
+      tournamentId: match.tournament.id,
+      organizerId: match.tournament.organizerId,
+      bracketMode: match.bracket.mode,
+      matchId: match.id,
+      matchPurpose: match.purpose,
+      matchStatus: match.status,
+      matchVersion: match.version,
+      hasScore: match.homeScore !== null || match.awayScore !== null,
+      resultConfirmed: Boolean(match.result),
+    }
+  }
+
+  async updateExternalMatchPurpose(
+    input: UpdateExternalMatchPurposeMutation,
+  ): Promise<UpdatedExternalMatchPurpose> {
+    let updated
+    try {
+      updated = await this.prisma.match.updateMany({
+        where: {
+          id: input.matchId,
+          tournamentId: input.tournamentId,
+          version: input.expectedVersion,
+          status: "SCHEDULED",
+          homeScore: null,
+          awayScore: null,
+          result: { is: null },
+          bracket: { mode: "EXTERNAL_DOCUMENT" },
+        },
+        data: {
+          purpose: input.purpose,
+          version: { increment: 1 },
+        },
+      })
+    } catch (error) {
+      if (isUniqueConstraintError(error)) {
+        throw new Error("MATCH_PURPOSE_CONFLICT")
+      }
+      throw error
+    }
+    if (updated.count !== 1) throw new Error("CONFLICT")
+
+    await this.prisma.auditLog.create({
+      data: {
+        actorId: input.actorId,
+        tournamentId: input.tournamentId,
+        action: "MATCH_PURPOSE_UPDATED",
+        entityType: "Match",
+        entityId: input.matchId,
+        beforeJson: toJsonValue({ purpose: input.previousPurpose }),
+        afterJson: toJsonValue({
+          purpose: input.purpose,
+          reason: input.overrideReason,
+          adminOverride: input.adminOverride,
+        }),
+      },
+    })
+
+    return {
+      id: input.matchId,
+      purpose: input.purpose,
+      version: input.expectedVersion + 1,
     }
   }
 
@@ -1165,6 +1285,15 @@ function resultMatch(
     winnerTeamId,
     version: input.expectedVersion + 1,
   }
+}
+
+function isUniqueConstraintError(error: unknown): error is { code: "P2002" } {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    error.code === "P2002"
+  )
 }
 
 function requiredId<TKey>(map: Map<TKey, string>, key: TKey): string {

@@ -7,6 +7,8 @@ import { CheckCircle2, Save } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { ExternalMatchPurposeControl } from "@/components/organizer/external-match-purpose-control"
+import type { MatchPurpose } from "@/features/competition/domain/competition"
 
 export interface EditableMatchResult {
   id: string
@@ -20,6 +22,8 @@ export interface EditableMatchResult {
   status: string
   version: number
   teamsComplete: boolean
+  purpose: MatchPurpose
+  purposeEditable: boolean
 }
 
 export function MatchResultEditor({
@@ -121,6 +125,21 @@ export function MatchResultEditor({
               <div>
                 <p className="text-xs text-muted-foreground">{match.roundName}</p>
                 <p className="mt-1 text-sm font-semibold">คู่ที่ {match.sequence}</p>
+                {match.purpose !== "STANDARD" ? (
+                  <p className="mt-2 w-fit border-l-2 border-court pl-2 text-xs font-semibold text-court">
+                    {match.purpose === "CHAMPIONSHIP"
+                      ? "ชิงชนะเลิศ"
+                      : "ชิงอันดับ 3"}
+                  </p>
+                ) : null}
+                {match.purposeEditable ? (
+                  <ExternalMatchPurposeControl
+                    matchId={match.id}
+                    purpose={match.purpose}
+                    tournamentId={tournamentId}
+                    version={match.version}
+                  />
+                ) : null}
               </div>
               <div className="min-w-0 text-sm">
                 <p className="break-words font-medium">{match.homeTeam}</p>

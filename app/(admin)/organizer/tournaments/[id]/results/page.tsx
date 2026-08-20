@@ -57,6 +57,12 @@ export default async function OrganizerResultsPage({
         status: match.status,
         version: match.version,
         teamsComplete: Boolean(match.homeTeamId && match.awayTeamId),
+        purpose: match.purpose,
+        purposeEditable:
+          workspace.bracket?.mode === "EXTERNAL_DOCUMENT" &&
+          match.status === "SCHEDULED" &&
+          match.homeScore === null &&
+          match.awayScore === null,
       })),
     ) ?? []
 

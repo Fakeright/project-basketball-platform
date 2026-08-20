@@ -2,6 +2,7 @@ import type { GeneratedBracketPlan } from "@/features/competition/domain/bracket
 import type {
   BracketGenerationMethod,
   LockedBracketEntry,
+  MatchPurpose,
 } from "@/features/competition/domain/competition"
 
 export interface PersistGeneratedPlanInput {
@@ -62,6 +63,7 @@ export interface OrganizerCompetitionWorkspace {
         homeScore: number | null
         awayScore: number | null
         winnerTeamId: string | null
+        purpose: MatchPurpose
       }>
     }>
   }
@@ -126,11 +128,42 @@ export interface CreateExternalMatchMutation {
   awayTeamId: string
   scheduledAt: string
   court: string
+  purpose: MatchPurpose
   expectedVersion: number
   actorId: string
   adminOverride: boolean
   overrideReason: string | null
   at: string
+}
+
+export interface ExternalMatchPurposeContext {
+  tournamentId: string
+  organizerId: string
+  bracketMode: "SYSTEM_GENERATED" | "EXTERNAL_DOCUMENT"
+  matchId: string
+  matchPurpose: MatchPurpose
+  matchStatus: string
+  matchVersion: number
+  hasScore: boolean
+  resultConfirmed: boolean
+}
+
+export interface UpdateExternalMatchPurposeMutation {
+  tournamentId: string
+  matchId: string
+  purpose: MatchPurpose
+  previousPurpose: MatchPurpose
+  expectedVersion: number
+  actorId: string
+  adminOverride: boolean
+  overrideReason: string | null
+  at: string
+}
+
+export interface UpdatedExternalMatchPurpose {
+  id: string
+  purpose: MatchPurpose
+  version: number
 }
 
 export interface CreatedExternalMatch {
@@ -294,6 +327,13 @@ export interface CompetitionRepositoryTransaction {
   createExternalMatch(
     input: CreateExternalMatchMutation,
   ): Promise<CreatedExternalMatch>
+  findExternalMatchPurposeContext(input: {
+    tournamentId: string
+    matchId: string
+  }): Promise<ExternalMatchPurposeContext | null>
+  updateExternalMatchPurpose(
+    input: UpdateExternalMatchPurposeMutation,
+  ): Promise<UpdatedExternalMatchPurpose>
   findMatchScheduleContext(input: {
     tournamentId: string
     matchId: string

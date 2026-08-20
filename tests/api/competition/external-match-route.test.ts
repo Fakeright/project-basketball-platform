@@ -1,6 +1,9 @@
 import { describe, expect, it, vi } from "vitest"
 
-import { handleCreateExternalMatch } from "@/features/competition/presentation/competition-handler"
+import {
+  handleCreateExternalMatch,
+  handleUpdateExternalMatchPurpose,
+} from "@/features/competition/presentation/competition-handler"
 import { createTestActor } from "@/tests/fixtures/actor"
 
 const validBody = {
@@ -11,6 +14,7 @@ const validBody = {
   scheduledAt: "2026-08-20T06:00:00.000Z",
   court: "สนาม A",
   expectedVersion: 3,
+  purpose: "CHAMPIONSHIP",
 }
 
 describe("external match route", () => {
@@ -49,6 +53,60 @@ describe("external match route", () => {
       { tournamentId: "tournament-1", ...validBody },
       expect.objectContaining({ id: "organizer-1" }),
     )
+  })
+})
+
+describe("external match purpose route", () => {
+  it("validates and updates a match purpose", async () => {
+    const updatePurpose = vi.fn().mockResolvedValue({
+      id: "match-1",
+      purpose: "THIRD_PLACE",
+      version: 3,
+    })
+    const response = await handleUpdateExternalMatchPurpose(
+      "tournament-1",
+      "match-1",
+      request({ purpose: "THIRD_PLACE", expectedVersion: 2 }),
+      {
+        actorProvider: {
+          getCurrentActor: vi.fn().mockResolvedValue(
+            createTestActor("organizer-1", "TOURNAMENT_ORGANIZER"),
+          ),
+        },
+        updatePurpose,
+      },
+    )
+
+    expect(response.status).toBe(200)
+    expect(updatePurpose).toHaveBeenCalledWith(
+      {
+        tournamentId: "tournament-1",
+        matchId: "match-1",
+        purpose: "THIRD_PLACE",
+        expectedVersion: 2,
+      },
+      expect.objectContaining({ id: "organizer-1" }),
+    )
+  })
+
+  it("maps a duplicate placement purpose to conflict", async () => {
+    const response = await handleUpdateExternalMatchPurpose(
+      "tournament-1",
+      "match-1",
+      request({ purpose: "CHAMPIONSHIP", expectedVersion: 2 }),
+      {
+        actorProvider: {
+          getCurrentActor: vi.fn().mockResolvedValue(
+            createTestActor("organizer-1", "TOURNAMENT_ORGANIZER"),
+          ),
+        },
+        updatePurpose: vi.fn().mockRejectedValue(
+          new Error("MATCH_PURPOSE_CONFLICT"),
+        ),
+      },
+    )
+
+    expect(response.status).toBe(409)
   })
 })
 

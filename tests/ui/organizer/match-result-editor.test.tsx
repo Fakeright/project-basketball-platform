@@ -19,6 +19,8 @@ const match = {
   status: "SCHEDULED",
   version: 2,
   teamsComplete: true,
+  purpose: "STANDARD" as const,
+  purposeEditable: false,
 }
 
 afterEach(() => {
@@ -29,6 +31,21 @@ afterEach(() => {
 })
 
 describe("MatchResultEditor", () => {
+  it("labels championship and third-place matches", () => {
+    render(
+      <MatchResultEditor
+        matches={[
+          { ...match, id: "final", purpose: "CHAMPIONSHIP" },
+          { ...match, id: "third-place", purpose: "THIRD_PLACE" },
+        ]}
+        tournamentId="tournament-1"
+      />,
+    )
+
+    expect(screen.getByText("ชิงชนะเลิศ")).toBeTruthy()
+    expect(screen.getByText("ชิงอันดับ 3")).toBeTruthy()
+  })
+
   it("saves a tied draft without confirmation", async () => {
     const fetchMock = vi.fn(async () => Response.json({ match: {} }))
     vi.stubGlobal("fetch", fetchMock)

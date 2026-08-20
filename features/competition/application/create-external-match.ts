@@ -1,5 +1,6 @@
 import { authorize } from "@/features/identity/application/authorize"
 import type { Actor } from "@/features/identity/domain/actor"
+import type { MatchPurpose } from "@/features/competition/domain/competition"
 
 import type {
   CompetitionRepository,
@@ -15,6 +16,7 @@ export interface CreateExternalMatchInput {
   scheduledAt: string
   court: string
   expectedVersion: number
+  purpose?: MatchPurpose
   overrideReason?: string
 }
 
@@ -26,6 +28,7 @@ export async function createExternalMatch(
   const roundName = input.roundName.trim().replace(/\s+/g, " ")
   const court = input.court.trim()
   const scheduledAt = new Date(input.scheduledAt)
+  const purpose = input.purpose ?? "STANDARD"
   if (
     !roundName ||
     roundName.length > 80 ||
@@ -95,6 +98,7 @@ export async function createExternalMatch(
       awayTeamId: input.awayTeamId,
       scheduledAt: scheduledAt.toISOString(),
       court,
+      purpose,
       expectedVersion: input.expectedVersion,
       actorId: actor.id,
       adminOverride: actor.role === "PLATFORM_ADMIN",

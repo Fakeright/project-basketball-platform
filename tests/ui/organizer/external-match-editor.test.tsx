@@ -1,4 +1,5 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react"
+import userEvent from "@testing-library/user-event"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import { ExternalMatchEditor } from "@/components/organizer/external-match-editor"
@@ -19,6 +20,7 @@ describe("ExternalMatchEditor", () => {
     expect(screen.getByLabelText("ทีมเหย้า")).toBeTruthy()
     expect(screen.getByLabelText("ทีมเยือน")).toBeTruthy()
     expect(screen.getByLabelText("ชื่อรอบ")).toBeTruthy()
+    expect(screen.getByLabelText("ประเภทคู่แข่งขัน")).toBeTruthy()
     expect(screen.getByLabelText("วันและเวลา")).toBeTruthy()
     expect(screen.getByRole("button", { name: "เพิ่มคู่แข่งขัน" })).toBeTruthy()
   })
@@ -28,6 +30,7 @@ describe("ExternalMatchEditor", () => {
       .spyOn(globalThis, "fetch")
       .mockResolvedValue(new Response(JSON.stringify({ match: { id: "match-1" } }), { status: 201 }))
     renderEditor()
+    const user = userEvent.setup()
 
     chooseTeam("ทีมเหย้า", "Bangkok Hoops")
     chooseTeam("ทีมเยือน", "Chiang Mai Five")
@@ -37,6 +40,8 @@ describe("ExternalMatchEditor", () => {
       target: { value: "2026-08-20T13:00" },
     })
     fireEvent.change(screen.getByLabelText("สนาม"), { target: { value: "สนาม A" } })
+    await user.click(screen.getByLabelText("ประเภทคู่แข่งขัน"))
+    await user.click(screen.getByRole("option", { name: "ชิงชนะเลิศ" }))
     fireEvent.click(screen.getByRole("button", { name: "เพิ่มคู่แข่งขัน" }))
 
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
@@ -48,6 +53,7 @@ describe("ExternalMatchEditor", () => {
       roundName: "Final",
       sequence: 1,
       expectedVersion: 3,
+      purpose: "CHAMPIONSHIP",
     })
     expect(refresh).toHaveBeenCalled()
   })
