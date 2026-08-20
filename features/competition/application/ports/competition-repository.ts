@@ -93,6 +93,7 @@ export interface SetBracketPublicationInput {
 export interface MatchScheduleContext {
   tournamentId: string
   organizerId: string
+  tournamentStatus: string
   tournamentStartsAt: string
   tournamentEndsAt: string
   bracketStatus: string
@@ -160,6 +161,7 @@ export interface ScheduledCompetitionMatch {
 export interface MatchResultContext {
   tournamentId: string
   organizerId: string
+  tournamentStatus: string
   bracketStatus: string
   bracketMode: "SYSTEM_GENERATED" | "EXTERNAL_DOCUMENT"
   matchId: string

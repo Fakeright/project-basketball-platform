@@ -621,6 +621,7 @@ class PrismaCompetitionOperations implements CompetitionRepositoryTransaction {
           select: {
             id: true,
             organizerId: true,
+            status: true,
             startsAt: true,
             endsAt: true,
           },
@@ -751,6 +752,7 @@ class PrismaCompetitionOperations implements CompetitionRepositoryTransaction {
           select: {
             id: true,
             organizerId: true,
+            status: true,
             startsAt: true,
             endsAt: true,
           },
@@ -773,6 +775,7 @@ class PrismaCompetitionOperations implements CompetitionRepositoryTransaction {
     return {
       tournamentId: match.tournament.id,
       organizerId: match.tournament.organizerId,
+      tournamentStatus: match.tournament.status,
       tournamentStartsAt: match.tournament.startsAt.toISOString(),
       tournamentEndsAt: match.tournament.endsAt.toISOString(),
       bracketStatus: match.bracket.status,
@@ -841,7 +844,7 @@ class PrismaCompetitionOperations implements CompetitionRepositoryTransaction {
         nextSlot: true,
         result: { select: { id: true } },
         bracket: { select: { status: true, mode: true } },
-        tournament: { select: { id: true, organizerId: true } },
+        tournament: { select: { id: true, organizerId: true, status: true } },
         nextMatch: {
           select: {
             homeTeamId: true,
@@ -855,6 +858,7 @@ class PrismaCompetitionOperations implements CompetitionRepositoryTransaction {
     return {
       tournamentId: match.tournament.id,
       organizerId: match.tournament.organizerId,
+      tournamentStatus: match.tournament.status,
       bracketStatus: match.bracket.status,
       bracketMode: match.bracket.mode,
       matchId: match.id,

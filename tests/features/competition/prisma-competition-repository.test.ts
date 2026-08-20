@@ -26,6 +26,37 @@ function createPrismaMock() {
 }
 
 describe("PrismaCompetitionRepository", () => {
+  it("loads the tournament status with a mutable result context", async () => {
+    const prisma = createPrismaMock()
+    prisma.match.findFirst.mockResolvedValue({
+      id: "match-1",
+      status: "SCHEDULED",
+      version: 2,
+      homeTeamId: "team-1",
+      awayTeamId: "team-2",
+      nextMatchId: null,
+      nextSlot: null,
+      result: null,
+      bracket: { status: "PUBLISHED", mode: "SYSTEM_GENERATED" },
+      tournament: {
+        id: "tournament-1",
+        organizerId: "organizer-1",
+        status: "IN_PROGRESS",
+      },
+      nextMatch: null,
+    })
+    const repository = new PrismaCompetitionRepository(
+      prisma as unknown as PrismaClient,
+    )
+
+    await expect(
+      repository.findResultContext({
+        tournamentId: "tournament-1",
+        matchId: "match-1",
+      }),
+    ).resolves.toMatchObject({ tournamentStatus: "IN_PROGRESS" })
+  })
+
   it("corrects a confirmed winner and replaces the exact downstream slot atomically", async () => {
     const prisma = createPrismaMock()
     prisma.match.updateMany

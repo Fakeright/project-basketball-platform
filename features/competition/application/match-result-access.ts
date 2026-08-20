@@ -21,6 +21,9 @@ export async function loadMutableMatchResultContext(
   }
   authorize(actor, action, { organizerId: context.organizerId })
   if (context.matchVersion !== input.expectedVersion) throw new Error("CONFLICT")
+  if (context.tournamentStatus !== "IN_PROGRESS") {
+    throw new Error("TOURNAMENT_NOT_IN_PROGRESS")
+  }
   if (context.bracketStatus !== "PUBLISHED") {
     throw new Error("BRACKET_NOT_PUBLISHED")
   }

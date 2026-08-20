@@ -601,6 +601,10 @@ function scheduleFailureResponse(error: unknown) {
       status: 409,
       message: "ไม่สามารถแก้ตารางของคู่ที่เริ่มแข่งขันแล้ว",
     },
+    MATCH_SCHEDULE_UNAVAILABLE: {
+      status: 409,
+      message: "สถานะรายการไม่อนุญาตให้แก้ตารางแข่งขัน",
+    },
     BRACKET_NOT_PUBLISHED: {
       status: 422,
       message: "กรุณาเผยแพร่สายการแข่งขันก่อนจัดตาราง",
@@ -690,6 +694,10 @@ function resultFailureResponse(error: unknown) {
     MATCH_RESULT_NOT_CONFIRMED: {
       status: 409,
       message: "ผลการแข่งขันนี้ยังไม่ได้รับการยืนยัน",
+    },
+    TOURNAMENT_NOT_IN_PROGRESS: {
+      status: 409,
+      message: "กรุณาเริ่มการแข่งขันก่อนบันทึกผล",
     },
     RESULT_CORRECTION_DOWNSTREAM_LOCKED: {
       status: 409,

@@ -42,6 +42,12 @@ export async function scheduleMatch(
     }
     authorize(actor, "match.schedule", { organizerId: context.organizerId })
     if (context.matchVersion !== input.expectedVersion) throw new Error("CONFLICT")
+    if (
+      context.tournamentStatus !== "REGISTRATION_CLOSED" &&
+      context.tournamentStatus !== "IN_PROGRESS"
+    ) {
+      throw new Error("MATCH_SCHEDULE_UNAVAILABLE")
+    }
     if (context.bracketStatus !== "PUBLISHED") {
       throw new Error("BRACKET_NOT_PUBLISHED")
     }

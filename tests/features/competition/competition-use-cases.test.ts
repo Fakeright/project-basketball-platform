@@ -410,6 +410,7 @@ describe("scheduleMatch", () => {
         organizerId: organizer.id,
         tournamentStartsAt: "2026-11-15T02:00:00.000Z",
         tournamentEndsAt: "2026-11-16T11:00:00.000Z",
+        tournamentStatus: "REGISTRATION_CLOSED",
         bracketStatus: "PUBLISHED",
         matchId: "match-1",
         matchStatus: "SCHEDULED",
@@ -460,6 +461,7 @@ describe("scheduleMatch", () => {
     [{ hasCourtConflict: true }, "MATCH_SCHEDULE_CONFLICT"],
     [{ matchStatus: "COMPLETED" }, "MATCH_SCHEDULE_LOCKED"],
     [{ bracketStatus: "DRAFT" }, "BRACKET_NOT_PUBLISHED"],
+    [{ tournamentStatus: "COMPLETED" }, "MATCH_SCHEDULE_UNAVAILABLE"],
   ])("rejects invalid scheduling context", async (overrides, errorCode) => {
     const { repository } = scheduleRepository(overrides)
     await expect(
@@ -501,6 +503,7 @@ describe("match results", () => {
       findResultContext: vi.fn(async () => ({
         tournamentId: "tournament-1",
         organizerId: organizer.id,
+        tournamentStatus: "IN_PROGRESS",
         bracketStatus: "PUBLISHED",
         matchId: "match-1",
         matchStatus: "SCHEDULED",
@@ -559,6 +562,27 @@ describe("match results", () => {
     expect(match.winnerTeamId).toBeNull()
     expect(transaction.recordScore).toHaveBeenCalledOnce()
     expect(transaction.confirmResultAndAdvance).not.toHaveBeenCalled()
+  })
+
+  it("rejects score entry before the tournament starts", async () => {
+    const { repository, transaction } = resultRepository({
+      tournamentStatus: "REGISTRATION_CLOSED",
+    })
+
+    await expect(
+      recordMatchScore(
+        {
+          tournamentId: "tournament-1",
+          matchId: "match-1",
+          homeScore: 10,
+          awayScore: 8,
+          expectedVersion: 2,
+        },
+        organizer,
+        { competitions: repository, now: () => new Date() },
+      ),
+    ).rejects.toThrow("TOURNAMENT_NOT_IN_PROGRESS")
+    expect(transaction.recordScore).not.toHaveBeenCalled()
   })
 
   it("confirms a winner and advances it to the linked slot", async () => {
