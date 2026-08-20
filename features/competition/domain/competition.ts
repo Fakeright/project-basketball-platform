@@ -6,6 +6,28 @@ export type MatchSlot = "HOME" | "AWAY"
 
 export type MatchPurpose = "STANDARD" | "THIRD_PLACE" | "CHAMPIONSHIP"
 
+export interface TournamentCompetitionLifecycleContext {
+  tournamentId: string
+  organizerId: string
+  status: string
+  version: number
+  activeBracket: null | {
+    id: string
+    status: string
+    entriesLockedAt: string | null
+    entryCount: number
+    matches: Array<{
+      id: string
+      purpose: MatchPurpose
+      status: string
+      homeTeamId: string | null
+      awayTeamId: string | null
+      winnerTeamId: string | null
+      resultConfirmed: boolean
+    }>
+  }
+}
+
 export type CompetitionTournamentStatus =
   | "REGISTRATION_CLOSED"
   | "IN_PROGRESS"

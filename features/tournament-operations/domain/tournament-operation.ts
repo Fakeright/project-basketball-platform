@@ -53,3 +53,5 @@ export type TournamentAuditAction =
   | "tournament.reviewed"
   | "tournament.published"
   | "tournament.registration_closed"
+  | "tournament.started"
+  | "tournament.completed"
