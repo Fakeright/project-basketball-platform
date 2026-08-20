@@ -5,6 +5,7 @@ import type {
   TournamentOperationStatus,
   TournamentReviewInput,
 } from "@/features/tournament-operations/domain/tournament-operation"
+import type { TournamentCompetitionLifecycleContext } from "@/features/competition/domain/competition"
 
 export interface TournamentOperationsRepository {
   create(
@@ -12,6 +13,9 @@ export interface TournamentOperationsRepository {
     audit: TournamentMutationAudit,
   ): Promise<TournamentOperation>
   findById(id: string): Promise<TournamentOperation | null>
+  findCompetitionLifecycleContext(
+    id: string,
+  ): Promise<TournamentCompetitionLifecycleContext | null>
   listByOrganizer(organizerId: string): Promise<TournamentOperation[]>
   listForAdmin(filters: AdminTournamentFilters): Promise<TournamentOperation[]>
   listByStatus(status: TournamentOperationStatus): Promise<TournamentOperation[]>
@@ -24,6 +28,9 @@ export interface TournamentOperationsRepository {
   reviewWithVersion(input: TournamentReviewTransition): Promise<TournamentOperation>
   transitionWithVersion(
     input: TournamentLifecycleTransition,
+  ): Promise<TournamentOperation>
+  transitionCompetitionWithVersion(
+    input: TournamentCompetitionTransition,
   ): Promise<TournamentOperation>
 }
 
@@ -58,6 +65,18 @@ export interface TournamentLifecycleTransition {
     | "tournament.published"
     | "tournament.registration_closed"
   adminOverride: boolean
+}
+
+export interface TournamentCompetitionTransition {
+  tournamentId: string
+  version: number
+  sourceStatus: "REGISTRATION_CLOSED" | "IN_PROGRESS"
+  status: "IN_PROGRESS" | "COMPLETED"
+  actorId: string
+  action: "tournament.started" | "tournament.completed"
+  adminOverride: boolean
+  reason: string | null
+  at: string
 }
 
 export type TournamentOperationChanges = Partial<Pick<TournamentOperation, "status" | "version">>

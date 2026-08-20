@@ -9,8 +9,14 @@ import type {
   TournamentReviewInput,
 } from "@/features/tournament-operations/domain/tournament-operation"
 import { findProvinceByCode } from "@/features/provinces/domain/thai-provinces"
+import {
+  assertTournamentCanComplete,
+  assertTournamentCanStart,
+} from "@/features/competition/domain/tournament-competition-policy"
+import type { TournamentCompetitionLifecycleContext } from "@/features/competition/domain/competition"
 
 import type {
+  TournamentCompetitionTransition,
   TournamentLifecycleTransition,
   TournamentMutationAudit,
   TournamentOperationsRepository,
@@ -73,6 +79,21 @@ class DevelopmentTournamentOperationsRepository
   async findById(id: string) {
     const state = await readState()
     return state.tournaments.find((tournament) => tournament.id === id) ?? null
+  }
+
+  async findCompetitionLifecycleContext(
+    id: string,
+  ): Promise<TournamentCompetitionLifecycleContext | null> {
+    const tournament = await this.findById(id)
+    return tournament
+      ? {
+          tournamentId: tournament.id,
+          organizerId: tournament.organizerId,
+          status: tournament.status,
+          version: tournament.version,
+          activeBracket: null,
+        }
+      : null
   }
 
   async listByOrganizer(organizerId: string) {
@@ -168,7 +189,9 @@ class DevelopmentTournamentOperationsRepository
     return updated
   }
 
-  async transitionWithVersion(input: TournamentLifecycleTransition) {
+  async transitionWithVersion(
+    input: TournamentLifecycleTransition | TournamentCompetitionTransition,
+  ) {
     const state = await readState()
     const index = state.tournaments.findIndex(
       (tournament) => tournament.id === input.tournamentId,
@@ -197,6 +220,21 @@ class DevelopmentTournamentOperationsRepository
     )
     await writeState(state)
     return updated
+  }
+
+  async transitionCompetitionWithVersion(
+    input: TournamentCompetitionTransition,
+  ) {
+    const context = await this.findCompetitionLifecycleContext(
+      input.tournamentId,
+    )
+    if (!context) throw new Error("NOT_FOUND")
+    if (input.status === "IN_PROGRESS") {
+      assertTournamentCanStart(context)
+    } else {
+      assertTournamentCanComplete(context)
+    }
+    return this.transitionWithVersion(input)
   }
 }
 

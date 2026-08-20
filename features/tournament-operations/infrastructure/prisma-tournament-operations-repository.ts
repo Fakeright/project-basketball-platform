@@ -4,12 +4,18 @@ import type {
   Prisma,
   PrismaClient,
 } from "@/lib/generated/prisma/client"
+import type { TournamentCompetitionLifecycleContext } from "@/features/competition/domain/competition"
+import {
+  assertTournamentCanComplete,
+  assertTournamentCanStart,
+} from "@/features/competition/domain/tournament-competition-policy"
 import type {
   TournamentOperation,
   TournamentOperationInput,
 } from "@/features/tournament-operations/domain/tournament-operation"
 
 import type {
+  TournamentCompetitionTransition,
   TournamentLifecycleTransition,
   AdminTournamentFilters,
   TournamentMutationAudit,
@@ -21,9 +27,39 @@ const tournamentOperationInclude = {
   province: true,
 } satisfies Prisma.TournamentInclude
 
+const tournamentCompetitionLifecycleInclude = {
+  province: true,
+  brackets: {
+    where: { status: { not: "ARCHIVED" } },
+    orderBy: { createdAt: "desc" },
+    take: 1,
+    select: {
+      id: true,
+      status: true,
+      entriesLockedAt: true,
+      _count: { select: { entries: true } },
+      matches: {
+        select: {
+          id: true,
+          purpose: true,
+          status: true,
+          homeTeamId: true,
+          awayTeamId: true,
+          winnerTeamId: true,
+          result: { select: { id: true } },
+        },
+      },
+    },
+  },
+} satisfies Prisma.TournamentInclude
+
 type TournamentOperationRow = Prisma.TournamentGetPayload<{
   include: typeof tournamentOperationInclude
 }> & { organizer?: { displayName: string } }
+
+type TournamentCompetitionLifecycleRow = Prisma.TournamentGetPayload<{
+  include: typeof tournamentCompetitionLifecycleInclude
+}>
 
 type TournamentTransactionClient = Pick<
   Prisma.TransactionClient,
@@ -70,6 +106,16 @@ export class PrismaTournamentOperationsRepository
       include: tournamentOperationInclude,
     })
     return tournament ? mapTournament(tournament) : null
+  }
+
+  async findCompetitionLifecycleContext(
+    id: string,
+  ): Promise<TournamentCompetitionLifecycleContext | null> {
+    const tournament = await this.prisma.tournament.findUnique({
+      where: { id },
+      include: tournamentCompetitionLifecycleInclude,
+    })
+    return tournament ? mapCompetitionLifecycleContext(tournament) : null
   }
 
   async listByOrganizer(organizerId: string) {
@@ -229,6 +275,56 @@ export class PrismaTournamentOperationsRepository
       return after
     })
   }
+
+  async transitionCompetitionWithVersion(
+    input: TournamentCompetitionTransition,
+  ): Promise<TournamentOperation> {
+    return this.prisma.$transaction(async (transaction) => {
+      const current = await transaction.tournament.findUnique({
+        where: { id: input.tournamentId },
+        include: tournamentCompetitionLifecycleInclude,
+      })
+      if (!current) throw new Error("NOT_FOUND")
+
+      const context = mapCompetitionLifecycleContext(current)
+      if (input.status === "IN_PROGRESS") {
+        assertTournamentCanStart(context)
+      } else {
+        assertTournamentCanComplete(context)
+      }
+
+      const update = await transaction.tournament.updateMany({
+        where: {
+          id: input.tournamentId,
+          version: input.version,
+          status: input.sourceStatus,
+        },
+        data: {
+          status: input.status,
+          version: { increment: 1 },
+        },
+      })
+      if (update.count !== 1) throw new Error("CONFLICT")
+
+      const tournament = await transaction.tournament.findUnique({
+        where: { id: input.tournamentId },
+        include: tournamentOperationInclude,
+      })
+      if (!tournament) throw new Error("NOT_FOUND")
+      const before = mapTournament(current)
+      const after = mapTournament(tournament)
+      await appendTournamentAudit(transaction, {
+        actorId: input.actorId,
+        action: input.action,
+        adminOverride: input.adminOverride,
+        reason: input.reason,
+        tournamentId: input.tournamentId,
+        before,
+        after,
+      })
+      return after
+    })
+  }
 }
 
 async function updateAndReloadTournament(
@@ -274,15 +370,19 @@ async function appendTournamentAudit(
     tournamentId: string
     before: TournamentOperation | null
     after: TournamentOperation
+    reason?: string | null
   },
 ) {
+  const afterJson = input.reason
+    ? { ...input.after, transitionReason: input.reason }
+    : input.after
   const auditData = {
     actorId: input.actorId,
     tournamentId: input.tournamentId,
     entityType: "Tournament",
     entityId: input.tournamentId,
     beforeJson: input.before ? toJsonValue(input.before) : undefined,
-    afterJson: toJsonValue(input.after),
+    afterJson: toJsonValue(afterJson),
   }
   await client.auditLog.create({
     data: { ...auditData, action: input.action },
@@ -291,6 +391,35 @@ async function appendTournamentAudit(
     await client.auditLog.create({
       data: { ...auditData, action: "tournament.admin_override" },
     })
+  }
+}
+
+function mapCompetitionLifecycleContext(
+  tournament: TournamentCompetitionLifecycleRow,
+): TournamentCompetitionLifecycleContext {
+  const bracket = tournament.brackets[0]
+  return {
+    tournamentId: tournament.id,
+    organizerId: tournament.organizerId,
+    status: tournament.status,
+    version: tournament.version,
+    activeBracket: bracket
+      ? {
+          id: bracket.id,
+          status: bracket.status,
+          entriesLockedAt: bracket.entriesLockedAt?.toISOString() ?? null,
+          entryCount: bracket._count.entries,
+          matches: bracket.matches.map((match) => ({
+            id: match.id,
+            purpose: match.purpose,
+            status: match.status,
+            homeTeamId: match.homeTeamId,
+            awayTeamId: match.awayTeamId,
+            winnerTeamId: match.winnerTeamId,
+            resultConfirmed: Boolean(match.result),
+          })),
+        }
+      : null,
   }
 }
 

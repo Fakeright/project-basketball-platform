@@ -4,7 +4,13 @@ import type {
   TournamentReviewInput,
 } from "@/features/tournament-operations/domain/tournament-operation"
 import { findProvinceByCode } from "@/features/provinces/domain/thai-provinces"
+import {
+  assertTournamentCanComplete,
+  assertTournamentCanStart,
+} from "@/features/competition/domain/tournament-competition-policy"
+import type { TournamentCompetitionLifecycleContext } from "@/features/competition/domain/competition"
 import type {
+  TournamentCompetitionTransition,
   TournamentLifecycleTransition,
   TournamentMutationAudit,
   TournamentOperationsRepository,
@@ -34,6 +40,21 @@ export class InMemoryTournamentOperationsRepository implements TournamentOperati
   }
 
   async findById(id: string) { return this.tournaments.get(id) ?? null }
+
+  async findCompetitionLifecycleContext(
+    id: string,
+  ): Promise<TournamentCompetitionLifecycleContext | null> {
+    const tournament = this.tournaments.get(id)
+    return tournament
+      ? {
+          tournamentId: tournament.id,
+          organizerId: tournament.organizerId,
+          status: tournament.status,
+          version: tournament.version,
+          activeBracket: null,
+        }
+      : null
+  }
 
   async listByOrganizer(organizerId: string) {
     return [...this.tournaments.values()].filter(
@@ -122,7 +143,9 @@ export class InMemoryTournamentOperationsRepository implements TournamentOperati
     return updated
   }
 
-  async transitionWithVersion(input: TournamentLifecycleTransition) {
+  async transitionWithVersion(
+    input: TournamentLifecycleTransition | TournamentCompetitionTransition,
+  ) {
     const current = this.tournaments.get(input.tournamentId)
     if (!current) throw new Error("NOT_FOUND")
     if (
@@ -140,6 +163,21 @@ export class InMemoryTournamentOperationsRepository implements TournamentOperati
     this.tournaments.set(input.tournamentId, updated)
     this.appendAudit(input, input.tournamentId, current, updated)
     return updated
+  }
+
+  async transitionCompetitionWithVersion(
+    input: TournamentCompetitionTransition,
+  ) {
+    const context = await this.findCompetitionLifecycleContext(
+      input.tournamentId,
+    )
+    if (!context) throw new Error("NOT_FOUND")
+    if (input.status === "IN_PROGRESS") {
+      assertTournamentCanStart(context)
+    } else {
+      assertTournamentCanComplete(context)
+    }
+    return this.transitionWithVersion(input)
   }
 
   private appendAudit(

@@ -48,6 +48,127 @@ function createPrismaMock() {
 }
 
 describe("PrismaTournamentOperationsRepository", () => {
+  it("rechecks competition readiness before transitioning in the transaction", async () => {
+    const prisma = createPrismaMock()
+    prisma.tournament.findUnique.mockResolvedValue({
+      ...tournamentRow,
+      status: "IN_PROGRESS",
+      version: 5,
+      brackets: [
+        {
+          id: "bracket-1",
+          status: "PUBLISHED",
+          entriesLockedAt: new Date("2026-08-20T09:00:00.000Z"),
+          _count: { entries: 4 },
+          matches: [
+            {
+              id: "final",
+              purpose: "CHAMPIONSHIP",
+              status: "IN_PROGRESS",
+              homeTeamId: "team-1",
+              awayTeamId: "team-2",
+              winnerTeamId: null,
+              result: null,
+            },
+          ],
+        },
+      ],
+    })
+    const repository = new PrismaTournamentOperationsRepository(
+      prisma as unknown as PrismaClient,
+    )
+
+    await expect(
+      repository.transitionCompetitionWithVersion({
+        tournamentId: "tournament-1",
+        version: 5,
+        sourceStatus: "IN_PROGRESS",
+        status: "COMPLETED",
+        actorId: "organizer-1",
+        action: "tournament.completed",
+        adminOverride: false,
+        reason: null,
+        at: "2026-08-20T10:00:00.000Z",
+      }),
+    ).rejects.toMatchObject({
+      issues: expect.arrayContaining(["MATCH_RESULT_PENDING"]),
+    })
+    expect(prisma.tournament.updateMany).not.toHaveBeenCalled()
+    expect(prisma.auditLog.create).not.toHaveBeenCalled()
+  })
+
+  it("completes a ready competition and audits the override reason atomically", async () => {
+    const prisma = createPrismaMock()
+    prisma.tournament.findUnique
+      .mockResolvedValueOnce({
+        ...tournamentRow,
+        status: "IN_PROGRESS",
+        version: 5,
+        brackets: [
+          {
+            id: "bracket-1",
+            status: "PUBLISHED",
+            entriesLockedAt: new Date("2026-08-20T09:00:00.000Z"),
+            _count: { entries: 4 },
+            matches: [
+              {
+                id: "final",
+                purpose: "CHAMPIONSHIP",
+                status: "COMPLETED",
+                homeTeamId: "team-1",
+                awayTeamId: "team-2",
+                winnerTeamId: "team-1",
+                result: { id: "result-1" },
+              },
+            ],
+          },
+        ],
+      })
+      .mockResolvedValueOnce({
+        ...tournamentRow,
+        status: "COMPLETED",
+        version: 6,
+      })
+    prisma.tournament.updateMany.mockResolvedValue({ count: 1 })
+    const repository = new PrismaTournamentOperationsRepository(
+      prisma as unknown as PrismaClient,
+    )
+
+    const completed = await repository.transitionCompetitionWithVersion({
+      tournamentId: "tournament-1",
+      version: 5,
+      sourceStatus: "IN_PROGRESS",
+      status: "COMPLETED",
+      actorId: "admin-1",
+      action: "tournament.completed",
+      adminOverride: true,
+      reason: "ยืนยันผลจากเอกสารการแข่งขัน",
+      at: "2026-08-20T10:00:00.000Z",
+    })
+
+    expect(prisma.$transaction).toHaveBeenCalledOnce()
+    expect(prisma.tournament.updateMany).toHaveBeenCalledWith({
+      where: {
+        id: "tournament-1",
+        version: 5,
+        status: "IN_PROGRESS",
+      },
+      data: { status: "COMPLETED", version: { increment: 1 } },
+    })
+    expect(prisma.auditLog.create).toHaveBeenNthCalledWith(1, {
+      data: expect.objectContaining({
+        action: "tournament.completed",
+        afterJson: expect.objectContaining({
+          transitionReason: "ยืนยันผลจากเอกสารการแข่งขัน",
+        }),
+      }),
+    })
+    expect(prisma.auditLog.create).toHaveBeenNthCalledWith(2, {
+      data: expect.objectContaining({ action: "tournament.admin_override" }),
+    })
+    expect(completed).toMatchObject({ status: "COMPLETED", version: 6 })
+  })
+
   it("searches all tournaments for platform administration", async () => {
     const prisma = createPrismaMock()
     prisma.tournament.findMany.mockResolvedValue([
