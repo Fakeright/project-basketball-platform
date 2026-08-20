@@ -327,6 +327,7 @@ describe("PrismaCompetitionRepository", () => {
           roundId: "round-1",
           homeTeamId: "team-1",
           awayTeamId: "team-2",
+          purpose: "CHAMPIONSHIP",
           nextMatchId: null,
           nextSlot: null,
         }),

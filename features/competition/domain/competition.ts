@@ -4,6 +4,8 @@ export type BracketGenerationMethod = "SEEDED" | "RANDOM"
 
 export type MatchSlot = "HOME" | "AWAY"
 
+export type MatchPurpose = "STANDARD" | "THIRD_PLACE" | "CHAMPIONSHIP"
+
 export type CompetitionTournamentStatus =
   | "REGISTRATION_CLOSED"
   | "IN_PROGRESS"

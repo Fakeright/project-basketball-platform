@@ -512,6 +512,7 @@ class PrismaCompetitionOperations implements CompetitionRepositoryTransaction {
         bracketId: input.bracketId,
         roundId: requiredId(roundIds, match.roundSequence),
         sequence: match.sequence,
+        purpose: match.purpose,
         homeTeamId: match.homeTeamId,
         awayTeamId: match.awayTeamId,
         nextMatchId: match.nextMatchKey

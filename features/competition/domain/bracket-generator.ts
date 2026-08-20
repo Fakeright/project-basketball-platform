@@ -1,5 +1,5 @@
 import { validateSeeds } from "./bracket-policy"
-import type { MatchSlot } from "./competition"
+import type { MatchPurpose, MatchSlot } from "./competition"
 
 export interface BracketGenerationEntry {
   entryId: string
@@ -11,6 +11,7 @@ export interface GeneratedMatchPlan {
   key: string
   roundSequence: number
   sequence: number
+  purpose: MatchPurpose
   homeTeamId: string | null
   awayTeamId: string | null
   homeSourceMatchKey: string | null
@@ -91,6 +92,7 @@ export function generateSingleEliminationBracket(input: {
         key,
         roundSequence,
         sequence,
+        purpose: "STANDARD",
         homeTeamId: sourceTeamId(homeSource),
         awayTeamId: sourceTeamId(awaySource),
         homeSourceMatchKey: sourceMatchKey(homeSource),
@@ -109,6 +111,10 @@ export function generateSingleEliminationBracket(input: {
     }
 
     currentSources = nextSources
+  }
+
+  for (const match of matches) {
+    if (match.nextMatchKey === null) match.purpose = "CHAMPIONSHIP"
   }
 
   const plan: GeneratedBracketPlan = {

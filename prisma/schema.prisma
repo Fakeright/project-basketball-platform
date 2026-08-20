@@ -86,6 +86,12 @@ enum MatchSlot {
   AWAY
 }
 
+enum MatchPurpose {
+  STANDARD
+  THIRD_PLACE
+  CHAMPIONSHIP
+}
+
 enum MatchStatus {
   SCHEDULED
   IN_PROGRESS
@@ -336,6 +342,7 @@ model Match {
   bracketId     String
   roundId       String
   sequence      Int
+  purpose       MatchPurpose @default(STANDARD)
   scheduledAt   DateTime?
   court         String?
   homeTeamId    String?

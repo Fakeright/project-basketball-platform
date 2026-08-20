@@ -48,6 +48,21 @@ describe("single elimination generator", () => {
     )
   })
 
+  it("classifies exactly one terminal match as the championship", () => {
+    const plan = generateSingleEliminationBracket({ entries: seededEntries(6) })
+    const championshipMatches = plan.matches.filter(
+      (match) => match.purpose === "CHAMPIONSHIP",
+    )
+
+    expect(championshipMatches).toHaveLength(1)
+    expect(championshipMatches[0]?.nextMatchKey).toBeNull()
+    expect(
+      plan.matches
+        .filter((match) => match.nextMatchKey !== null)
+        .every((match) => match.purpose === "STANDARD"),
+    ).toBe(true)
+  })
+
   it("keeps round-one match positions and connects each winner once", () => {
     const plan = generateSingleEliminationBracket({ entries: seededEntries(6) })
     const firstRoundMatches = plan.matches.filter(
