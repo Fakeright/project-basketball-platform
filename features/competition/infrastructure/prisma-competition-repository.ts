@@ -131,6 +131,7 @@ export class PrismaCompetitionRepository implements CompetitionRepository {
                     awayScore: true,
                     winnerTeamId: true,
                     purpose: true,
+                    result: { select: { id: true } },
                   },
                 },
               },
@@ -167,9 +168,10 @@ export class PrismaCompetitionRepository implements CompetitionRepository {
             entries: bracket.entries,
             rounds: bracket.rounds.map((round) => ({
               ...round,
-              matches: round.matches.map((match) => ({
+              matches: round.matches.map(({ result, ...match }) => ({
                 ...match,
                 scheduledAt: match.scheduledAt?.toISOString() ?? null,
+                resultConfirmed: Boolean(result),
               })),
             })),
           }

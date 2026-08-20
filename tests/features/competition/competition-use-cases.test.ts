@@ -295,7 +295,13 @@ describe("getOrganizerCompetition", () => {
 
     await expect(
       getOrganizerCompetition("tournament-1", organizer, { competitions }),
-    ).resolves.toEqual(workspace)
+    ).resolves.toEqual({
+      ...workspace,
+      lifecycle: {
+        startIssues: ["BRACKET_MISSING"],
+        completionIssues: ["TOURNAMENT_STATUS_INVALID", "BRACKET_MISSING"],
+      },
+    })
   })
 
   it("hides another organizer's workspace", async () => {

@@ -64,6 +64,7 @@ export interface OrganizerCompetitionWorkspace {
         awayScore: number | null
         winnerTeamId: string | null
         purpose: MatchPurpose
+        resultConfirmed: boolean
       }>
     }>
   }

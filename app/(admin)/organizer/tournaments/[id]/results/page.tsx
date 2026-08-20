@@ -1,6 +1,7 @@
 import { notFound, redirect } from "next/navigation"
 
 import { CompetitionWorkspaceNav } from "@/components/organizer/competition-workspace-nav"
+import { TournamentCompetitionLifecyclePanel } from "@/components/organizer/tournament-competition-lifecycle-panel"
 import {
   MatchResultEditor,
   type EditableMatchResult,
@@ -76,6 +77,17 @@ export default async function OrganizerResultsPage({
         </p>
       </header>
       <CompetitionWorkspaceNav tournamentId={workspace.tournament.id} />
+      <TournamentCompetitionLifecyclePanel
+        completionIssues={workspace.lifecycle.completionIssues}
+        requiresOverrideReason={
+          actor.role === "PLATFORM_ADMIN" &&
+          actor.id !== workspace.tournament.organizerId
+        }
+        startIssues={workspace.lifecycle.startIssues}
+        status={workspace.tournament.status}
+        tournamentId={workspace.tournament.id}
+        version={workspace.tournament.version}
+      />
       <div className="pt-7">
         <MatchResultEditor matches={matches} tournamentId={workspace.tournament.id} />
       </div>
