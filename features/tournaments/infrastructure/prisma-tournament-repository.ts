@@ -180,6 +180,7 @@ export class PrismaTournamentRepository implements TournamentRepository {
         )
         return {
           id: match.id,
+          purpose: match.purpose,
           tournamentSlug: row.slug,
           round: match.round.name,
           roundSequence: match.round.sequence,

@@ -36,6 +36,7 @@ const publicTournamentRow = {
     {
       id: "match-1",
       sequence: 1,
+      purpose: "CHAMPIONSHIP" as const,
       scheduledAt: new Date("2026-11-15T02:00:00.000Z"),
       court: "Court 1",
       homeTeamId: "team-1",
@@ -298,6 +299,7 @@ describe("PrismaTournamentRepository", () => {
             awayTeam: "Chiang Mai Hoops (Locked)",
             roundSequence: 2,
             sequence: 1,
+            purpose: "CHAMPIONSHIP",
             homeScore: 72,
             awayScore: 68,
           }),

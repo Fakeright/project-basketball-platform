@@ -21,6 +21,7 @@ export const mockTournamentData: Tournament[] = [
     matches: [
       {
         id: "bangkok-open-2026-1",
+        purpose: "STANDARD",
         tournamentSlug: "bangkok-open-2026",
         round: "รอบแบ่งกลุ่ม",
         court: "คอร์ต 1",
@@ -69,6 +70,7 @@ export const mockTournamentData: Tournament[] = [
     matches: [
       {
         id: "chonburi-coast-cup-1",
+        purpose: "STANDARD",
         tournamentSlug: "chonburi-coast-cup",
         round: "รอบรองชนะเลิศ",
         court: "คอร์ตหลัก",
@@ -99,6 +101,7 @@ export const mockTournamentData: Tournament[] = [
     matches: [
       {
         id: "chiang-mai-hoops-classic-1",
+        purpose: "CHAMPIONSHIP",
         tournamentSlug: "chiang-mai-hoops-classic",
         round: "รอบชิงชนะเลิศ",
         court: "คอร์ต A",

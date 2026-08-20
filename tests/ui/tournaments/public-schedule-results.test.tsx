@@ -11,6 +11,7 @@ describe("public schedule and results", () => {
   it("marks a confirmed match winner in the schedule", () => {
     const match: Match = {
       id: "final",
+      purpose: "CHAMPIONSHIP",
       tournamentSlug: "courtside-open",
       round: "รอบชิงชนะเลิศ",
       roundSequence: 2,
@@ -38,6 +39,7 @@ describe("public schedule and results", () => {
         summary={{
           winner: { teamId: "team-1", teamName: "Bangkok Five" },
           runnerUp: { teamId: "team-2", teamName: "Chiang Mai Hoops" },
+          thirdPlace: null,
           eliminatedByRound: [
             {
               roundSequence: 1,
@@ -52,5 +54,21 @@ describe("public schedule and results", () => {
     expect(screen.getByText("ชนะเลิศ")).toBeTruthy()
     expect(screen.getByText("รองชนะเลิศ")).toBeTruthy()
     expect(screen.queryByText(/อันดับ 3/)).toBeNull()
+  })
+
+  it("shows third place when its result is confirmed", () => {
+    render(
+      <CompetitionResultSummary
+        summary={{
+          winner: { teamId: "team-1", teamName: "Bangkok Five" },
+          runnerUp: { teamId: "team-2", teamName: "Chiang Mai Hoops" },
+          thirdPlace: { teamId: "team-3", teamName: "Phuket Waves" },
+          eliminatedByRound: [],
+        }}
+      />,
+    )
+
+    expect(screen.getByText("อันดับ 3")).toBeTruthy()
+    expect(screen.getByText("Phuket Waves")).toBeTruthy()
   })
 })

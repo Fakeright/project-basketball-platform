@@ -5,6 +5,7 @@ import { getCompetitionSummary } from "@/features/competition/application/get-co
 const matches = [
   {
     id: "semi-1",
+    purpose: "STANDARD" as const,
     round: "รอบรองชนะเลิศ",
     roundSequence: 1,
     sequence: 1,
@@ -18,6 +19,7 @@ const matches = [
   },
   {
     id: "semi-2",
+    purpose: "STANDARD" as const,
     round: "รอบรองชนะเลิศ",
     roundSequence: 1,
     sequence: 2,
@@ -31,6 +33,7 @@ const matches = [
   },
   {
     id: "final",
+    purpose: "CHAMPIONSHIP" as const,
     round: "รอบชิงชนะเลิศ",
     roundSequence: 2,
     sequence: 1,
@@ -41,6 +44,20 @@ const matches = [
     homeScore: 82,
     awayScore: 78,
     winnerTeamId: "team-1",
+  },
+  {
+    id: "third-place",
+    purpose: "THIRD_PLACE" as const,
+    round: "ชิงอันดับ 3",
+    roundSequence: 2,
+    sequence: 2,
+    homeTeamId: "team-2",
+    homeTeam: "Chiang Mai Hoops",
+    awayTeamId: "team-3",
+    awayTeam: "Phuket Waves",
+    homeScore: 74,
+    awayScore: 70,
+    winnerTeamId: "team-2",
   },
 ]
 
@@ -56,9 +73,13 @@ describe("getCompetitionSummary", () => {
 
     expect(summary.winner).toBeNull()
     expect(summary.runnerUp).toBeNull()
+    expect(summary.thirdPlace).toEqual({
+      teamId: "team-2",
+      teamName: "Chiang Mai Hoops",
+    })
   })
 
-  it("projects winner, runner-up, and other teams by elimination round", () => {
+  it("projects explicit placement matches even when the final is not last", () => {
     const summary = getCompetitionSummary(matches)
 
     expect(summary.winner).toEqual({
@@ -69,15 +90,28 @@ describe("getCompetitionSummary", () => {
       teamId: "team-4",
       teamName: "Khon Kaen Rise",
     })
+    expect(summary.thirdPlace).toEqual({
+      teamId: "team-2",
+      teamName: "Chiang Mai Hoops",
+    })
     expect(summary.eliminatedByRound).toEqual([
       {
         roundSequence: 1,
         roundName: "รอบรองชนะเลิศ",
         teams: [
-          { teamId: "team-2", teamName: "Chiang Mai Hoops" },
           { teamId: "team-3", teamName: "Phuket Waves" },
         ],
       },
     ])
+  })
+
+  it("does not infer a placement from an unclassified match", () => {
+    const summary = getCompetitionSummary(
+      matches.map((match) => ({ ...match, purpose: "STANDARD" as const })),
+    )
+
+    expect(summary.winner).toBeNull()
+    expect(summary.runnerUp).toBeNull()
+    expect(summary.thirdPlace).toBeNull()
   })
 })

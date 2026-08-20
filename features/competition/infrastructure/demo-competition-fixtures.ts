@@ -1,5 +1,8 @@
 import { generateSingleEliminationBracket } from "@/features/competition/domain/bracket-generator"
-import type { MatchSlot } from "@/features/competition/domain/competition"
+import type {
+  MatchPurpose,
+  MatchSlot,
+} from "@/features/competition/domain/competition"
 
 export interface DemoCompetitionTeam {
   id: string
@@ -16,6 +19,7 @@ export interface DemoCompetitionMatch {
   roundName: string
   roundSequence: number
   sequence: number
+  purpose: MatchPurpose
   homeTeamId: string | null
   awayTeamId: string | null
   homeScore: number | null
@@ -156,6 +160,7 @@ function createFixture(definition: DemoCaseDefinition): DemoCompetitionFixture {
       roundName: requiredRoundName(plan.rounds, match.roundSequence),
       roundSequence: match.roundSequence,
       sequence: match.sequence,
+      purpose: match.purpose,
       homeTeamId,
       awayTeamId,
       homeScore: canComplete ? score[0] : null,

@@ -13,6 +13,7 @@ export interface TournamentSearchFilters {
 
 export interface Match {
   id: string
+  purpose: "STANDARD" | "THIRD_PLACE" | "CHAMPIONSHIP"
   tournamentSlug: string
   round: string
   court: string

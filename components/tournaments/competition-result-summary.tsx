@@ -15,7 +15,7 @@ export function CompetitionResultSummary({
       </h2>
 
       {summary.winner && summary.runnerUp ? (
-        <dl className="mt-5 grid gap-4 sm:grid-cols-2">
+        <dl className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <div className="border-l-4 border-court pl-4">
             <dt className="text-xs text-muted-foreground">ชนะเลิศ</dt>
             <dd className="mt-1 text-lg font-semibold">{summary.winner.teamName}</dd>
@@ -24,6 +24,14 @@ export function CompetitionResultSummary({
             <dt className="text-xs text-muted-foreground">รองชนะเลิศ</dt>
             <dd className="mt-1 text-lg font-medium">{summary.runnerUp.teamName}</dd>
           </div>
+          {summary.thirdPlace ? (
+            <div className="border-l border-border pl-4">
+              <dt className="text-xs text-muted-foreground">อันดับ 3</dt>
+              <dd className="mt-1 text-lg font-medium">
+                {summary.thirdPlace.teamName}
+              </dd>
+            </div>
+          ) : null}
         </dl>
       ) : (
         <p className="mt-4 text-sm text-muted-foreground">

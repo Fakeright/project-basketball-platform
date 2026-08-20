@@ -1,3 +1,5 @@
+import type { MatchPurpose } from "@/features/competition/domain/competition"
+
 export interface CompetitionSummaryTeam {
   teamId: string
   teamName: string
@@ -6,6 +8,7 @@ export interface CompetitionSummaryTeam {
 export interface CompetitionSummary {
   winner: CompetitionSummaryTeam | null
   runnerUp: CompetitionSummaryTeam | null
+  thirdPlace: CompetitionSummaryTeam | null
   eliminatedByRound: Array<{
     roundSequence: number
     roundName: string
@@ -15,6 +18,7 @@ export interface CompetitionSummary {
 
 interface CompetitionSummaryMatch {
   id: string
+  purpose: MatchPurpose
   round: string
   roundSequence?: number
   sequence?: number
@@ -35,15 +39,32 @@ export function getCompetitionSummary(
       (left.roundSequence ?? -1) - (right.roundSequence ?? -1) ||
       (left.sequence ?? -1) - (right.sequence ?? -1),
   )
-  const finalMatch = orderedMatches.at(-1)
-  const finalResult = finalMatch ? getConfirmedResult(finalMatch) : null
+  const championshipMatch = orderedMatches.find(
+    (match) => match.purpose === "CHAMPIONSHIP",
+  )
+  const thirdPlaceMatch = orderedMatches.find(
+    (match) => match.purpose === "THIRD_PLACE",
+  )
+  const championshipResult = championshipMatch
+    ? getConfirmedResult(championshipMatch)
+    : null
+  const thirdPlaceResult = thirdPlaceMatch
+    ? getConfirmedResult(thirdPlaceMatch)
+    : null
+  const placementTeamIds = new Set(
+    [
+      championshipResult?.winner.teamId,
+      championshipResult?.loser.teamId,
+      thirdPlaceResult?.winner.teamId,
+    ].filter((teamId): teamId is string => Boolean(teamId)),
+  )
   const eliminationRounds = new Map<
     number,
     { roundName: string; teams: CompetitionSummaryTeam[] }
   >()
 
   for (const match of orderedMatches) {
-    if (match.id === finalMatch?.id) continue
+    if (match.purpose !== "STANDARD") continue
     const result = getConfirmedResult(match)
     if (!result || match.roundSequence === undefined) continue
     const round = eliminationRounds.get(match.roundSequence) ?? {
@@ -57,11 +78,19 @@ export function getCompetitionSummary(
   }
 
   return {
-    winner: finalResult?.winner ?? null,
-    runnerUp: finalResult?.loser ?? null,
+    winner: championshipResult?.winner ?? null,
+    runnerUp: championshipResult?.loser ?? null,
+    thirdPlace: thirdPlaceResult?.winner ?? null,
     eliminatedByRound: [...eliminationRounds.entries()]
       .sort(([left], [right]) => left - right)
-      .map(([roundSequence, round]) => ({ roundSequence, ...round })),
+      .map(([roundSequence, round]) => ({
+        roundSequence,
+        ...round,
+        teams: round.teams.filter(
+          (team) => !placementTeamIds.has(team.teamId),
+        ),
+      }))
+      .filter((round) => round.teams.length > 0),
   }
 }
 
