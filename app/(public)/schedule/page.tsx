@@ -1,3 +1,5 @@
+import Link from "next/link"
+
 import { ScheduleTable } from "@/components/schedule-table"
 import { CompetitionResultSummary } from "@/components/tournaments/competition-result-summary"
 import { StatePanel } from "@/components/state-panel"
@@ -24,7 +26,19 @@ export default async function SchedulePage({ searchParams }: PageProps<"/schedul
       <header className="border-b border-border pb-6">
         <p className="text-sm font-medium text-court">GAME SCHEDULE</p>
         <h1 className="mt-2 text-3xl font-semibold">ตารางแข่งขัน</h1>
-        {selectedTournament ? <p className="mt-3 text-sm text-muted-foreground sm:text-base">{selectedTournament.title}</p> : null}
+        {selectedTournament ? (
+          <>
+            <p className="mt-3 text-sm text-muted-foreground sm:text-base">{selectedTournament.title}</p>
+            <div className="mt-4 flex flex-wrap gap-5 text-sm">
+              <Link className="font-medium underline underline-offset-4" href={`/bracket?tournament=${selectedTournament.slug}`}>
+                ดูสายการแข่งขัน
+              </Link>
+              <Link className="font-medium underline underline-offset-4" href={`/results?tournament=${selectedTournament.slug}`}>
+                ดูผลการแข่งขัน
+              </Link>
+            </div>
+          </>
+        ) : null}
       </header>
       <section className="mt-8">
         {scheduledMatches.length ? (

@@ -22,6 +22,7 @@ const navigation = [
   { href: "/tournaments", label: "ทัวร์นาเมนต์" },
   { href: "/schedule", label: "ตารางแข่งขัน" },
   { href: "/bracket", label: "สายการแข่งขัน" },
+  { href: "/results", label: "ผลการแข่งขัน" },
 ]
 
 export function SiteHeader({ actor = null }: { actor?: Actor | null }) {
@@ -70,7 +71,7 @@ export function SiteHeader({ actor = null }: { actor?: Actor | null }) {
               render={
                 <Button
                   aria-label="เปิดเมนูนำทาง"
-                  className="md:hidden"
+                  className="lg:hidden"
                   size="icon"
                   title="เปิดเมนูนำทาง"
                   variant="ghost"

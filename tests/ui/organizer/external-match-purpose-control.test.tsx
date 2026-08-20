@@ -33,7 +33,7 @@ describe("ExternalMatchPurposeControl", () => {
     const user = userEvent.setup()
 
     await user.click(screen.getByLabelText("ประเภทคู่แข่งขัน คู่ที่ match-1"))
-    await user.click(screen.getByRole("option", { name: "ชิงอันดับ 3" }))
+    await user.keyboard("{ArrowDown}{Enter}")
     await user.click(screen.getByRole("button", { name: "บันทึกประเภทคู่" }))
 
     await waitFor(() => expect(fetchMock).toHaveBeenCalledOnce())

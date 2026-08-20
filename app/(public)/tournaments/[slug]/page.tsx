@@ -130,10 +130,16 @@ export default async function TournamentDetailPage({
             ตารางแข่งขัน
           </Link>
           <Link
-            className="block py-4 text-sm font-medium underline underline-offset-4"
+            className="block border-b border-border py-4 text-sm font-medium underline underline-offset-4"
             href={`/bracket?tournament=${tournament.slug}`}
           >
             Bracket
+          </Link>
+          <Link
+            className="block py-4 text-sm font-medium underline underline-offset-4"
+            href={`/results?tournament=${tournament.slug}`}
+          >
+            ผลการแข่งขัน
           </Link>
         </nav>
       </div>

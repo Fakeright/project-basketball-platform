@@ -1,3 +1,5 @@
+import Link from "next/link"
+
 import { BracketView } from "@/components/bracket-view"
 import { ExternalBracketView } from "@/components/external-bracket-view"
 import { CompetitionResultSummary } from "@/components/tournaments/competition-result-summary"
@@ -32,7 +34,19 @@ export default async function BracketPage({ searchParams }: PageProps<"/bracket"
       <header className="border-b border-border pb-6">
         <p className="text-sm font-medium text-court">TOURNAMENT BRACKET</p>
         <h1 className="mt-2 text-3xl font-semibold">สายการแข่งขัน</h1>
-        {selectedTournament ? <p className="mt-3 text-sm text-muted-foreground sm:text-base">{selectedTournament.title}</p> : null}
+        {selectedTournament ? (
+          <>
+            <p className="mt-3 text-sm text-muted-foreground sm:text-base">{selectedTournament.title}</p>
+            <div className="mt-4 flex flex-wrap gap-5 text-sm">
+              <Link className="font-medium underline underline-offset-4" href={`/schedule?tournament=${selectedTournament.slug}`}>
+                ดูตารางแข่งขัน
+              </Link>
+              <Link className="font-medium underline underline-offset-4" href={`/results?tournament=${selectedTournament.slug}`}>
+                ดูผลการแข่งขัน
+              </Link>
+            </div>
+          </>
+        ) : null}
       </header>
       <section className="mt-8">
         {externalBracket ? (

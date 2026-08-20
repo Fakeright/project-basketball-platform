@@ -1,4 +1,4 @@
-import { cleanup, render, screen, waitFor } from "@testing-library/react"
+import { cleanup, render, screen, waitFor, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
@@ -21,6 +21,33 @@ afterEach(() => {
 })
 
 describe("SiteHeader account session", () => {
+  it("links to public results in desktop and mobile navigation", async () => {
+    const user = userEvent.setup()
+    render(<SiteHeader actor={null} />)
+
+    expect(
+      screen.getByRole("link", { name: "ผลการแข่งขัน" }).getAttribute("href"),
+    ).toBe("/results")
+    await user.click(screen.getByRole("button", { name: "เปิดเมนูนำทาง" }))
+
+    const mobileNavigation = screen.getByRole("navigation", {
+      name: "เมนูหลักบนมือถือ",
+    })
+    expect(
+      within(mobileNavigation)
+        .getByRole("link", { name: "ผลการแข่งขัน" })
+        .getAttribute("href"),
+    ).toBe("/results")
+  })
+
+  it("keeps the navigation menu available below the desktop breakpoint", () => {
+    render(<SiteHeader actor={null} />)
+
+    const menuButton = screen.getByRole("button", { name: "เปิดเมนูนำทาง" })
+    expect(menuButton.className).toContain("lg:hidden")
+    expect(menuButton.className).not.toContain("md:hidden")
+  })
+
   it("shows login and registration commands for an anonymous visitor", () => {
     render(<SiteHeader actor={null} />)
 

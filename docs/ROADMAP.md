@@ -1,6 +1,6 @@
 # COURTSIDE Roadmap
 
-อัปเดตล่าสุด: 19 สิงหาคม 2026
+อัปเดตล่าสุด: 20 สิงหาคม 2026
 
 ## ความหมายของสถานะ
 
@@ -30,6 +30,9 @@
 - หน้า bracket และ schedule สาธารณะที่อ่านเฉพาะสายเผยแพร่ แสดงคะแนน ผู้ชนะ Bye และทีมที่ตกรอบตามรอบจริง
 - สายการแข่งขันจากไฟล์ภายนอก: เลือกโหมด อัปโหลดและตรวจ PDF/JPG/PNG/WebP แบบ private storage, revision history, explicit publication, signed public viewer และคำเตือนเมื่อผลใหม่กว่าไฟล์
 - การสร้างคู่แข่งขันแบบ manual จากทีมที่ล็อกในโหมดไฟล์ภายนอก พร้อมรอบ ลำดับ สนาม เวลา คะแนน และการยืนยันผลโดยไม่เลื่อนผู้ชนะอัตโนมัติ
+- การกำหนดประเภทคู่แข่งขันทั่วไป ชิงอันดับ 3 และชิงชนะเลิศในโหมดไฟล์ภายนอก พร้อมแก้ไขก่อนเริ่มแข่ง unique placement constraints, audit และ optimistic concurrency
+- การเริ่มการแข่งขันจากสถานะปิดรับสมัครและการจบรายการเมื่อยืนยันผลครบ พร้อม readiness checklist, server-side lifecycle policy และเหตุผลบังคับเมื่อ Platform Admin ดำเนินการแทนผู้จัด
+- การสรุป Winner, Runner-up และอันดับ 3 แบบ optional จากประเภทคู่ที่ชัดเจน พร้อมหน้าสาธารณะ `/results`, loading/empty/error states และลิงก์เชื่อมจากรายละเอียด ตาราง และสายการแข่งขัน
 - Prisma migrations, seed/reset tooling และ automated Vitest/RTL coverage
 
 ## กำลังพัฒนา
