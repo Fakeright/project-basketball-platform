@@ -1,6 +1,7 @@
 import { authorize } from "@/features/identity/application/authorize"
 import type { Actor } from "@/features/identity/domain/actor"
 import type { MatchPurpose } from "@/features/competition/domain/competition"
+import { assertTournamentGovernanceAllowsOperation } from "@/features/tournament-operations/domain/tournament-governance-policy"
 
 import type {
   CompetitionRepository,
@@ -34,6 +35,9 @@ export async function updateExternalMatchPurpose(
 
     authorize(actor, "match.schedule", { organizerId: context.organizerId })
     if (context.matchVersion !== input.expectedVersion) throw new Error("CONFLICT")
+    assertTournamentGovernanceAllowsOperation(
+      context.tournamentGovernanceStatus,
+    )
     if (context.bracketMode !== "EXTERNAL_DOCUMENT") {
       throw new Error("EXTERNAL_BRACKET_REQUIRED")
     }

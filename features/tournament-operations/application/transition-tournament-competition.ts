@@ -71,8 +71,10 @@ async function transitionTournamentCompetition(
     command === "START" ? "tournament.start" : "tournament.complete",
     { organizerId: context.organizerId },
   )
-  assertTournamentGovernanceAllowsOperation(context.governanceStatus)
   if (context.version !== input.version) throw new Error("CONFLICT")
+  assertTournamentGovernanceAllowsOperation(
+    context.tournamentGovernanceStatus,
+  )
 
   const adminOverride =
     actor.role === "PLATFORM_ADMIN" && actor.id !== context.organizerId

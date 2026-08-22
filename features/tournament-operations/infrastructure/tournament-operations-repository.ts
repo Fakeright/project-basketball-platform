@@ -13,9 +13,7 @@ import type {
 import type { TournamentCompetitionLifecycleContext } from "@/features/competition/domain/competition"
 
 export type TournamentCompetitionOperationContext =
-  TournamentCompetitionLifecycleContext & {
-    governanceStatus: TournamentGovernanceStatus
-  }
+  TournamentCompetitionLifecycleContext
 
 export interface TournamentOperationsRepository {
   create(

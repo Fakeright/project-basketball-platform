@@ -1,5 +1,6 @@
 import { authorize } from "@/features/identity/application/authorize"
 import type { Actor } from "@/features/identity/domain/actor"
+import { assertTournamentGovernanceAllowsOperation } from "@/features/tournament-operations/domain/tournament-governance-policy"
 
 import type {
   CompetitionRepository,
@@ -42,6 +43,9 @@ export async function scheduleMatch(
     }
     authorize(actor, "match.schedule", { organizerId: context.organizerId })
     if (context.matchVersion !== input.expectedVersion) throw new Error("CONFLICT")
+    assertTournamentGovernanceAllowsOperation(
+      context.tournamentGovernanceStatus,
+    )
     if (
       context.tournamentStatus !== "REGISTRATION_CLOSED" &&
       context.tournamentStatus !== "IN_PROGRESS"

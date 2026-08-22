@@ -1,6 +1,7 @@
 import { authorize } from "@/features/identity/application/authorize"
 import type { Actor } from "@/features/identity/domain/actor"
 import { assertScoreCanBeConfirmed } from "@/features/competition/domain/match-result-policy"
+import { assertTournamentGovernanceAllowsOperation } from "@/features/tournament-operations/domain/tournament-governance-policy"
 
 import type {
   CompetitionRepository,
@@ -30,6 +31,9 @@ export async function correctMatchResult(
     const context = await competitions.findResultCorrectionContext(input)
     if (!context) throw new Error("NOT_FOUND")
     if (context.matchVersion !== input.expectedVersion) throw new Error("CONFLICT")
+    assertTournamentGovernanceAllowsOperation(
+      context.tournamentGovernanceStatus,
+    )
     if (context.matchStatus !== "COMPLETED") {
       throw new Error("MATCH_RESULT_NOT_CONFIRMED")
     }

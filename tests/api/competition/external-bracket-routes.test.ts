@@ -7,6 +7,7 @@ import {
   handleUploadExternalBracket,
 } from "@/features/competition/presentation/external-bracket-handler"
 import { ObjectStorageError } from "@/features/tournament-media/application/ports/object-storage"
+import { TournamentGovernancePolicyError } from "@/features/tournament-operations/domain/tournament-governance-policy"
 import type { Actor } from "@/features/identity/domain/actor"
 
 const organizer: Actor = {
@@ -175,6 +176,25 @@ describe("external bracket HTTP handlers", () => {
     )
     expect(response.status).toBe(503)
     expect(await response.text()).not.toContain("UNAVAILABLE")
+  })
+
+  it("maps blocked governance to the shared typed Thai 409 response", async () => {
+    const response = await handlePublishExternalBracket(
+      "t-1",
+      jsonRequest({ revisionId: "r-1", expectedVersion: 2 }),
+      {
+        actorProvider: actorProvider(),
+        publish: vi.fn(async () => {
+          throw new TournamentGovernancePolicyError(["TOURNAMENT_SUSPENDED"])
+        }),
+      },
+    )
+
+    expect(response.status).toBe(409)
+    await expect(response.json()).resolves.toEqual({
+      message: "รายการแข่งขันถูกระงับหรือถูกนำออก กรุณาตรวจสอบสถานะล่าสุด",
+      issues: ["TOURNAMENT_SUSPENDED"],
+    })
   })
 
   it("validates and delegates retirement", async () => {

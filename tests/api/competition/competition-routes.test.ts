@@ -9,6 +9,7 @@ import {
   handleConfirmMatchResult,
   handleCorrectMatchResult,
 } from "@/features/competition/presentation/competition-handler"
+import { TournamentGovernancePolicyError } from "@/features/tournament-operations/domain/tournament-governance-policy"
 import { createTestActor } from "@/tests/fixtures/actor"
 
 const organizer = createTestActor("organizer-1", "TOURNAMENT_ORGANIZER")
@@ -139,6 +140,25 @@ describe("competition route handlers", () => {
     expect(JSON.stringify({ body, logs: logger.error.mock.calls })).not.toContain(
       "private database detail",
     )
+  })
+
+  it("maps blocked governance to the shared typed Thai 409 response", async () => {
+    const response = await handleLockBracketEntries(
+      "tournament-1",
+      request({ expectedVersion: 2 }),
+      {
+        actorProvider: { getCurrentActor: vi.fn(async () => organizer) },
+        lockEntries: vi.fn(async () => {
+          throw new TournamentGovernancePolicyError(["TOURNAMENT_SUSPENDED"])
+        }),
+      },
+    )
+
+    expect(response.status).toBe(409)
+    await expect(response.json()).resolves.toEqual({
+      message: "รายการแข่งขันถูกระงับหรือถูกนำออก กรุณาตรวจสอบสถานะล่าสุด",
+      issues: ["TOURNAMENT_SUSPENDED"],
+    })
   })
 })
 

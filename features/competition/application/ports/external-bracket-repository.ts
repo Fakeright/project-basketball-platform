@@ -1,4 +1,5 @@
 import type { TournamentMediaAsset } from "@/features/tournament-media/domain/media-asset"
+import type { TournamentGovernanceStatus } from "@/features/tournament-operations/domain/tournament-governance-policy"
 
 export const externalBracketRevisionStatuses = [
   "DRAFT",
@@ -33,6 +34,7 @@ export interface ExternalBracketWorkspaceContext extends ExternalBracketWorkspac
   tournamentId: string
   tournamentTitle: string
   organizerId: string
+  tournamentGovernanceStatus: TournamentGovernanceStatus
   bracketStatus: string
   bracketMode: "EXTERNAL_DOCUMENT"
   hasStartedMatch: boolean
@@ -42,6 +44,7 @@ export interface ExternalBracketWorkspaceContext extends ExternalBracketWorkspac
 export interface BracketModeSelectionContext {
   tournamentId: string
   organizerId: string
+  tournamentGovernanceStatus: TournamentGovernanceStatus
   bracketId: string
   bracketVersion: number
   bracketStatus: string

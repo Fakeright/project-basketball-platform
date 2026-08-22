@@ -42,6 +42,8 @@ export async function getOrganizerCompetition(
   const lifecycleContext: TournamentCompetitionLifecycleContext = {
     tournamentId: workspace.tournament.id,
     organizerId: workspace.tournament.organizerId,
+    tournamentGovernanceStatus:
+      workspace.tournament.tournamentGovernanceStatus,
     status: workspace.tournament.status,
     version: workspace.tournament.version,
     activeBracket: workspace.bracket

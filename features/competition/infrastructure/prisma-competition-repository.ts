@@ -93,6 +93,7 @@ export class PrismaCompetitionRepository implements CompetitionRepository {
         id: true,
         title: true,
         organizerId: true,
+        governanceStatus: true,
         status: true,
         version: true,
         registrations: {
@@ -152,6 +153,7 @@ export class PrismaCompetitionRepository implements CompetitionRepository {
         id: tournament.id,
         title: tournament.title,
         organizerId: tournament.organizerId,
+        tournamentGovernanceStatus: tournament.governanceStatus,
         status: tournament.status,
         version: tournament.version,
       },
@@ -329,6 +331,7 @@ class PrismaCompetitionOperations implements CompetitionRepositoryTransaction {
     return {
       tournamentId: tournament.id,
       organizerId: tournament.organizerId,
+      tournamentGovernanceStatus: tournament.governanceStatus,
       tournamentStatus: tournament.status,
       capacity: tournament.capacity,
       version: tournament.version,
@@ -351,6 +354,7 @@ class PrismaCompetitionOperations implements CompetitionRepositoryTransaction {
       select: {
         id: true,
         organizerId: true,
+        governanceStatus: true,
         brackets: {
           where: { status: { not: "ARCHIVED" } },
           take: 1,
@@ -374,6 +378,7 @@ class PrismaCompetitionOperations implements CompetitionRepositoryTransaction {
     return {
       tournamentId: tournament.id,
       organizerId: tournament.organizerId,
+      tournamentGovernanceStatus: tournament.governanceStatus,
       bracketId: bracket.id,
       bracketVersion: bracket.version,
       generationMethod: bracket.generationMethod,
@@ -391,6 +396,7 @@ class PrismaCompetitionOperations implements CompetitionRepositoryTransaction {
       select: {
         id: true,
         organizerId: true,
+        governanceStatus: true,
         brackets: {
           where: { status: { not: "ARCHIVED" } },
           take: 1,
@@ -413,6 +419,7 @@ class PrismaCompetitionOperations implements CompetitionRepositoryTransaction {
     return {
       tournamentId: tournament.id,
       organizerId: tournament.organizerId,
+      tournamentGovernanceStatus: tournament.governanceStatus,
       bracketId: bracket.id,
       bracketVersion: bracket.version,
       bracketStatus: bracket.status,
@@ -646,6 +653,7 @@ class PrismaCompetitionOperations implements CompetitionRepositoryTransaction {
           select: {
             id: true,
             organizerId: true,
+            governanceStatus: true,
             status: true,
             startsAt: true,
             endsAt: true,
@@ -668,6 +676,7 @@ class PrismaCompetitionOperations implements CompetitionRepositoryTransaction {
     return {
       tournamentId: bracket.tournament.id,
       organizerId: bracket.tournament.organizerId,
+      tournamentGovernanceStatus: bracket.tournament.governanceStatus,
       tournamentStartsAt: bracket.tournament.startsAt.toISOString(),
       tournamentEndsAt: bracket.tournament.endsAt.toISOString(),
       bracketId: bracket.id,
@@ -787,7 +796,9 @@ class PrismaCompetitionOperations implements CompetitionRepositoryTransaction {
         awayScore: true,
         result: { select: { id: true } },
         bracket: { select: { mode: true } },
-        tournament: { select: { id: true, organizerId: true } },
+        tournament: {
+          select: { id: true, organizerId: true, governanceStatus: true },
+        },
       },
     })
     if (!match) return null
@@ -795,6 +806,7 @@ class PrismaCompetitionOperations implements CompetitionRepositoryTransaction {
     return {
       tournamentId: match.tournament.id,
       organizerId: match.tournament.organizerId,
+      tournamentGovernanceStatus: match.tournament.governanceStatus,
       bracketMode: match.bracket.mode,
       matchId: match.id,
       matchPurpose: match.purpose,
@@ -874,6 +886,7 @@ class PrismaCompetitionOperations implements CompetitionRepositoryTransaction {
           select: {
             id: true,
             organizerId: true,
+            governanceStatus: true,
             status: true,
             startsAt: true,
             endsAt: true,
@@ -897,6 +910,7 @@ class PrismaCompetitionOperations implements CompetitionRepositoryTransaction {
     return {
       tournamentId: match.tournament.id,
       organizerId: match.tournament.organizerId,
+      tournamentGovernanceStatus: match.tournament.governanceStatus,
       tournamentStatus: match.tournament.status,
       tournamentStartsAt: match.tournament.startsAt.toISOString(),
       tournamentEndsAt: match.tournament.endsAt.toISOString(),
@@ -966,7 +980,14 @@ class PrismaCompetitionOperations implements CompetitionRepositoryTransaction {
         nextSlot: true,
         result: { select: { id: true } },
         bracket: { select: { status: true, mode: true } },
-        tournament: { select: { id: true, organizerId: true, status: true } },
+        tournament: {
+          select: {
+            id: true,
+            organizerId: true,
+            governanceStatus: true,
+            status: true,
+          },
+        },
         nextMatch: {
           select: {
             homeTeamId: true,
@@ -980,6 +1001,7 @@ class PrismaCompetitionOperations implements CompetitionRepositoryTransaction {
     return {
       tournamentId: match.tournament.id,
       organizerId: match.tournament.organizerId,
+      tournamentGovernanceStatus: match.tournament.governanceStatus,
       tournamentStatus: match.tournament.status,
       bracketStatus: match.bracket.status,
       bracketMode: match.bracket.mode,
@@ -1054,7 +1076,9 @@ class PrismaCompetitionOperations implements CompetitionRepositoryTransaction {
         winnerTeamId: true,
         nextMatchId: true,
         nextSlot: true,
-        tournament: { select: { id: true, organizerId: true } },
+        tournament: {
+          select: { id: true, organizerId: true, governanceStatus: true },
+        },
         result: { select: { id: true } },
         nextMatch: {
           select: {
@@ -1081,6 +1105,7 @@ class PrismaCompetitionOperations implements CompetitionRepositoryTransaction {
     return {
       tournamentId: match.tournament.id,
       organizerId: match.tournament.organizerId,
+      tournamentGovernanceStatus: match.tournament.governanceStatus,
       matchId: match.id,
       matchVersion: match.version,
       matchStatus: match.status,

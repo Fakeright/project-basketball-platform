@@ -67,7 +67,7 @@ export class InMemoryTournamentOperationsRepository implements TournamentOperati
           tournamentId: tournament.id,
           organizerId: tournament.organizerId,
           status: tournament.status,
-          governanceStatus: tournament.governanceStatus,
+          tournamentGovernanceStatus: tournament.governanceStatus,
           version: tournament.version,
           activeBracket: null,
         }

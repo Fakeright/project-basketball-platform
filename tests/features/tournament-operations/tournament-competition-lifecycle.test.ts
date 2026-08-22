@@ -39,13 +39,11 @@ const tournament: TournamentOperation = {
   updatedAt: "2026-07-26T02:00:00.000Z",
 }
 
-const closedContext: TournamentCompetitionLifecycleContext & {
-  governanceStatus: "ACTIVE" | "SUSPENDED" | "REMOVED"
-} = {
+const closedContext: TournamentCompetitionLifecycleContext = {
   tournamentId: tournament.id,
   organizerId: organizer.id,
   status: "REGISTRATION_CLOSED",
-  governanceStatus: "ACTIVE",
+  tournamentGovernanceStatus: "ACTIVE",
   version: 4,
   activeBracket: {
     id: "bracket-1",
@@ -241,7 +239,7 @@ describe("tournament competition lifecycle", () => {
   it("blocks starting a suspended tournament before persistence", async () => {
     const { repository, transitionCompetitionWithVersion } = createRepository({
       ...closedContext,
-      governanceStatus: "SUSPENDED",
+      tournamentGovernanceStatus: "SUSPENDED",
     })
 
     await expect(
@@ -259,7 +257,7 @@ describe("tournament competition lifecycle", () => {
     const { repository, transitionCompetitionWithVersion } = createRepository({
       ...closedContext,
       status: "IN_PROGRESS",
-      governanceStatus: "REMOVED",
+      tournamentGovernanceStatus: "REMOVED",
       version: 5,
       activeBracket: {
         ...closedContext.activeBracket!,

@@ -42,6 +42,7 @@ describe("PrismaCompetitionRepository", () => {
         id: "tournament-1",
         organizerId: "organizer-1",
         status: "IN_PROGRESS",
+        governanceStatus: "SUSPENDED",
       },
       nextMatch: null,
     })
@@ -54,7 +55,10 @@ describe("PrismaCompetitionRepository", () => {
         tournamentId: "tournament-1",
         matchId: "match-1",
       }),
-    ).resolves.toMatchObject({ tournamentStatus: "IN_PROGRESS" })
+    ).resolves.toMatchObject({
+      tournamentStatus: "IN_PROGRESS",
+      tournamentGovernanceStatus: "SUSPENDED",
+    })
   })
 
   it("corrects a confirmed winner and replaces the exact downstream slot atomically", async () => {

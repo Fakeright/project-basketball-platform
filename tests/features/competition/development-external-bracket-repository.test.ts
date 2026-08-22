@@ -30,6 +30,7 @@ async function createStatePath() {
         tournamentTitle: "External Cup",
         tournamentSlug: "external-cup",
         organizerId: "organizer-1",
+        tournamentGovernanceStatus: "ACTIVE",
         bracketId: "bracket-1",
         bracketVersion: 3,
         bracketStatus: "DRAFT",

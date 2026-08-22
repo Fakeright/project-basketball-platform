@@ -27,11 +27,13 @@ function workspace(overrides: Record<string, unknown> = {}) {
     tournamentId: "t-1",
     tournamentTitle: "Bangkok Cup",
     organizerId: organizer.id,
+    tournamentGovernanceStatus: "ACTIVE",
     bracketId: "b-1",
     bracketVersion: 3,
     bracketStatus: "DRAFT",
     bracketMode: "EXTERNAL_DOCUMENT" as const,
     hasStartedMatch: false,
+    latestConfirmedResultAt: null,
     revisions: [],
     publishedRevision: null,
     ...overrides,
@@ -167,6 +169,23 @@ describe("selectBracketMode", () => {
       ),
     ).rejects.toThrow(code)
   })
+
+  it("blocks mode selection for a suspended tournament before persistence", async () => {
+    const dependencies = createDependencies()
+    dependencies.externalBrackets.findModeSelectionContext.mockResolvedValue({
+      ...workspace({ tournamentGovernanceStatus: "SUSPENDED" }),
+      bracketMode: "SYSTEM_GENERATED",
+    })
+
+    await expect(
+      selectBracketMode(
+        { tournamentId: "t-1", targetMode: "EXTERNAL_DOCUMENT", expectedVersion: 3 },
+        organizer,
+        dependencies,
+      ),
+    ).rejects.toMatchObject({ issues: ["TOURNAMENT_SUSPENDED"] })
+    expect(dependencies.externalBrackets.selectMode).not.toHaveBeenCalled()
+  })
 })
 
 describe("uploadExternalBracket", () => {
@@ -268,6 +287,25 @@ describe("uploadExternalBracket", () => {
       expect.objectContaining({ operation: "external_bracket.upload.compensate" }),
     )
   })
+
+  it("blocks suspended uploads before creating an asset or touching storage", async () => {
+    const dependencies = createDependencies()
+    dependencies.externalBrackets.findWorkspace.mockResolvedValue(
+      workspace({ tournamentGovernanceStatus: "SUSPENDED" }),
+    )
+
+    await expect(
+      uploadExternalBracket(
+        { tournamentId: "t-1", expectedVersion: 3, file: pdfFile },
+        organizer,
+        dependencies,
+      ),
+    ).rejects.toMatchObject({ issues: ["TOURNAMENT_SUSPENDED"] })
+    expect(dependencies.createId).not.toHaveBeenCalled()
+    expect(dependencies.storage.upload).not.toHaveBeenCalled()
+    expect(dependencies.probe).not.toHaveBeenCalled()
+    expect(dependencies.externalBrackets.commitUploadedRevision).not.toHaveBeenCalled()
+  })
 })
 
 describe("external revision publication", () => {
@@ -304,5 +342,37 @@ describe("external revision publication", () => {
     )
     expect(dependencies.externalBrackets.retireRevision).toHaveBeenCalled()
     expect(dependencies.storage.remove).not.toHaveBeenCalled()
+  })
+
+  it("blocks suspended external publication before persistence", async () => {
+    const dependencies = createDependencies()
+    dependencies.externalBrackets.findWorkspace.mockResolvedValue(
+      workspace({ tournamentGovernanceStatus: "SUSPENDED" }),
+    )
+
+    await expect(
+      publishExternalBracket(
+        { tournamentId: "t-1", revisionId: "revision-1", expectedVersion: 3 },
+        organizer,
+        dependencies,
+      ),
+    ).rejects.toMatchObject({ issues: ["TOURNAMENT_SUSPENDED"] })
+    expect(dependencies.externalBrackets.publishRevision).not.toHaveBeenCalled()
+  })
+
+  it("blocks suspended external retirement before persistence", async () => {
+    const dependencies = createDependencies()
+    dependencies.externalBrackets.findWorkspace.mockResolvedValue(
+      workspace({ tournamentGovernanceStatus: "SUSPENDED" }),
+    )
+
+    await expect(
+      retireExternalBracket(
+        { tournamentId: "t-1", revisionId: "revision-1", expectedVersion: 3 },
+        organizer,
+        dependencies,
+      ),
+    ).rejects.toMatchObject({ issues: ["TOURNAMENT_SUSPENDED"] })
+    expect(dependencies.externalBrackets.retireRevision).not.toHaveBeenCalled()
   })
 })

@@ -41,6 +41,7 @@ export class PrismaExternalBracketRepository
       select: {
         id: true,
         organizerId: true,
+        governanceStatus: true,
         brackets: {
           where: { status: { not: "ARCHIVED" } },
           take: 1,
@@ -67,6 +68,7 @@ export class PrismaExternalBracketRepository
     return {
       tournamentId: tournament.id,
       organizerId: tournament.organizerId,
+      tournamentGovernanceStatus: tournament.governanceStatus,
       bracketId: bracket.id,
       bracketVersion: bracket.version,
       bracketStatus: bracket.status,
@@ -340,6 +342,7 @@ export class PrismaExternalBracketRepository
         id: true,
         title: true,
         organizerId: true,
+        governanceStatus: true,
         brackets: {
           where: { mode: "EXTERNAL_DOCUMENT", status: { not: "ARCHIVED" } },
           take: 1,
@@ -370,6 +373,7 @@ export class PrismaExternalBracketRepository
       tournamentId: tournament.id,
       tournamentTitle: tournament.title,
       organizerId: tournament.organizerId,
+      tournamentGovernanceStatus: tournament.governanceStatus,
       bracketId: bracket.id,
       bracketVersion: bracket.version,
       bracketStatus: bracket.status,

@@ -1,8 +1,16 @@
 import { authorize } from "@/features/identity/application/authorize"
 import type { Actor } from "@/features/identity/domain/actor"
+import {
+  assertTournamentGovernanceAllowsOperation,
+  type TournamentGovernanceStatus,
+} from "@/features/tournament-operations/domain/tournament-governance-policy"
 
 export function assertExternalBracketAccess(
-  context: { organizerId: string; bracketVersion: number } | null,
+  context: {
+    organizerId: string
+    bracketVersion: number
+    tournamentGovernanceStatus: TournamentGovernanceStatus
+  } | null,
   actor: Actor,
   expectedVersion: number,
   reason?: string,
@@ -16,6 +24,9 @@ export function assertExternalBracketAccess(
 
   authorize(actor, "bracket.generate", { organizerId: context.organizerId })
   if (context.bracketVersion !== expectedVersion) throw new Error("CONFLICT")
+  assertTournamentGovernanceAllowsOperation(
+    context.tournamentGovernanceStatus,
+  )
 
   const adminOverride =
     actor.role === "PLATFORM_ADMIN" && actor.id !== context.organizerId

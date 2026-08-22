@@ -1,5 +1,6 @@
 import { authorize } from "@/features/identity/application/authorize"
 import type { Actor } from "@/features/identity/domain/actor"
+import { assertTournamentGovernanceAllowsOperation } from "@/features/tournament-operations/domain/tournament-governance-policy"
 
 import type {
   CompetitionRepositoryTransaction,
@@ -21,6 +22,9 @@ export async function loadMutableMatchResultContext(
   }
   authorize(actor, action, { organizerId: context.organizerId })
   if (context.matchVersion !== input.expectedVersion) throw new Error("CONFLICT")
+  assertTournamentGovernanceAllowsOperation(
+    context.tournamentGovernanceStatus,
+  )
   if (context.tournamentStatus !== "IN_PROGRESS") {
     throw new Error("TOURNAMENT_NOT_IN_PROGRESS")
   }

@@ -52,6 +52,7 @@ describe("lockBracketEntries", () => {
     const repository = createRepository({
       tournamentId: "tournament-1",
       organizerId: "another-organizer",
+      tournamentGovernanceStatus: "ACTIVE",
       tournamentStatus: "REGISTRATION_CLOSED",
       capacity: 6,
       version: 0,
@@ -72,6 +73,7 @@ describe("lockBracketEntries", () => {
     const repository = createRepository({
       tournamentId: "tournament-1",
       organizerId: organizer.id,
+      tournamentGovernanceStatus: "ACTIVE",
       tournamentStatus: "REGISTRATION_CLOSED",
       capacity: 6,
       version: 0,
@@ -100,6 +102,31 @@ describe("lockBracketEntries", () => {
       entries: [{ teamId: "team-1" }, { teamId: "team-2" }],
     })
   })
+
+  it("blocks locking entries for a suspended tournament before persistence", async () => {
+    const repository = createRepository({
+      tournamentId: "tournament-1",
+      organizerId: organizer.id,
+      tournamentGovernanceStatus: "SUSPENDED",
+      tournamentStatus: "REGISTRATION_CLOSED",
+      capacity: 6,
+      version: 0,
+      approvedEntries: [
+        { registrationId: "registration-1", teamId: "team-1", teamName: "Team One" },
+        { registrationId: "registration-2", teamId: "team-2", teamName: "Team Two" },
+      ],
+      hasStartedMatch: false,
+    })
+
+    await expect(
+      lockBracketEntries(
+        { tournamentId: "tournament-1", expectedVersion: 0 },
+        organizer,
+        { competitions: repository, now: () => new Date() },
+      ),
+    ).rejects.toMatchObject({ issues: ["TOURNAMENT_SUSPENDED"] })
+    expect(repository.lockEntries).not.toHaveBeenCalled()
+  })
 })
 
 describe("generateBracketDraft", () => {
@@ -110,6 +137,7 @@ describe("generateBracketDraft", () => {
       findGenerationContext: vi.fn(async () => ({
         tournamentId: "tournament-1",
         organizerId: organizer.id,
+        tournamentGovernanceStatus: "ACTIVE",
         bracketId: "bracket-1",
         bracketVersion: 2,
         drawToken: null,
@@ -235,6 +263,7 @@ describe("generateBracketDraft", () => {
     transaction.findGenerationContext.mockResolvedValueOnce({
       tournamentId: "tournament-1",
       organizerId: organizer.id,
+      tournamentGovernanceStatus: "ACTIVE",
       bracketId: "bracket-1",
       bracketVersion: 2,
       drawToken: null,
@@ -261,6 +290,40 @@ describe("generateBracketDraft", () => {
       ),
     ).rejects.toThrow("BRACKET_STRUCTURE_LOCKED")
   })
+
+  it("blocks bracket generation for a suspended tournament before persistence", async () => {
+    const { repository, transaction } = generationRepository()
+    transaction.findGenerationContext.mockResolvedValueOnce({
+      tournamentId: "tournament-1",
+      organizerId: organizer.id,
+      tournamentGovernanceStatus: "SUSPENDED",
+      bracketId: "bracket-1",
+      bracketVersion: 2,
+      drawToken: null,
+      generationMethod: null,
+      hasStartedMatch: false,
+      entries: [lockedEntry("entry-1", "team-1", 1), lockedEntry("entry-2", "team-2", 2)],
+    })
+
+    await expect(
+      generateBracketDraft(
+        {
+          tournamentId: "tournament-1",
+          expectedVersion: 2,
+          method: "RANDOM",
+          redraw: false,
+        },
+        organizer,
+        {
+          competitions: repository,
+          now: () => new Date(),
+          createDrawToken: () => "draw-token",
+          shuffle: (entries) => [...entries],
+        },
+      ),
+    ).rejects.toMatchObject({ issues: ["TOURNAMENT_SUSPENDED"] })
+    expect(transaction.persistGeneratedPlan).not.toHaveBeenCalled()
+  })
 })
 
 function lockedEntry(id: string, teamId: string, seed: number) {
@@ -283,6 +346,7 @@ describe("getOrganizerCompetition", () => {
         id: "tournament-1",
         title: "COURTSIDE OPEN",
         organizerId: organizer.id,
+        tournamentGovernanceStatus: "ACTIVE" as const,
         status: "REGISTRATION_CLOSED",
         version: 4,
       },
@@ -311,6 +375,7 @@ describe("getOrganizerCompetition", () => {
           id: "tournament-1",
           title: "Private tournament",
           organizerId: "another-organizer",
+          tournamentGovernanceStatus: "ACTIVE" as const,
           status: "REGISTRATION_CLOSED",
           version: 1,
         },
@@ -330,6 +395,7 @@ describe("bracket publication", () => {
     const context = {
       tournamentId: "tournament-1",
       organizerId: organizer.id,
+      tournamentGovernanceStatus: "ACTIVE",
       bracketId: "bracket-1",
       bracketVersion: 3,
       bracketStatus: "DRAFT",
@@ -406,6 +472,33 @@ describe("bracket publication", () => {
       ),
     ).rejects.toThrow("BRACKET_STRUCTURE_LOCKED")
   })
+
+  it.each([
+    ["publication", false],
+    ["unpublication", true],
+  ])("blocks bracket %s for a suspended tournament", async (_label, unpublish) => {
+    const { repository, transaction } = publicationRepository({
+      tournamentGovernanceStatus: "SUSPENDED",
+      bracketStatus: unpublish ? "PUBLISHED" : "DRAFT",
+    })
+
+    const operation = unpublish
+      ? unpublishBracket(
+          { tournamentId: "tournament-1", expectedVersion: 3, reason: "แก้สาย" },
+          organizer,
+          { competitions: repository, now: () => new Date() },
+        )
+      : publishBracket(
+          { tournamentId: "tournament-1", expectedVersion: 3 },
+          organizer,
+          { competitions: repository, now: () => new Date() },
+        )
+
+    await expect(operation).rejects.toMatchObject({
+      issues: ["TOURNAMENT_SUSPENDED"],
+    })
+    expect(transaction.setPublication).not.toHaveBeenCalled()
+  })
 })
 
 describe("scheduleMatch", () => {
@@ -414,6 +507,7 @@ describe("scheduleMatch", () => {
       findMatchScheduleContext: vi.fn(async () => ({
         tournamentId: "tournament-1",
         organizerId: organizer.id,
+        tournamentGovernanceStatus: "ACTIVE",
         tournamentStartsAt: "2026-11-15T02:00:00.000Z",
         tournamentEndsAt: "2026-11-16T11:00:00.000Z",
         tournamentStatus: "REGISTRATION_CLOSED",
@@ -501,6 +595,27 @@ describe("scheduleMatch", () => {
       ),
     ).rejects.toThrow("MATCH_SCHEDULE_OUTSIDE_TOURNAMENT")
   })
+
+  it("blocks scheduling for a suspended tournament before persistence", async () => {
+    const { repository, transaction } = scheduleRepository({
+      tournamentGovernanceStatus: "SUSPENDED",
+    })
+
+    await expect(
+      scheduleMatch(
+        {
+          tournamentId: "tournament-1",
+          matchId: "match-1",
+          scheduledAt: "2026-11-15T05:00:00.000Z",
+          court: "Court A",
+          expectedVersion: 1,
+        },
+        organizer,
+        { competitions: repository, now: () => new Date() },
+      ),
+    ).rejects.toMatchObject({ issues: ["TOURNAMENT_SUSPENDED"] })
+    expect(transaction.scheduleMatch).not.toHaveBeenCalled()
+  })
 })
 
 describe("match results", () => {
@@ -509,8 +624,10 @@ describe("match results", () => {
       findResultContext: vi.fn(async () => ({
         tournamentId: "tournament-1",
         organizerId: organizer.id,
+        tournamentGovernanceStatus: "ACTIVE",
         tournamentStatus: "IN_PROGRESS",
         bracketStatus: "PUBLISHED",
+        bracketMode: "SYSTEM_GENERATED" as const,
         matchId: "match-1",
         matchStatus: "SCHEDULED",
         matchVersion: 2,
@@ -615,6 +732,48 @@ describe("match results", () => {
     )
   })
 
+  it("blocks draft score writes for a suspended tournament", async () => {
+    const { repository, transaction } = resultRepository({
+      tournamentGovernanceStatus: "SUSPENDED",
+    })
+
+    await expect(
+      recordMatchScore(
+        {
+          tournamentId: "tournament-1",
+          matchId: "match-1",
+          homeScore: 10,
+          awayScore: 8,
+          expectedVersion: 2,
+        },
+        organizer,
+        { competitions: repository, now: () => new Date() },
+      ),
+    ).rejects.toMatchObject({ issues: ["TOURNAMENT_SUSPENDED"] })
+    expect(transaction.recordScore).not.toHaveBeenCalled()
+  })
+
+  it("blocks result confirmation for a suspended tournament", async () => {
+    const { repository, transaction } = resultRepository({
+      tournamentGovernanceStatus: "SUSPENDED",
+    })
+
+    await expect(
+      confirmMatchResult(
+        {
+          tournamentId: "tournament-1",
+          matchId: "match-1",
+          homeScore: 72,
+          awayScore: 68,
+          expectedVersion: 2,
+        },
+        organizer,
+        { competitions: repository, now: () => new Date() },
+      ),
+    ).rejects.toMatchObject({ issues: ["TOURNAMENT_SUSPENDED"] })
+    expect(transaction.confirmResultAndAdvance).not.toHaveBeenCalled()
+  })
+
   it("rejects tied confirmation and an occupied downstream slot", async () => {
     const tied = resultRepository()
     await expect(
@@ -652,6 +811,7 @@ describe("match results", () => {
       findResultCorrectionContext: vi.fn(async () => ({
         tournamentId: "tournament-1",
         organizerId: organizer.id,
+        tournamentGovernanceStatus: "ACTIVE",
         matchId: "match-1",
         matchVersion: 3,
         matchStatus: "COMPLETED",
@@ -756,6 +916,28 @@ describe("match results", () => {
         { competitions: correction.repository, now: () => new Date() },
       ),
     ).rejects.toThrow("RESULT_CORRECTION_DOWNSTREAM_LOCKED")
+    expect(correction.transaction.correctResult).not.toHaveBeenCalled()
+  })
+
+  it("blocks result correction for a suspended tournament", async () => {
+    const correction = correctionRepository({
+      tournamentGovernanceStatus: "SUSPENDED",
+    })
+
+    await expect(
+      correctMatchResult(
+        {
+          tournamentId: "tournament-1",
+          matchId: "match-1",
+          homeScore: 68,
+          awayScore: 72,
+          expectedVersion: 3,
+          reason: "คะแนนผิด",
+        },
+        admin,
+        { competitions: correction.repository, now: () => new Date() },
+      ),
+    ).rejects.toMatchObject({ issues: ["TOURNAMENT_SUSPENDED"] })
     expect(correction.transaction.correctResult).not.toHaveBeenCalled()
   })
 })

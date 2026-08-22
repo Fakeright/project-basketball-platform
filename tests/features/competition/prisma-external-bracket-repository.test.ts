@@ -308,6 +308,7 @@ describe("PrismaExternalBracketRepository", () => {
       id: "tournament-1",
       title: "External Cup",
       organizerId: "organizer-1",
+      governanceStatus: "SUSPENDED",
       brackets: [{
         id: "bracket-1",
         version: 4,
@@ -337,6 +338,7 @@ describe("PrismaExternalBracketRepository", () => {
 
     expect(workspace).toMatchObject({
       organizerId: "organizer-1",
+      tournamentGovernanceStatus: "SUSPENDED",
       bracketVersion: 4,
       hasStartedMatch: true,
     })

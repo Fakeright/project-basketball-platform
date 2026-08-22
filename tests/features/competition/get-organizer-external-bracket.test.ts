@@ -17,6 +17,7 @@ describe("getOrganizerExternalBracketWorkspace", () => {
     externalBrackets.findModeSelectionContext = vi.fn().mockResolvedValue({
       tournamentId: "tournament-1",
       organizerId: organizer.id,
+      tournamentGovernanceStatus: "ACTIVE",
       bracketId: "bracket-1",
       bracketVersion: 2,
       bracketStatus: "DRAFT",
@@ -43,6 +44,7 @@ describe("getOrganizerExternalBracketWorkspace", () => {
     externalBrackets.findModeSelectionContext = vi.fn().mockResolvedValue({
       tournamentId: "tournament-1",
       organizerId: "organizer-2",
+      tournamentGovernanceStatus: "ACTIVE",
       bracketId: "bracket-1",
       bracketVersion: 2,
       bracketStatus: "DRAFT",
@@ -64,6 +66,7 @@ describe("getOrganizerExternalBracketWorkspace", () => {
     const modeContext = {
       tournamentId: "tournament-1",
       organizerId: organizer.id,
+      tournamentGovernanceStatus: "ACTIVE" as const,
       bracketId: "bracket-1",
       bracketVersion: 3,
       bracketStatus: "PUBLISHED",

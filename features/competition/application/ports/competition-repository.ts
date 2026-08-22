@@ -4,6 +4,7 @@ import type {
   LockedBracketEntry,
   MatchPurpose,
 } from "@/features/competition/domain/competition"
+import type { TournamentGovernanceStatus } from "@/features/tournament-operations/domain/tournament-governance-policy"
 
 export interface PersistGeneratedPlanInput {
   tournamentId: string
@@ -21,6 +22,7 @@ export interface PersistGeneratedPlanInput {
 export interface BracketGenerationContext {
   tournamentId: string
   organizerId: string
+  tournamentGovernanceStatus: TournamentGovernanceStatus
   bracketId: string
   bracketVersion: number
   generationMethod: BracketGenerationMethod | null
@@ -34,6 +36,7 @@ export interface OrganizerCompetitionWorkspace {
     id: string
     title: string
     organizerId: string
+    tournamentGovernanceStatus: TournamentGovernanceStatus
     status: string
     version: number
   }
@@ -73,6 +76,7 @@ export interface OrganizerCompetitionWorkspace {
 export interface BracketPublicationContext {
   tournamentId: string
   organizerId: string
+  tournamentGovernanceStatus: TournamentGovernanceStatus
   bracketId: string
   bracketVersion: number
   bracketStatus: string
@@ -96,6 +100,7 @@ export interface SetBracketPublicationInput {
 export interface MatchScheduleContext {
   tournamentId: string
   organizerId: string
+  tournamentGovernanceStatus: TournamentGovernanceStatus
   tournamentStatus: string
   tournamentStartsAt: string
   tournamentEndsAt: string
@@ -109,6 +114,7 @@ export interface MatchScheduleContext {
 export interface ExternalMatchCreationContext {
   tournamentId: string
   organizerId: string
+  tournamentGovernanceStatus: TournamentGovernanceStatus
   tournamentStartsAt: string
   tournamentEndsAt: string
   bracketId: string
@@ -140,6 +146,7 @@ export interface CreateExternalMatchMutation {
 export interface ExternalMatchPurposeContext {
   tournamentId: string
   organizerId: string
+  tournamentGovernanceStatus: TournamentGovernanceStatus
   bracketMode: "SYSTEM_GENERATED" | "EXTERNAL_DOCUMENT"
   matchId: string
   matchPurpose: MatchPurpose
@@ -195,6 +202,7 @@ export interface ScheduledCompetitionMatch {
 export interface MatchResultContext {
   tournamentId: string
   organizerId: string
+  tournamentGovernanceStatus: TournamentGovernanceStatus
   tournamentStatus: string
   bracketStatus: string
   bracketMode: "SYSTEM_GENERATED" | "EXTERNAL_DOCUMENT"
@@ -238,6 +246,7 @@ export interface ResultCompetitionMatch {
 export interface MatchResultCorrectionContext {
   tournamentId: string
   organizerId: string
+  tournamentGovernanceStatus: TournamentGovernanceStatus
   matchId: string
   matchVersion: number
   matchStatus: string
@@ -277,6 +286,7 @@ export interface PersistedCompetitionBracket {
 export interface BracketLockContext {
   tournamentId: string
   organizerId: string
+  tournamentGovernanceStatus: TournamentGovernanceStatus
   tournamentStatus: string
   capacity: number
   version: number

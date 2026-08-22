@@ -1,5 +1,6 @@
 import { authorize } from "@/features/identity/application/authorize"
 import type { Actor } from "@/features/identity/domain/actor"
+import { assertTournamentGovernanceAllowsOperation } from "@/features/tournament-operations/domain/tournament-governance-policy"
 import {
   assertBracketStructureMutable,
   assertEntriesCanBeLocked,
@@ -28,6 +29,9 @@ export async function lockBracketEntries(
     }
 
     authorize(actor, "bracket.generate", { organizerId: context.organizerId })
+    assertTournamentGovernanceAllowsOperation(
+      context.tournamentGovernanceStatus,
+    )
     assertEntriesCanBeLocked({
       tournamentStatus: context.tournamentStatus,
       approvedTeamIds: context.approvedEntries.map((entry) => entry.teamId),

@@ -1,3 +1,5 @@
+import type { TournamentGovernanceStatus } from "@/features/tournament-operations/domain/tournament-governance-policy"
+
 export type BracketMode = "SYSTEM_GENERATED" | "EXTERNAL_DOCUMENT"
 
 export type BracketGenerationMethod = "SEEDED" | "RANDOM"
@@ -10,6 +12,7 @@ export interface TournamentCompetitionLifecycleContext {
   tournamentId: string
   organizerId: string
   status: string
+  tournamentGovernanceStatus: TournamentGovernanceStatus
   version: number
   activeBracket: null | {
     id: string

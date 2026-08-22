@@ -21,6 +21,7 @@ import {
   type SafeHttpDiagnostics,
   withSafeRouteBoundary,
 } from "@/features/shared/presentation/safe-http"
+import { tournamentGovernanceFailureResponse } from "@/features/tournament-operations/presentation/tournament-governance-error-response"
 
 const lockEntriesSchema = z.object({
   expectedVersion: z.number().int().nonnegative(),
@@ -547,6 +548,9 @@ async function handleMatchResultMutation<
 }
 
 function competitionFailureResponse(error: unknown) {
+  const governanceFailure = tournamentGovernanceFailureResponse(error)
+  if (governanceFailure) return governanceFailure
+
   const code = error instanceof Error ? error.message : "UNKNOWN"
   const responses: Record<string, { status: number; message: string }> = {
     NOT_FOUND: { status: 404, message: "ไม่พบรายการแข่งขัน" },
@@ -575,6 +579,9 @@ function competitionFailureResponse(error: unknown) {
 }
 
 function generationFailureResponse(error: unknown) {
+  const governanceFailure = tournamentGovernanceFailureResponse(error)
+  if (governanceFailure) return governanceFailure
+
   const code = error instanceof Error ? error.message : "UNKNOWN"
   const responses: Record<string, { status: number; message: string }> = {
     NOT_FOUND: { status: 404, message: "ไม่พบรายการแข่งขัน" },
@@ -603,6 +610,9 @@ function generationFailureResponse(error: unknown) {
 }
 
 function publicationFailureResponse(error: unknown) {
+  const governanceFailure = tournamentGovernanceFailureResponse(error)
+  if (governanceFailure) return governanceFailure
+
   const code = error instanceof Error ? error.message : "UNKNOWN"
   const responses: Record<string, { status: number; message: string }> = {
     NOT_FOUND: { status: 404, message: "ไม่พบรายการแข่งขัน" },
@@ -632,6 +642,9 @@ function publicationFailureResponse(error: unknown) {
 }
 
 function scheduleFailureResponse(error: unknown) {
+  const governanceFailure = tournamentGovernanceFailureResponse(error)
+  if (governanceFailure) return governanceFailure
+
   const code = error instanceof Error ? error.message : "UNKNOWN"
   const responses: Record<string, { status: number; message: string }> = {
     NOT_FOUND: { status: 404, message: "ไม่พบคู่แข่งขัน" },
@@ -673,6 +686,9 @@ function scheduleFailureResponse(error: unknown) {
 }
 
 function externalMatchFailureResponse(error: unknown) {
+  const governanceFailure = tournamentGovernanceFailureResponse(error)
+  if (governanceFailure) return governanceFailure
+
   const code = error instanceof Error ? error.message : "UNKNOWN"
   const responses: Record<string, { status: number; message: string }> = {
     NOT_FOUND: { status: 404, message: "ไม่พบรายการแข่งขัน" },
@@ -726,6 +742,9 @@ function externalMatchFailureResponse(error: unknown) {
 }
 
 function resultFailureResponse(error: unknown) {
+  const governanceFailure = tournamentGovernanceFailureResponse(error)
+  if (governanceFailure) return governanceFailure
+
   const code = error instanceof Error ? error.message : "UNKNOWN"
   const responses: Record<string, { status: number; message: string }> = {
     NOT_FOUND: { status: 404, message: "ไม่พบคู่แข่งขัน" },

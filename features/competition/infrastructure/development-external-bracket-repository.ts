@@ -14,6 +14,7 @@ import type {
   SelectBracketModeInput,
 } from "@/features/competition/application/ports/external-bracket-repository"
 import type { TournamentMediaAsset } from "@/features/tournament-media/domain/media-asset"
+import type { TournamentGovernanceStatus } from "@/features/tournament-operations/domain/tournament-governance-policy"
 
 interface DevelopmentExternalBracketWorkspace
   extends Omit<
@@ -22,10 +23,12 @@ interface DevelopmentExternalBracketWorkspace
     | "publishedRevision"
     | "bracketMode"
     | "latestConfirmedResultAt"
+    | "tournamentGovernanceStatus"
   > {
   bracketMode: "SYSTEM_GENERATED" | "EXTERNAL_DOCUMENT"
   tournamentSlug: string
   latestConfirmedResultAt?: string | null
+  tournamentGovernanceStatus?: TournamentGovernanceStatus
 }
 
 interface DevelopmentAuditEvent {
@@ -80,6 +83,8 @@ export class DevelopmentExternalBracketRepository
     return {
       tournamentId: workspace.tournamentId,
       organizerId: workspace.organizerId,
+      tournamentGovernanceStatus:
+        workspace.tournamentGovernanceStatus ?? "ACTIVE",
       bracketId: workspace.bracketId,
       bracketVersion: workspace.bracketVersion,
       bracketStatus: workspace.bracketStatus,
@@ -341,6 +346,8 @@ function toWorkspaceContext(
   }
   return {
     ...workspace,
+    tournamentGovernanceStatus:
+      workspace.tournamentGovernanceStatus ?? "ACTIVE",
     bracketMode: "EXTERNAL_DOCUMENT",
     latestConfirmedResultAt: workspace.latestConfirmedResultAt ?? null,
     ...toWorkspace(state, workspace),

@@ -3,6 +3,7 @@ import type { Actor } from "@/features/identity/domain/actor"
 import { generateSingleEliminationBracket } from "@/features/competition/domain/bracket-generator"
 import { assertBracketStructureMutable } from "@/features/competition/domain/bracket-policy"
 import type { LockedBracketEntry } from "@/features/competition/domain/competition"
+import { assertTournamentGovernanceAllowsOperation } from "@/features/tournament-operations/domain/tournament-governance-policy"
 
 import type {
   CompetitionRepository,
@@ -48,10 +49,13 @@ export async function generateBracketDraft(
     }
 
     authorize(actor, "bracket.generate", { organizerId: context.organizerId })
-    assertBracketStructureMutable({ hasStartedMatch: context.hasStartedMatch })
     if (context.bracketVersion !== input.expectedVersion) {
       throw new Error("CONFLICT")
     }
+    assertTournamentGovernanceAllowsOperation(
+      context.tournamentGovernanceStatus,
+    )
+    assertBracketStructureMutable({ hasStartedMatch: context.hasStartedMatch })
 
     const { entries, drawToken } = prepareEntries(input, context.entries, context)
     const plan = generateSingleEliminationBracket({

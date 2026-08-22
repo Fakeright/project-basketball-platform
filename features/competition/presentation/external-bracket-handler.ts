@@ -10,6 +10,7 @@ import {
   type SafeHttpDiagnostics,
   withSafeRouteBoundary,
 } from "@/features/shared/presentation/safe-http"
+import { tournamentGovernanceFailureResponse } from "@/features/tournament-operations/presentation/tournament-governance-error-response"
 
 const modeSchema = z.object({
   targetMode: z.enum(["SYSTEM_GENERATED", "EXTERNAL_DOCUMENT"]),
@@ -228,6 +229,9 @@ function validationResponse(message: string) {
 }
 
 function mapExternalBracketError(error: unknown) {
+  const governanceFailure = tournamentGovernanceFailureResponse(error)
+  if (governanceFailure) return governanceFailure
+
   if (error instanceof ObjectStorageError && error.code === "UNAVAILABLE") {
     return Response.json(
       { message: "ระบบจัดเก็บไฟล์ไม่พร้อมใช้งาน กรุณาลองใหม่" },

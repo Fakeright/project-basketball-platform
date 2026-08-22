@@ -12,6 +12,7 @@ import type { TournamentCompetitionLifecycleContext } from "@/features/competiti
 const validClosedContext: TournamentCompetitionLifecycleContext = {
   tournamentId: "tournament-1",
   organizerId: "organizer-1",
+  tournamentGovernanceStatus: "ACTIVE",
   status: "REGISTRATION_CLOSED",
   version: 4,
   activeBracket: {

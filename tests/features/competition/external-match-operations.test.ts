@@ -89,6 +89,30 @@ describe("createExternalMatch", () => {
     ).rejects.toThrow(code)
     expect(transaction.createExternalMatch).not.toHaveBeenCalled()
   })
+
+  it("blocks external match creation for a suspended tournament", async () => {
+    const { repository, transaction } = repositoryWithContext({
+      tournamentGovernanceStatus: "SUSPENDED",
+    })
+
+    await expect(
+      createExternalMatch(
+        {
+          tournamentId: "tournament-1",
+          roundName: "Final",
+          sequence: 1,
+          homeTeamId: "team-1",
+          awayTeamId: "team-2",
+          scheduledAt: "2026-08-20T06:00:00.000Z",
+          court: "สนาม A",
+          expectedVersion: 3,
+        },
+        organizer,
+        { competitions: repository, now: () => new Date() },
+      ),
+    ).rejects.toMatchObject({ issues: ["TOURNAMENT_SUSPENDED"] })
+    expect(transaction.createExternalMatch).not.toHaveBeenCalled()
+  })
 })
 
 describe("updateExternalMatchPurpose", () => {
@@ -129,6 +153,7 @@ describe("updateExternalMatchPurpose", () => {
     transaction.findExternalMatchPurposeContext.mockResolvedValueOnce({
       tournamentId: "tournament-1",
       organizerId: organizer.id,
+      tournamentGovernanceStatus: "ACTIVE",
       bracketMode: "EXTERNAL_DOCUMENT",
       matchId: "match-1",
       matchPurpose: "STANDARD",
@@ -153,6 +178,36 @@ describe("updateExternalMatchPurpose", () => {
     ).rejects.toThrow(code)
     expect(transaction.updateExternalMatchPurpose).not.toHaveBeenCalled()
   })
+
+  it("blocks external match purpose updates for a suspended tournament", async () => {
+    const { repository, transaction } = repositoryWithContext()
+    transaction.findExternalMatchPurposeContext.mockResolvedValueOnce({
+      tournamentId: "tournament-1",
+      organizerId: organizer.id,
+      tournamentGovernanceStatus: "SUSPENDED",
+      bracketMode: "EXTERNAL_DOCUMENT",
+      matchId: "match-1",
+      matchPurpose: "STANDARD",
+      matchStatus: "SCHEDULED",
+      matchVersion: 2,
+      hasScore: false,
+      resultConfirmed: false,
+    })
+
+    await expect(
+      updateExternalMatchPurpose(
+        {
+          tournamentId: "tournament-1",
+          matchId: "match-1",
+          purpose: "CHAMPIONSHIP",
+          expectedVersion: 2,
+        },
+        organizer,
+        { competitions: repository, now: () => new Date() },
+      ),
+    ).rejects.toMatchObject({ issues: ["TOURNAMENT_SUSPENDED"] })
+    expect(transaction.updateExternalMatchPurpose).not.toHaveBeenCalled()
+  })
 })
 
 describe("confirmMatchResult in external mode", () => {
@@ -161,6 +216,7 @@ describe("confirmMatchResult in external mode", () => {
     transaction.findResultContext.mockResolvedValue({
       tournamentId: "tournament-1",
       organizerId: organizer.id,
+      tournamentGovernanceStatus: "ACTIVE",
       tournamentStatus: "IN_PROGRESS",
       bracketStatus: "PUBLISHED",
       bracketMode: "EXTERNAL_DOCUMENT",
@@ -197,6 +253,7 @@ function repositoryWithContext(override: Record<string, unknown> = {}) {
   const context = {
     tournamentId: "tournament-1",
     organizerId: organizer.id,
+    tournamentGovernanceStatus: "ACTIVE",
     tournamentStartsAt: "2026-08-20T00:00:00.000Z",
     tournamentEndsAt: "2026-08-22T12:00:00.000Z",
     bracketId: "bracket-1",
@@ -218,6 +275,7 @@ function repositoryWithContext(override: Record<string, unknown> = {}) {
     findExternalMatchPurposeContext: vi.fn().mockResolvedValue({
       tournamentId: "tournament-1",
       organizerId: organizer.id,
+      tournamentGovernanceStatus: "ACTIVE",
       bracketMode: "EXTERNAL_DOCUMENT",
       matchId: "match-1",
       matchPurpose: "STANDARD",
