@@ -9,11 +9,19 @@ import {
   assertTournamentCanStart,
 } from "@/features/competition/domain/tournament-competition-policy"
 import type { TournamentCompetitionLifecycleContext } from "@/features/competition/domain/competition"
+import {
+  getTournamentGovernanceIssues,
+  getTournamentGovernanceReasonIssues,
+  TournamentGovernancePolicyError,
+  type TournamentGovernanceContext,
+} from "@/features/tournament-operations/domain/tournament-governance-policy"
 import type {
   TournamentCompetitionTransition,
   TournamentLifecycleTransition,
   TournamentMutationAudit,
   TournamentOperationsRepository,
+  TournamentPermanentDelete,
+  TournamentGovernanceTransition,
   AdminTournamentFilters,
 } from "./tournament-operations-repository"
 
@@ -24,8 +32,8 @@ export class InMemoryTournamentOperationsRepository implements TournamentOperati
     actorId: string
     action: string
     tournamentId: string
-    before: TournamentOperation | null
-    after: TournamentOperation
+    before: object | null
+    after: object
   }> = []
 
   async create(
@@ -40,6 +48,13 @@ export class InMemoryTournamentOperationsRepository implements TournamentOperati
   }
 
   async findById(id: string) { return this.tournaments.get(id) ?? null }
+
+  async findGovernanceContext(
+    id: string,
+  ): Promise<TournamentGovernanceContext | null> {
+    const tournament = this.tournaments.get(id)
+    return tournament ? dependencyFreeGovernanceContext(tournament) : null
+  }
 
   async findCompetitionLifecycleContext(
     id: string,
@@ -180,11 +195,90 @@ export class InMemoryTournamentOperationsRepository implements TournamentOperati
     return this.transitionWithVersion(input)
   }
 
+  async governWithVersion(input: TournamentGovernanceTransition) {
+    const current = this.tournaments.get(input.tournamentId)
+    if (!current) throw new Error("NOT_FOUND")
+    if (
+      current.version !== input.expectedVersion ||
+      current.status !== input.sourceStatus ||
+      current.governanceStatus !== input.sourceGovernanceStatus
+    ) {
+      throw new Error("CONFLICT")
+    }
+
+    const reason = input.reason.trim()
+    assertGovernancePolicy(
+      input.action,
+      dependencyFreeGovernanceContext(current),
+      input.at,
+      reason,
+    )
+    const updated: TournamentOperation = {
+      ...current,
+      status: input.targetStatus,
+      governanceStatus: input.targetGovernanceStatus,
+      ...(updatesGovernanceMetadata(input.action)
+        ? {
+            governanceReason: reason,
+            governanceUpdatedAt: input.at,
+          }
+        : {}),
+      version: input.expectedVersion + 1,
+      updatedAt: input.at,
+    }
+    this.tournaments.set(input.tournamentId, updated)
+    this.appendAudit(
+      {
+        actorId: input.actorId,
+        action: governanceAuditAction(input.action),
+        adminOverride: true,
+      },
+      input.tournamentId,
+      current,
+      { ...updated, transitionReason: reason },
+    )
+    return updated
+  }
+
+  async permanentlyDeleteWithVersion(input: TournamentPermanentDelete) {
+    const current = this.tournaments.get(input.tournamentId)
+    if (!current) throw new Error("NOT_FOUND")
+    if (current.version !== input.expectedVersion) throw new Error("CONFLICT")
+
+    const reason = input.reason.trim()
+    assertGovernancePolicy(
+      "PERMANENT_DELETE",
+      dependencyFreeGovernanceContext(current),
+      input.at,
+      reason,
+      input.confirmationTitle,
+    )
+    this.appendAudit(
+      {
+        actorId: input.actorId,
+        action: "tournament.deleted",
+        adminOverride: true,
+      },
+      input.tournamentId,
+      current,
+      {
+        deleted: true,
+        title: current.title,
+        status: current.status,
+        governanceStatus: current.governanceStatus,
+        version: current.version,
+        transitionReason: reason,
+        deletedAt: input.at,
+      },
+    )
+    this.tournaments.delete(input.tournamentId)
+  }
+
   private appendAudit(
     audit: TournamentMutationAudit,
     tournamentId: string,
-    before: TournamentOperation | null,
-    after: TournamentOperation,
+    before: object | null,
+    after: object,
   ) {
     this.audits.push({
       actorId: audit.actorId,
@@ -203,6 +297,64 @@ export class InMemoryTournamentOperationsRepository implements TournamentOperati
       })
     }
   }
+}
+
+function dependencyFreeGovernanceContext(
+  tournament: TournamentOperation,
+): TournamentGovernanceContext {
+  return {
+    tournamentId: tournament.id,
+    title: tournament.title,
+    organizerId: tournament.organizerId,
+    status: tournament.status,
+    governanceStatus: tournament.governanceStatus,
+    version: tournament.version,
+    startsAt: tournament.startsAt,
+    reviewCount: 0,
+    registrationCount: 0,
+    bracketCount: 0,
+    matchCount: 0,
+    mediaAssetCount: 0,
+    activeBracket: null,
+  }
+}
+
+function assertGovernancePolicy(
+  action: TournamentGovernanceTransition["action"] | "PERMANENT_DELETE",
+  context: TournamentGovernanceContext,
+  at: string,
+  reason: string,
+  confirmationTitle?: string,
+) {
+  const issues = [
+    ...getTournamentGovernanceReasonIssues(reason),
+    ...getTournamentGovernanceIssues(
+      action,
+      context,
+      new Date(at),
+      confirmationTitle,
+    ),
+  ]
+  if (issues.length > 0) throw new TournamentGovernancePolicyError(issues)
+}
+
+function updatesGovernanceMetadata(
+  action: TournamentGovernanceTransition["action"],
+) {
+  return action === "SUSPEND" || action === "RESUME" || action === "REMOVE"
+}
+
+function governanceAuditAction(
+  action: TournamentGovernanceTransition["action"],
+): TournamentMutationAudit["action"] {
+  const auditActionByGovernanceAction = {
+    SUSPEND: "tournament.suspended",
+    RESUME: "tournament.resumed",
+    REMOVE: "tournament.removed",
+    ARCHIVE: "tournament.archived",
+    REOPEN_REGISTRATION: "tournament.registration_reopened",
+  } as const
+  return auditActionByGovernanceAction[action]
 }
 
 function provinceName(provinceCode: string) {

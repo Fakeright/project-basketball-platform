@@ -5,6 +5,11 @@ import type {
   TournamentOperationStatus,
   TournamentReviewInput,
 } from "@/features/tournament-operations/domain/tournament-operation"
+import type {
+  TournamentGovernanceAction,
+  TournamentGovernanceContext,
+  TournamentGovernanceStatus,
+} from "@/features/tournament-operations/domain/tournament-governance-policy"
 import type { TournamentCompetitionLifecycleContext } from "@/features/competition/domain/competition"
 
 export interface TournamentOperationsRepository {
@@ -13,6 +18,7 @@ export interface TournamentOperationsRepository {
     audit: TournamentMutationAudit,
   ): Promise<TournamentOperation>
   findById(id: string): Promise<TournamentOperation | null>
+  findGovernanceContext(id: string): Promise<TournamentGovernanceContext | null>
   findCompetitionLifecycleContext(
     id: string,
   ): Promise<TournamentCompetitionLifecycleContext | null>
@@ -32,6 +38,12 @@ export interface TournamentOperationsRepository {
   transitionCompetitionWithVersion(
     input: TournamentCompetitionTransition,
   ): Promise<TournamentOperation>
+  governWithVersion(
+    input: TournamentGovernanceTransition,
+  ): Promise<TournamentOperation>
+  permanentlyDeleteWithVersion(
+    input: TournamentPermanentDelete,
+  ): Promise<void>
 }
 
 export interface AdminTournamentFilters {
@@ -76,6 +88,28 @@ export interface TournamentCompetitionTransition {
   action: "tournament.started" | "tournament.completed"
   adminOverride: boolean
   reason: string | null
+  at: string
+}
+
+export interface TournamentGovernanceTransition {
+  action: Exclude<TournamentGovernanceAction, "PERMANENT_DELETE">
+  tournamentId: string
+  expectedVersion: number
+  sourceStatus: TournamentOperationStatus
+  sourceGovernanceStatus: TournamentGovernanceStatus
+  targetStatus: TournamentOperationStatus
+  targetGovernanceStatus: TournamentGovernanceStatus
+  reason: string
+  actorId: string
+  at: string
+}
+
+export interface TournamentPermanentDelete {
+  tournamentId: string
+  expectedVersion: number
+  confirmationTitle: string
+  reason: string
+  actorId: string
   at: string
 }
 

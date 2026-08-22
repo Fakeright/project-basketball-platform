@@ -38,6 +38,12 @@ enum TournamentStatus {
   SUSPENDED
 }
 
+enum TournamentGovernanceStatus {
+  ACTIVE
+  SUSPENDED
+  REMOVED
+}
+
 enum ReviewDecision {
   APPROVED
   CHANGES_REQUESTED
@@ -219,6 +225,9 @@ model Tournament {
   format               TournamentFormat
   ageGroup             String
   status               TournamentStatus   @default(DRAFT)
+  governanceStatus     TournamentGovernanceStatus @default(ACTIVE)
+  governanceReason     String?
+  governanceUpdatedAt  DateTime?
   startsAt             DateTime
   endsAt               DateTime
   registrationDeadline DateTime
@@ -239,6 +248,7 @@ model Tournament {
 
   @@index([organizerId, status])
   @@index([status, startsAt])
+  @@index([governanceStatus, status])
   @@index([provinceCode])
 }
 

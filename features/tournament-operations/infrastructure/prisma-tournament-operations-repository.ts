@@ -1,14 +1,20 @@
 import { randomUUID } from "node:crypto"
 
-import type {
+import {
   Prisma,
-  PrismaClient,
+  type PrismaClient,
 } from "@/lib/generated/prisma/client"
 import type { TournamentCompetitionLifecycleContext } from "@/features/competition/domain/competition"
 import {
   assertTournamentCanComplete,
   assertTournamentCanStart,
 } from "@/features/competition/domain/tournament-competition-policy"
+import {
+  getTournamentGovernanceIssues,
+  getTournamentGovernanceReasonIssues,
+  TournamentGovernancePolicyError,
+  type TournamentGovernanceContext,
+} from "@/features/tournament-operations/domain/tournament-governance-policy"
 import type {
   TournamentOperation,
   TournamentOperationInput,
@@ -20,7 +26,9 @@ import type {
   AdminTournamentFilters,
   TournamentMutationAudit,
   TournamentOperationsRepository,
+  TournamentPermanentDelete,
   TournamentReviewTransition,
+  TournamentGovernanceTransition,
 } from "./tournament-operations-repository"
 
 const tournamentOperationInclude = {
@@ -53,12 +61,58 @@ const tournamentCompetitionLifecycleInclude = {
   },
 } satisfies Prisma.TournamentInclude
 
+const tournamentGovernanceDependencyProjection = {
+  _count: {
+    select: {
+      reviews: true,
+      registrations: true,
+      brackets: true,
+      matches: true,
+      mediaAssets: true,
+    },
+  },
+  brackets: {
+    where: { status: { not: "ARCHIVED" } },
+    orderBy: { createdAt: "desc" },
+    take: 1,
+    select: {
+      status: true,
+      entriesLockedAt: true,
+      _count: { select: { matches: true } },
+    },
+  },
+} as const
+
+const tournamentGovernanceContextSelect = {
+  id: true,
+  title: true,
+  organizerId: true,
+  status: true,
+  governanceStatus: true,
+  version: true,
+  startsAt: true,
+  ...tournamentGovernanceDependencyProjection,
+} satisfies Prisma.TournamentSelect
+
+const tournamentGovernanceTransactionInclude = {
+  province: true,
+  ...tournamentGovernanceDependencyProjection,
+} satisfies Prisma.TournamentInclude
+
 type TournamentOperationRow = Prisma.TournamentGetPayload<{
   include: typeof tournamentOperationInclude
 }> & { organizer?: { displayName: string } }
 
 type TournamentCompetitionLifecycleRow = Prisma.TournamentGetPayload<{
   include: typeof tournamentCompetitionLifecycleInclude
+}>
+
+type TournamentGovernanceContextRow = Prisma.TournamentGetPayload<{
+  select: typeof tournamentGovernanceContextSelect
+}>
+
+type TournamentGovernanceTransactionRow = Prisma.TournamentGetPayload<{
+  include: typeof tournamentGovernanceTransactionInclude
 }>
 
 type TournamentTransactionClient = Pick<
@@ -106,6 +160,16 @@ export class PrismaTournamentOperationsRepository
       include: tournamentOperationInclude,
     })
     return tournament ? mapTournament(tournament) : null
+  }
+
+  async findGovernanceContext(
+    id: string,
+  ): Promise<TournamentGovernanceContext | null> {
+    const tournament = await this.prisma.tournament.findUnique({
+      where: { id },
+      select: tournamentGovernanceContextSelect,
+    })
+    return tournament ? mapGovernanceContext(tournament) : null
   }
 
   async findCompetitionLifecycleContext(
@@ -325,6 +389,162 @@ export class PrismaTournamentOperationsRepository
       return after
     })
   }
+
+  async governWithVersion(
+    input: TournamentGovernanceTransition,
+  ): Promise<TournamentOperation> {
+    return runSerializableTransaction(this.prisma, async (transaction) => {
+      const current = await transaction.tournament.findUnique({
+        where: { id: input.tournamentId },
+        include: tournamentGovernanceTransactionInclude,
+      })
+      if (!current) throw new Error("NOT_FOUND")
+
+      const reason = input.reason.trim()
+      assertGovernancePolicy(
+        input.action,
+        mapGovernanceContext(current),
+        input.at,
+        reason,
+      )
+
+      const update = await transaction.tournament.updateMany({
+        where: {
+          id: input.tournamentId,
+          version: input.expectedVersion,
+          status: input.sourceStatus,
+          governanceStatus: input.sourceGovernanceStatus,
+        },
+        data: {
+          status: input.targetStatus,
+          governanceStatus: input.targetGovernanceStatus,
+          ...(updatesGovernanceMetadata(input.action)
+            ? {
+                governanceReason: reason,
+                governanceUpdatedAt: new Date(input.at),
+              }
+            : {}),
+          version: { increment: 1 },
+        },
+      })
+      if (update.count !== 1) throw new Error("CONFLICT")
+
+      const tournament = await transaction.tournament.findUnique({
+        where: { id: input.tournamentId },
+        include: tournamentOperationInclude,
+      })
+      if (!tournament) throw new Error("NOT_FOUND")
+      const after = mapTournament(tournament)
+      await appendTournamentAudit(transaction, {
+        actorId: input.actorId,
+        action: governanceAuditAction(input.action),
+        adminOverride: true,
+        tournamentId: input.tournamentId,
+        before: mapTournament(current),
+        after,
+        reason,
+      })
+      return after
+    })
+  }
+
+  async permanentlyDeleteWithVersion(
+    input: TournamentPermanentDelete,
+  ): Promise<void> {
+    await runSerializableTransaction(this.prisma, async (transaction) => {
+      const current = await transaction.tournament.findUnique({
+        where: { id: input.tournamentId },
+        include: tournamentGovernanceTransactionInclude,
+      })
+      if (!current) throw new Error("NOT_FOUND")
+      if (current.version !== input.expectedVersion) throw new Error("CONFLICT")
+
+      const reason = input.reason.trim()
+      assertGovernancePolicy(
+        "PERMANENT_DELETE",
+        mapGovernanceContext(current),
+        input.at,
+        reason,
+        input.confirmationTitle,
+      )
+
+      const before = mapTournament(current)
+      const tombstone = {
+        deleted: true,
+        title: current.title,
+        status: current.status,
+        governanceStatus: current.governanceStatus,
+        version: current.version,
+        deletedAt: input.at,
+      }
+      await appendTournamentAudit(transaction, {
+        actorId: input.actorId,
+        action: "tournament.deleted",
+        adminOverride: true,
+        tournamentId: input.tournamentId,
+        before,
+        after: tombstone,
+        reason,
+      })
+
+      const deletion = await transaction.tournament.deleteMany({
+        where: { id: input.tournamentId, version: input.expectedVersion },
+      })
+      if (deletion.count !== 1) throw new Error("CONFLICT")
+    })
+  }
+}
+
+async function runSerializableTransaction<T>(
+  prisma: PrismaClient,
+  operation: (transaction: Prisma.TransactionClient) => Promise<T>,
+): Promise<T> {
+  try {
+    return await prisma.$transaction(operation, {
+      isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+    })
+  } catch (error) {
+    if (isPrismaSerializationConflict(error)) throw new Error("CONFLICT")
+    throw error
+  }
+}
+
+function assertGovernancePolicy(
+  action: TournamentGovernanceTransition["action"] | "PERMANENT_DELETE",
+  context: TournamentGovernanceContext,
+  at: string,
+  reason: string,
+  confirmationTitle?: string,
+) {
+  const issues = [
+    ...getTournamentGovernanceReasonIssues(reason),
+    ...getTournamentGovernanceIssues(
+      action,
+      context,
+      new Date(at),
+      confirmationTitle,
+    ),
+  ]
+  if (issues.length > 0) throw new TournamentGovernancePolicyError(issues)
+}
+
+function updatesGovernanceMetadata(
+  action: TournamentGovernanceTransition["action"],
+) {
+  return action === "SUSPEND" || action === "RESUME" || action === "REMOVE"
+}
+
+function governanceAuditAction(
+  action: TournamentGovernanceTransition["action"],
+): TournamentMutationAudit["action"] {
+  const auditActionByGovernanceAction = {
+    SUSPEND: "tournament.suspended",
+    RESUME: "tournament.resumed",
+    REMOVE: "tournament.removed",
+    ARCHIVE: "tournament.archived",
+    REOPEN_REGISTRATION: "tournament.registration_reopened",
+  } as const
+  return auditActionByGovernanceAction[action]
 }
 
 async function updateAndReloadTournament(
@@ -368,8 +588,8 @@ async function appendTournamentAudit(
   client: Pick<Prisma.TransactionClient, "auditLog">,
   input: TournamentMutationAudit & {
     tournamentId: string
-    before: TournamentOperation | null
-    after: TournamentOperation
+    before: object | null
+    after: object
     reason?: string | null
   },
 ) {
@@ -423,6 +643,33 @@ function mapCompetitionLifecycleContext(
   }
 }
 
+function mapGovernanceContext(
+  tournament: TournamentGovernanceContextRow | TournamentGovernanceTransactionRow,
+): TournamentGovernanceContext {
+  const bracket = tournament.brackets[0]
+  return {
+    tournamentId: tournament.id,
+    title: tournament.title,
+    organizerId: tournament.organizerId,
+    status: tournament.status,
+    governanceStatus: tournament.governanceStatus,
+    version: tournament.version,
+    startsAt: tournament.startsAt.toISOString(),
+    reviewCount: tournament._count.reviews,
+    registrationCount: tournament._count.registrations,
+    bracketCount: tournament._count.brackets,
+    matchCount: tournament._count.matches,
+    mediaAssetCount: tournament._count.mediaAssets,
+    activeBracket: bracket
+      ? {
+          status: bracket.status,
+          entriesLockedAt: bracket.entriesLockedAt?.toISOString() ?? null,
+          matchCount: bracket._count.matches,
+        }
+      : null,
+  }
+}
+
 function mapTournamentChanges(
   changes: Partial<TournamentOperation>,
 ): Prisma.TournamentUncheckedUpdateManyInput {
@@ -464,9 +711,9 @@ function mapTournament(tournament: TournamentOperationRow): TournamentOperation 
     organizerId: tournament.organizerId,
     organizerName: tournament.organizer?.displayName,
     status: tournament.status,
-    governanceStatus: "ACTIVE",
-    governanceReason: null,
-    governanceUpdatedAt: null,
+    governanceStatus: tournament.governanceStatus,
+    governanceReason: tournament.governanceReason,
+    governanceUpdatedAt: tournament.governanceUpdatedAt?.toISOString() ?? null,
     version: tournament.version,
     createdAt: tournament.createdAt.toISOString(),
     updatedAt: tournament.updatedAt.toISOString(),
@@ -475,4 +722,13 @@ function mapTournament(tournament: TournamentOperationRow): TournamentOperation 
 
 function toJsonValue(value: unknown): Prisma.InputJsonValue {
   return JSON.parse(JSON.stringify(value)) as Prisma.InputJsonValue
+}
+
+function isPrismaSerializationConflict(error: unknown) {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    error.code === "P2034"
+  )
 }

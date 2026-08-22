@@ -26,6 +26,9 @@ const approvedTournament: TournamentOperation = {
   registrationDeadline: "2026-11-01T16:59:00.000Z",
   capacity: 16,
   status: "APPROVED",
+  governanceStatus: "ACTIVE",
+  governanceReason: null,
+  governanceUpdatedAt: null,
   version: 3,
   createdAt: "2026-07-26T01:00:00.000Z",
   updatedAt: "2026-07-26T02:00:00.000Z",
@@ -37,6 +40,8 @@ function createRepository(
   return {
     create: vi.fn(),
     findById: vi.fn(async () => tournament),
+    findGovernanceContext: vi.fn(),
+    findCompetitionLifecycleContext: vi.fn(),
     listByOrganizer: vi.fn(),
     listForAdmin: vi.fn(),
     listByStatus: vi.fn(),
@@ -47,6 +52,9 @@ function createRepository(
       status: input.status,
       version: input.version + 1,
     })),
+    transitionCompetitionWithVersion: vi.fn(),
+    governWithVersion: vi.fn(),
+    permanentlyDeleteWithVersion: vi.fn(),
   }
 }
 

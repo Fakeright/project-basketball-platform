@@ -14,12 +14,20 @@ import {
   assertTournamentCanStart,
 } from "@/features/competition/domain/tournament-competition-policy"
 import type { TournamentCompetitionLifecycleContext } from "@/features/competition/domain/competition"
+import {
+  getTournamentGovernanceIssues,
+  getTournamentGovernanceReasonIssues,
+  TournamentGovernancePolicyError,
+  type TournamentGovernanceContext,
+} from "@/features/tournament-operations/domain/tournament-governance-policy"
 
 import type {
   TournamentCompetitionTransition,
   TournamentLifecycleTransition,
   TournamentMutationAudit,
   TournamentOperationsRepository,
+  TournamentPermanentDelete,
+  TournamentGovernanceTransition,
   AdminTournamentFilters,
 } from "./tournament-operations-repository"
 
@@ -35,8 +43,8 @@ interface DevelopmentState {
     actorId: string
     action: string
     tournamentId: string
-    before: TournamentOperation | null
-    after: TournamentOperation
+    before: object | null
+    after: object
   }>
 }
 
@@ -82,6 +90,13 @@ class DevelopmentTournamentOperationsRepository
   async findById(id: string) {
     const state = await readState()
     return state.tournaments.find((tournament) => tournament.id === id) ?? null
+  }
+
+  async findGovernanceContext(
+    id: string,
+  ): Promise<TournamentGovernanceContext | null> {
+    const tournament = await this.findById(id)
+    return tournament ? dependencyFreeGovernanceContext(tournament) : null
   }
 
   async findCompetitionLifecycleContext(
@@ -239,6 +254,157 @@ class DevelopmentTournamentOperationsRepository
     }
     return this.transitionWithVersion(input)
   }
+
+  async governWithVersion(input: TournamentGovernanceTransition) {
+    const state = await readState()
+    const index = state.tournaments.findIndex(
+      (tournament) => tournament.id === input.tournamentId,
+    )
+    if (index < 0) throw new Error("NOT_FOUND")
+
+    const current = state.tournaments[index]
+    if (
+      current.version !== input.expectedVersion ||
+      current.status !== input.sourceStatus ||
+      current.governanceStatus !== input.sourceGovernanceStatus
+    ) {
+      throw new Error("CONFLICT")
+    }
+
+    const reason = input.reason.trim()
+    assertGovernancePolicy(
+      input.action,
+      dependencyFreeGovernanceContext(current),
+      input.at,
+      reason,
+    )
+    const updated: TournamentOperation = {
+      ...current,
+      status: input.targetStatus,
+      governanceStatus: input.targetGovernanceStatus,
+      ...(updatesGovernanceMetadata(input.action)
+        ? {
+            governanceReason: reason,
+            governanceUpdatedAt: input.at,
+          }
+        : {}),
+      version: input.expectedVersion + 1,
+      updatedAt: input.at,
+    }
+    state.tournaments[index] = updated
+    appendDevelopmentAudit(
+      state,
+      {
+        actorId: input.actorId,
+        action: governanceAuditAction(input.action),
+        adminOverride: true,
+      },
+      input.tournamentId,
+      current,
+      { ...updated, transitionReason: reason },
+    )
+    await writeState(state)
+    return updated
+  }
+
+  async permanentlyDeleteWithVersion(input: TournamentPermanentDelete) {
+    const state = await readState()
+    const index = state.tournaments.findIndex(
+      (tournament) => tournament.id === input.tournamentId,
+    )
+    if (index < 0) throw new Error("NOT_FOUND")
+
+    const current = state.tournaments[index]
+    if (current.version !== input.expectedVersion) throw new Error("CONFLICT")
+
+    const reason = input.reason.trim()
+    assertGovernancePolicy(
+      "PERMANENT_DELETE",
+      dependencyFreeGovernanceContext(current),
+      input.at,
+      reason,
+      input.confirmationTitle,
+    )
+    appendDevelopmentAudit(
+      state,
+      {
+        actorId: input.actorId,
+        action: "tournament.deleted",
+        adminOverride: true,
+      },
+      input.tournamentId,
+      current,
+      {
+        deleted: true,
+        title: current.title,
+        status: current.status,
+        governanceStatus: current.governanceStatus,
+        version: current.version,
+        transitionReason: reason,
+        deletedAt: input.at,
+      },
+    )
+    state.tournaments.splice(index, 1)
+    await writeState(state)
+  }
+}
+
+function dependencyFreeGovernanceContext(
+  tournament: TournamentOperation,
+): TournamentGovernanceContext {
+  return {
+    tournamentId: tournament.id,
+    title: tournament.title,
+    organizerId: tournament.organizerId,
+    status: tournament.status,
+    governanceStatus: tournament.governanceStatus,
+    version: tournament.version,
+    startsAt: tournament.startsAt,
+    reviewCount: 0,
+    registrationCount: 0,
+    bracketCount: 0,
+    matchCount: 0,
+    mediaAssetCount: 0,
+    activeBracket: null,
+  }
+}
+
+function assertGovernancePolicy(
+  action: TournamentGovernanceTransition["action"] | "PERMANENT_DELETE",
+  context: TournamentGovernanceContext,
+  at: string,
+  reason: string,
+  confirmationTitle?: string,
+) {
+  const issues = [
+    ...getTournamentGovernanceReasonIssues(reason),
+    ...getTournamentGovernanceIssues(
+      action,
+      context,
+      new Date(at),
+      confirmationTitle,
+    ),
+  ]
+  if (issues.length > 0) throw new TournamentGovernancePolicyError(issues)
+}
+
+function updatesGovernanceMetadata(
+  action: TournamentGovernanceTransition["action"],
+) {
+  return action === "SUSPEND" || action === "RESUME" || action === "REMOVE"
+}
+
+function governanceAuditAction(
+  action: TournamentGovernanceTransition["action"],
+): TournamentMutationAudit["action"] {
+  const auditActionByGovernanceAction = {
+    SUSPEND: "tournament.suspended",
+    RESUME: "tournament.resumed",
+    REMOVE: "tournament.removed",
+    ARCHIVE: "tournament.archived",
+    REOPEN_REGISTRATION: "tournament.registration_reopened",
+  } as const
+  return auditActionByGovernanceAction[action]
 }
 
 function filterAdminTournaments(
@@ -333,8 +499,8 @@ function appendDevelopmentAudit(
   state: DevelopmentState,
   audit: TournamentMutationAudit,
   tournamentId: string,
-  before: TournamentOperation | null,
-  after: TournamentOperation,
+  before: object | null,
+  after: object,
 ) {
   state.audits.push({
     actorId: audit.actorId,
