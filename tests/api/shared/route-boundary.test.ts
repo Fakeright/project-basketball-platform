@@ -54,6 +54,7 @@ vi.mock("@/lib/server/prisma", () => ({
 }))
 
 import { POST as createTournamentRoute } from "@/app/api/admin/tournaments/route"
+import { POST as governanceRoute } from "@/app/api/admin/tournaments/[id]/governance/route"
 import { POST as lockBracketEntriesRoute } from "@/app/api/organizer/tournaments/[id]/bracket/entries/route"
 import { POST as uploadTournamentMediaRoute } from "@/app/api/admin/tournaments/[id]/media/route"
 import { POST as createTeamRoute } from "@/app/api/teams/route"
@@ -180,6 +181,38 @@ describe("actual mutation route boundaries", () => {
       "competition.entries.lock",
       "CompetitionFactoryError",
       "private connection detail",
+    )
+  })
+
+  it("contains governance route diagnostics without logging its reason payload", async () => {
+    const diagnosticLogger = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined)
+    mocks.getTournamentRepository.mockRejectedValueOnce(
+      namedError("GovernanceRepositoryError", "private connection detail"),
+    )
+
+    const response = await governanceRoute(
+      new Request(
+        "http://localhost/api/admin/tournaments/tournament-1/governance",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            action: "SUSPEND",
+            version: 0,
+            reason: "private governance reason",
+          }),
+        },
+      ),
+      { params: Promise.resolve({ id: "tournament-1" }) } as never,
+    )
+
+    await expectSafeRouteFailure(
+      response,
+      diagnosticLogger,
+      "tournament.governance",
+      "GovernanceRepositoryError",
+      "private governance reason",
     )
   })
 })
