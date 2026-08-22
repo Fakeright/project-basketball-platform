@@ -113,7 +113,11 @@ model Tournament {
 truth การ archive และ reopen จะไม่แก้ `governanceReason`
 
 Migration ต้องเป็น additive และกำหนดรายการเดิมทั้งหมดเป็น `ACTIVE` จึงไม่ต้อง reset
-หรือลบข้อมูล development database
+หรือลบข้อมูล development database ยกเว้น record เดิมที่มี legacy
+`TournamentStatus.SUSPENDED`: migration กำหนด governance เป็น `SUSPENDED`
+และคง status เดิมไว้เพราะไม่มีข้อมูลเพียงพอให้เดาสถานะก่อนระงับ Record แบบนี้นำออกได้
+แต่ resume ไม่ได้จนกว่าจะมีการตรวจและแก้ข้อมูลรายรายการ ค่า enum เดิมจึงยังคงอยู่เพื่อ
+อ่านประวัติ แต่ command ใหม่จะไม่เขียน `TournamentStatus.SUSPENDED`
 
 ## Domain และ Application
 
@@ -203,6 +207,8 @@ type TournamentGovernanceCommand =
 
 ข้อความ error หลักเป็นภาษาไทยและ issue code ใช้เพื่อให้ UI แสดงข้อขัดข้องแบบรายการ
 โดยไม่ผูก presentation เข้ากับข้อความจาก Error โดยตรง
+presentation handlers ของ mutation เดิมต้องใช้ governance error mapper ร่วมกันเพื่อ
+ตอบ `409` แทน unexpected `500`
 
 ## หน้าจอ Admin
 
