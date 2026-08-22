@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest"
+import { describe, expect, it, vi } from "vitest"
 
 import {
   createTournament,
@@ -109,5 +109,40 @@ describe("tournament workflow", () => {
     await expect(
       reviewTournament(repository, tournament.id, { decision: "CHANGES_REQUESTED", note: "", version: tournament.version }, admin),
     ).rejects.toThrow("REVIEW_NOTE_REQUIRED")
+  })
+
+  it("blocks updating a suspended tournament before persistence", async () => {
+    const repository = new InMemoryTournamentOperationsRepository()
+    const tournament = await createTournament(repository, validInput, organizer)
+    await repository.updateWithVersion(tournament.id, tournament.version, {
+      governanceStatus: "SUSPENDED",
+    })
+    const updateWithVersion = vi.spyOn(repository, "updateWithVersion")
+    updateWithVersion.mockClear()
+
+    await expect(
+      updateTournament(
+        repository,
+        tournament.id,
+        { ...validInput, title: "Blocked edit", version: 1 },
+        organizer,
+      ),
+    ).rejects.toMatchObject({ issues: ["TOURNAMENT_SUSPENDED"] })
+    expect(updateWithVersion).not.toHaveBeenCalled()
+  })
+
+  it("blocks submitting a removed tournament before persistence", async () => {
+    const repository = new InMemoryTournamentOperationsRepository()
+    const tournament = await createTournament(repository, validInput, organizer)
+    await repository.updateWithVersion(tournament.id, tournament.version, {
+      governanceStatus: "REMOVED",
+    })
+    const updateWithVersion = vi.spyOn(repository, "updateWithVersion")
+    updateWithVersion.mockClear()
+
+    await expect(
+      submitTournament(repository, tournament.id, organizer),
+    ).rejects.toMatchObject({ issues: ["TOURNAMENT_REMOVED"] })
+    expect(updateWithVersion).not.toHaveBeenCalled()
   })
 })

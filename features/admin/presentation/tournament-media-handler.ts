@@ -6,6 +6,7 @@ import {
 import type { UploadTournamentMediaInput } from "@/features/tournament-media/application/upload-tournament-media"
 import { ObjectStorageError } from "@/features/tournament-media/application/ports/object-storage"
 import type { TournamentMediaAsset } from "@/features/tournament-media/domain/media-asset"
+import { tournamentGovernanceFailureResponse } from "@/features/tournament-operations/presentation/tournament-governance-error-response"
 
 const defaultMaximumRequestBytes = 10_500_000
 
@@ -198,6 +199,9 @@ function mediaFailureResponse(
   operation: string,
   diagnostics: SafeHttpDiagnostics,
 ) {
+  const governanceFailure = tournamentGovernanceFailureResponse(error)
+  if (governanceFailure) return governanceFailure
+
   if (error instanceof ObjectStorageError) {
     if (error.code === "UNAVAILABLE") {
       return unexpectedFailureResponse(

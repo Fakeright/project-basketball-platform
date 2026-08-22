@@ -133,6 +133,7 @@ describe("PrismaRegistrationRepository transactions", () => {
           ageGroup: "U18",
           startsAt: new Date("2026-11-15T02:00:00.000Z"),
           status: "PUBLISHED",
+          governanceStatus: "SUSPENDED",
           registrationDeadline: new Date("2026-11-01T00:00:00.000Z"),
           capacity: 8,
         },
@@ -195,8 +196,42 @@ describe("PrismaRegistrationRepository transactions", () => {
     expect(context?.tournament).toMatchObject({
       ageGroup: "U18",
       startsAt: "2026-11-15T02:00:00.000Z",
+      governanceStatus: "SUSPENDED",
       capacity: 8,
       approvedCount: 7,
+    })
+  })
+
+  it("projects governance status for cancellation and review contexts", async () => {
+    const findUnique = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ...registrationRow("PENDING", 0),
+        team: teamRow,
+        tournament: { governanceStatus: "SUSPENDED" },
+      })
+      .mockResolvedValueOnce({
+        ...registrationRow("PENDING", 0),
+        tournament: {
+          id: "tournament-1",
+          title: "Bangkok Open",
+          organizerId: "organizer-1",
+          status: "PUBLISHED",
+          governanceStatus: "REMOVED",
+          capacity: 8,
+        },
+      })
+    const repository = new PrismaRegistrationRepository({
+      registration: { findUnique },
+    } as unknown as PrismaClient)
+
+    await expect(repository.findById("registration-1")).resolves.toMatchObject({
+      tournament: { governanceStatus: "SUSPENDED" },
+    })
+    await expect(
+      repository.findReviewContext("registration-1"),
+    ).resolves.toMatchObject({
+      tournament: { governanceStatus: "REMOVED" },
     })
   })
 

@@ -6,6 +6,7 @@ import {
   handleDecideRegistration,
   handleWithdrawRegistration,
 } from "@/features/registrations/presentation/registration-handler"
+import { TournamentGovernancePolicyError } from "@/features/tournament-operations/domain/tournament-governance-policy"
 import { createTestActor } from "@/tests/fixtures/actor"
 
 const organizer = createTestActor("organizer-1", "TOURNAMENT_ORGANIZER")
@@ -157,6 +158,31 @@ describe("organizer registration route handlers", () => {
     expect(response.status).toBe(409)
     await expect(response.json()).resolves.toEqual({
       message: "จำนวนทีมที่อนุมัติเต็มความจุการแข่งขันแล้ว",
+    })
+    expect(createCorrelationId).not.toHaveBeenCalled()
+    expect(logger.error).not.toHaveBeenCalled()
+  })
+
+  it("maps blocked governance to a typed Thai 409 without diagnostics", async () => {
+    const createCorrelationId = vi.fn(() => "unused-correlation-id")
+    const logger = { error: vi.fn() }
+    const response = await handleApplyToTournament(
+      "tournament-1",
+      request({ teamId: "team-1" }),
+      {
+        actorProvider: { getCurrentActor: vi.fn(async () => organizer) },
+        apply: vi.fn(async () => {
+          throw new TournamentGovernancePolicyError(["TOURNAMENT_SUSPENDED"])
+        }),
+        createCorrelationId,
+        logger,
+      },
+    )
+
+    expect(response.status).toBe(409)
+    await expect(response.json()).resolves.toEqual({
+      message: "รายการแข่งขันถูกระงับหรือถูกนำออก กรุณาตรวจสอบสถานะล่าสุด",
+      issues: ["TOURNAMENT_SUSPENDED"],
     })
     expect(createCorrelationId).not.toHaveBeenCalled()
     expect(logger.error).not.toHaveBeenCalled()

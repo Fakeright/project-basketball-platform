@@ -21,7 +21,9 @@ const asset: TournamentMediaAsset = {
   deletedAt: null,
 }
 
-function createDependencies() {
+function createDependencies(
+  governanceStatus: "ACTIVE" | "SUSPENDED" | "REMOVED" = "ACTIVE",
+) {
   return {
     storage: {
       move: vi.fn(),
@@ -32,7 +34,10 @@ function createDependencies() {
       retireWithAudit: vi.fn(async () => asset),
     },
     tournaments: {
-      findById: vi.fn(async () => ({ organizerId: "organizer-1" })),
+      findById: vi.fn(async () => ({
+        organizerId: "organizer-1",
+        governanceStatus,
+      })),
     },
     cleanupLogger: { error: vi.fn() },
   }
@@ -149,6 +154,20 @@ describe("deleteTournamentMedia", () => {
       code: "UNAVAILABLE",
     })
 
+    expect(dependencies.media.retireWithAudit).not.toHaveBeenCalled()
+  })
+
+  it("blocks deletion for a suspended tournament before touching storage", async () => {
+    const dependencies = createDependencies("SUSPENDED")
+
+    await expect(
+      deleteTournamentMedia(
+        { tournamentId: "tournament-1", assetId: "asset-1" },
+        organizer,
+        dependencies,
+      ),
+    ).rejects.toMatchObject({ issues: ["TOURNAMENT_SUSPENDED"] })
+    expect(dependencies.storage.move).not.toHaveBeenCalled()
     expect(dependencies.media.retireWithAudit).not.toHaveBeenCalled()
   })
 })

@@ -2,6 +2,7 @@ import { authorize } from "@/features/identity/application/authorize"
 import type { Actor } from "@/features/identity/domain/actor"
 import type { TournamentRegistration } from "@/features/registrations/domain/registration"
 import { transitionRegistration } from "@/features/registrations/domain/registration-policy"
+import { assertTournamentGovernanceAllowsOperation } from "@/features/tournament-operations/domain/tournament-governance-policy"
 
 import type { RegistrationRepository } from "./ports/registration-repository"
 
@@ -36,6 +37,9 @@ export async function decideRegistration(
     authorize(actor, "registration.decide", {
       organizerId: context.tournament.organizerId,
     })
+    assertTournamentGovernanceAllowsOperation(
+      context.tournament.governanceStatus,
+    )
 
     const note = input.note.trim()
     transitionRegistration(context.registration.status, input.decision, {

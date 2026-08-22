@@ -51,6 +51,7 @@ function createDependencies(
   overrides: {
     commitUpload?: TournamentMediaRepository["commitUpload"]
     remove?: ObjectStorage["remove"]
+    governanceStatus?: TournamentOperation["governanceStatus"]
   } = {},
 ) {
   const storage: ObjectStorage = {
@@ -80,7 +81,12 @@ function createDependencies(
   return {
     storage,
     media,
-    tournaments: { findById: vi.fn(async () => tournament) },
+    tournaments: {
+      findById: vi.fn(async () => ({
+        ...tournament,
+        governanceStatus: overrides.governanceStatus ?? "ACTIVE",
+      })),
+    },
     createId: vi.fn(() => "asset-new"),
     cleanupLogger: { error: vi.fn() },
   }
@@ -188,4 +194,20 @@ describe("uploadTournamentMedia", () => {
     ).rejects.toThrow("MEDIA_FILE_CONTENT_INVALID")
     expect(dependencies.storage.upload).not.toHaveBeenCalled()
   })
+
+  it.each([
+    ["SUSPENDED", "TOURNAMENT_SUSPENDED"],
+    ["REMOVED", "TOURNAMENT_REMOVED"],
+  ] as const)(
+    "blocks upload when governance is %s before touching storage",
+    async (governanceStatus, issue) => {
+      const dependencies = createDependencies({ governanceStatus })
+
+      await expect(
+        uploadTournamentMedia(posterInput, organizer, dependencies),
+      ).rejects.toMatchObject({ issues: [issue] })
+      expect(dependencies.storage.upload).not.toHaveBeenCalled()
+      expect(dependencies.media.commitUpload).not.toHaveBeenCalled()
+    },
+  )
 })

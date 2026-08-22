@@ -8,6 +8,7 @@ import type { CancelRegistrationInput } from "@/features/registrations/applicati
 import type { DecideRegistrationInput } from "@/features/registrations/application/decide-registration"
 import type { WithdrawRegistrationInput } from "@/features/registrations/application/withdraw-registration"
 import type { TournamentRegistration } from "@/features/registrations/domain/registration"
+import { tournamentGovernanceFailureResponse } from "@/features/tournament-operations/presentation/tournament-governance-error-response"
 import {
   PlayerAgeIneligibleError,
   TournamentAgeGroupUnsupportedError,
@@ -189,6 +190,9 @@ function registrationFailureResponse(
   operation: RegistrationOperation,
   diagnostics: RegistrationHandlerDiagnostics,
 ) {
+  const governanceFailure = tournamentGovernanceFailureResponse(error)
+  if (governanceFailure) return governanceFailure
+
   if (error instanceof PlayerAgeIneligibleError) {
     return Response.json(
       {

@@ -110,4 +110,30 @@ describe("POST tournament review", () => {
       errorType: "Error",
     })
   })
+
+  it("maps suspended governance to a typed Thai 409 response", async () => {
+    const { repository, tournamentId } = await submittedRepository()
+    const suspended = await repository.updateWithVersion(tournamentId, 1, {
+      governanceStatus: "SUSPENDED",
+    })
+    const request = new Request("http://localhost/api/review", {
+      method: "POST",
+      body: JSON.stringify({
+        decision: "APPROVED",
+        note: "",
+        version: suspended.version,
+      }),
+    })
+
+    const response = await handleReviewRequest(request, tournamentId, {
+      actorProvider: actorProvider(admin),
+      repository,
+    })
+
+    expect(response.status).toBe(409)
+    await expect(response.json()).resolves.toEqual({
+      message: "รายการแข่งขันถูกระงับหรือถูกนำออก กรุณาตรวจสอบสถานะล่าสุด",
+      issues: ["TOURNAMENT_SUSPENDED"],
+    })
+  })
 })

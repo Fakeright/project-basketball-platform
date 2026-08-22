@@ -2,6 +2,7 @@ import type { Actor } from "@/features/identity/domain/actor"
 import { authorizeTeamAccess } from "@/features/team-management/application/team-access"
 import { assertCanApply } from "@/features/registrations/domain/registration-policy"
 import type { TournamentRegistration } from "@/features/registrations/domain/registration"
+import { assertTournamentGovernanceAllowsOperation } from "@/features/tournament-operations/domain/tournament-governance-policy"
 
 import type { RegistrationRepositoryTransaction, RegistrationRepository } from "./ports/registration-repository"
 
@@ -35,6 +36,7 @@ async function loadEligibleApplicationContext(
   if (!context) throw new Error("NOT_FOUND")
 
   authorizeTeamAccess(actor, "registration.create", context.team)
+  assertTournamentGovernanceAllowsOperation(context.tournament.governanceStatus)
   const activeRegistration = await registrations.findActive(input.tournamentId, input.teamId)
   assertCanApply({
     actorId: actor.role === "PLATFORM_ADMIN" ? context.team.ownerId : actor.id,

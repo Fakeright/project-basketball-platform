@@ -1,13 +1,13 @@
 import { describe, expect, it, vi } from "vitest"
 
 import type { TournamentCompetitionLifecycleContext } from "@/features/competition/domain/competition"
-import { TournamentCompetitionPolicyError } from "@/features/competition/domain/tournament-competition-policy"
 import {
   completeTournamentCompetition,
   startTournamentCompetition,
 } from "@/features/tournament-operations/application/transition-tournament-competition"
 import type { TournamentOperation } from "@/features/tournament-operations/domain/tournament-operation"
 import type { TournamentOperationsRepository } from "@/features/tournament-operations/infrastructure/tournament-operations-repository"
+import type { TournamentCompetitionOperationContext } from "@/features/tournament-operations/infrastructure/tournament-operations-repository"
 import { createTestActor } from "@/tests/fixtures/actor"
 
 const organizer = createTestActor("organizer-1", "TOURNAMENT_ORGANIZER")
@@ -39,10 +39,13 @@ const tournament: TournamentOperation = {
   updatedAt: "2026-07-26T02:00:00.000Z",
 }
 
-const closedContext: TournamentCompetitionLifecycleContext = {
+const closedContext: TournamentCompetitionLifecycleContext & {
+  governanceStatus: "ACTIVE" | "SUSPENDED" | "REMOVED"
+} = {
   tournamentId: tournament.id,
   organizerId: organizer.id,
   status: "REGISTRATION_CLOSED",
+  governanceStatus: "ACTIVE",
   version: 4,
   activeBracket: {
     id: "bracket-1",
@@ -64,7 +67,7 @@ const closedContext: TournamentCompetitionLifecycleContext = {
 }
 
 function createRepository(
-  context: TournamentCompetitionLifecycleContext | null = closedContext,
+  context: TournamentCompetitionOperationContext | null = closedContext,
 ) {
   const findCompetitionLifecycleContext = vi.fn(async () => context)
   const transitionCompetitionWithVersion = vi.fn(async (input) => ({
@@ -118,7 +121,7 @@ describe("tournament competition lifecycle", () => {
   })
 
   it("completes an in-progress tournament after all results are confirmed", async () => {
-    const completeContext: TournamentCompetitionLifecycleContext = {
+    const completeContext: TournamentCompetitionOperationContext = {
       ...closedContext,
       status: "IN_PROGRESS",
       version: 5,
@@ -229,9 +232,54 @@ describe("tournament competition lifecycle", () => {
         organizer,
         { now },
       ),
-    ).rejects.toMatchObject<TournamentCompetitionPolicyError>({
+    ).rejects.toMatchObject({
       issues: expect.arrayContaining(["BRACKET_MISSING"]),
     })
+    expect(transitionCompetitionWithVersion).not.toHaveBeenCalled()
+  })
+
+  it("blocks starting a suspended tournament before persistence", async () => {
+    const { repository, transitionCompetitionWithVersion } = createRepository({
+      ...closedContext,
+      governanceStatus: "SUSPENDED",
+    })
+
+    await expect(
+      startTournamentCompetition(
+        repository,
+        { tournamentId: tournament.id, version: 4 },
+        organizer,
+        { now },
+      ),
+    ).rejects.toMatchObject({ issues: ["TOURNAMENT_SUSPENDED"] })
+    expect(transitionCompetitionWithVersion).not.toHaveBeenCalled()
+  })
+
+  it("blocks completing a removed tournament before persistence", async () => {
+    const { repository, transitionCompetitionWithVersion } = createRepository({
+      ...closedContext,
+      status: "IN_PROGRESS",
+      governanceStatus: "REMOVED",
+      version: 5,
+      activeBracket: {
+        ...closedContext.activeBracket!,
+        matches: closedContext.activeBracket!.matches.map((match) => ({
+          ...match,
+          status: "COMPLETED",
+          winnerTeamId: "team-1",
+          resultConfirmed: true,
+        })),
+      },
+    })
+
+    await expect(
+      completeTournamentCompetition(
+        repository,
+        { tournamentId: tournament.id, version: 5 },
+        organizer,
+        { now },
+      ),
+    ).rejects.toMatchObject({ issues: ["TOURNAMENT_REMOVED"] })
     expect(transitionCompetitionWithVersion).not.toHaveBeenCalled()
   })
 })

@@ -12,6 +12,11 @@ import type {
 } from "@/features/tournament-operations/domain/tournament-governance-policy"
 import type { TournamentCompetitionLifecycleContext } from "@/features/competition/domain/competition"
 
+export type TournamentCompetitionOperationContext =
+  TournamentCompetitionLifecycleContext & {
+    governanceStatus: TournamentGovernanceStatus
+  }
+
 export interface TournamentOperationsRepository {
   create(
     input: TournamentOperationInput & { organizerId: string },
@@ -21,7 +26,7 @@ export interface TournamentOperationsRepository {
   findGovernanceContext(id: string): Promise<TournamentGovernanceContext | null>
   findCompetitionLifecycleContext(
     id: string,
-  ): Promise<TournamentCompetitionLifecycleContext | null>
+  ): Promise<TournamentCompetitionOperationContext | null>
   listByOrganizer(organizerId: string): Promise<TournamentOperation[]>
   listForAdmin(filters: AdminTournamentFilters): Promise<TournamentOperation[]>
   listByStatus(status: TournamentOperationStatus): Promise<TournamentOperation[]>

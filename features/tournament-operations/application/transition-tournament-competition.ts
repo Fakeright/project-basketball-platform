@@ -5,6 +5,7 @@ import {
 import { authorize } from "@/features/identity/application/authorize"
 import type { Actor } from "@/features/identity/domain/actor"
 import type { TournamentOperation } from "@/features/tournament-operations/domain/tournament-operation"
+import { assertTournamentGovernanceAllowsOperation } from "@/features/tournament-operations/domain/tournament-governance-policy"
 import type { TournamentOperationsRepository } from "@/features/tournament-operations/infrastructure/tournament-operations-repository"
 
 interface TournamentCompetitionCommand {
@@ -70,6 +71,7 @@ async function transitionTournamentCompetition(
     command === "START" ? "tournament.start" : "tournament.complete",
     { organizerId: context.organizerId },
   )
+  assertTournamentGovernanceAllowsOperation(context.governanceStatus)
   if (context.version !== input.version) throw new Error("CONFLICT")
 
   const adminOverride =

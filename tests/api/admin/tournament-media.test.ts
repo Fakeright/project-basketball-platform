@@ -6,6 +6,7 @@ import {
 } from "@/features/admin/presentation/tournament-media-handler"
 import { deleteTournamentMedia } from "@/features/tournament-media/application/delete-tournament-media"
 import { ObjectStorageError } from "@/features/tournament-media/application/ports/object-storage"
+import { TournamentGovernancePolicyError } from "@/features/tournament-operations/domain/tournament-governance-policy"
 import { createTestActor } from "@/tests/fixtures/actor"
 
 const organizer = createTestActor("organizer-1", "TOURNAMENT_ORGANIZER")
@@ -42,6 +43,35 @@ describe("handleTournamentMediaUpload", () => {
     )
 
     expect(response.status).toBe(403)
+    expect(bodyAccess).not.toHaveBeenCalled()
+    expect(services.upload).not.toHaveBeenCalled()
+  })
+
+  it("maps blocked governance to a typed Thai 409 before consuming the body", async () => {
+    const bodyAccess = vi.fn()
+    const request = {
+      headers: new Headers(),
+      get body() {
+        bodyAccess()
+        return null
+      },
+    } as unknown as Request
+    const services = dependencies()
+    services.authorize.mockRejectedValueOnce(
+      new TournamentGovernancePolicyError(["TOURNAMENT_REMOVED"]),
+    )
+
+    const response = await handleTournamentMediaUpload(
+      request,
+      "tournament-1",
+      services,
+    )
+
+    expect(response.status).toBe(409)
+    await expect(response.json()).resolves.toEqual({
+      message: "รายการแข่งขันถูกระงับหรือถูกนำออก กรุณาตรวจสอบสถานะล่าสุด",
+      issues: ["TOURNAMENT_REMOVED"],
+    })
     expect(bodyAccess).not.toHaveBeenCalled()
     expect(services.upload).not.toHaveBeenCalled()
   })
@@ -190,6 +220,27 @@ describe("handleTournamentMediaDelete", () => {
       operation: "media.delete",
       correlationId: "storage-correlation",
       errorType: "ObjectStorageError",
+    })
+  })
+
+  it("maps blocked governance to a typed Thai 409", async () => {
+    const response = await handleTournamentMediaDelete(
+      "tournament-1",
+      "asset-1",
+      {
+        actorProvider: {
+          getCurrentActor: vi.fn(async () => organizer),
+        },
+        remove: vi.fn(async () => {
+          throw new TournamentGovernancePolicyError(["TOURNAMENT_SUSPENDED"])
+        }),
+      },
+    )
+
+    expect(response.status).toBe(409)
+    await expect(response.json()).resolves.toEqual({
+      message: "รายการแข่งขันถูกระงับหรือถูกนำออก กรุณาตรวจสอบสถานะล่าสุด",
+      issues: ["TOURNAMENT_SUSPENDED"],
     })
   })
 })

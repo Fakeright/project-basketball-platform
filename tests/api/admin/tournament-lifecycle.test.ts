@@ -148,4 +148,33 @@ describe("tournament lifecycle handler", () => {
       errorType: "Error",
     })
   })
+
+  it("maps suspended governance to a typed Thai 409 response", async () => {
+    const { repository, approved } = await approvedRepository()
+    const suspended = await repository.updateWithVersion(
+      approved.id,
+      approved.version,
+      { governanceStatus: "SUSPENDED" },
+    )
+
+    const response = await handleTournamentLifecycleRequest(
+      new Request("http://localhost/api/publish", {
+        method: "POST",
+        body: JSON.stringify({ version: suspended.version }),
+      }),
+      suspended.id,
+      "PUBLISH",
+      {
+        actorProvider: actorProvider(organizer),
+        repository,
+        now: () => new Date("2026-11-01T00:00:00.000Z"),
+      },
+    )
+
+    expect(response.status).toBe(409)
+    await expect(response.json()).resolves.toEqual({
+      message: "รายการแข่งขันถูกระงับหรือถูกนำออก กรุณาตรวจสอบสถานะล่าสุด",
+      issues: ["TOURNAMENT_SUSPENDED"],
+    })
+  })
 })

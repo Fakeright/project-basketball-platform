@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest"
 
 import { TournamentCompetitionPolicyError } from "@/features/competition/domain/tournament-competition-policy"
 import { handleTournamentCompetitionLifecycle } from "@/features/tournament-operations/presentation/tournament-competition-lifecycle-handler"
+import { TournamentGovernancePolicyError } from "@/features/tournament-operations/domain/tournament-governance-policy"
 import { createTestActor } from "@/tests/fixtures/actor"
 
 const organizer = createTestActor("organizer-1", "TOURNAMENT_ORGANIZER")
@@ -75,6 +76,25 @@ describe("tournament competition lifecycle routes", () => {
     await expect(response.json()).resolves.toEqual({
       message: "ยังไม่สามารถเริ่มการแข่งขันได้",
       issues: ["BRACKET_NOT_PUBLISHED", "CHAMPIONSHIP_MISSING"],
+    })
+  })
+
+  it("maps blocked governance to a typed Thai 409 response", async () => {
+    const response = await handleTournamentCompetitionLifecycle(
+      request({ version: 4 }),
+      "tournament-1",
+      "START",
+      dependencies({
+        transition: vi.fn(async () => {
+          throw new TournamentGovernancePolicyError(["TOURNAMENT_SUSPENDED"])
+        }),
+      }),
+    )
+
+    expect(response.status).toBe(409)
+    await expect(response.json()).resolves.toEqual({
+      message: "รายการแข่งขันถูกระงับหรือถูกนำออก กรุณาตรวจสอบสถานะล่าสุด",
+      issues: ["TOURNAMENT_SUSPENDED"],
     })
   })
 

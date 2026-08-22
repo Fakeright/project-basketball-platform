@@ -33,6 +33,7 @@ function createRepository(
         title: "Bangkok Open",
         organizerId: organizer.id,
         status: "REGISTRATION_CLOSED" as const,
+        governanceStatus: "ACTIVE" as const,
         capacity: 8,
       },
     })),
@@ -116,5 +117,38 @@ describe("withdrawRegistration", () => {
       at: "2026-10-03T00:00:00.000Z",
       adminOverride: false,
     })
+  })
+
+  it("blocks withdrawal for a removed tournament before persistence", async () => {
+    const repository = createRepository({
+      findReviewContext: vi.fn(async () => ({
+        registration: approvedRegistration,
+        tournament: {
+          id: "tournament-1",
+          title: "Bangkok Open",
+          organizerId: organizer.id,
+          status: "REGISTRATION_CLOSED" as const,
+          governanceStatus: "REMOVED" as const,
+          capacity: 8,
+        },
+      })),
+    })
+
+    await expect(
+      withdrawRegistration(
+        {
+          tournamentId: "tournament-1",
+          registrationId: approvedRegistration.id,
+          reason: "Eligibility issue",
+          version: 1,
+        },
+        organizer,
+        {
+          registrations: repository,
+          now: () => new Date("2026-10-03T00:00:00.000Z"),
+        },
+      ),
+    ).rejects.toMatchObject({ issues: ["TOURNAMENT_REMOVED"] })
+    expect(repository.withdrawWithVersion).not.toHaveBeenCalled()
   })
 })

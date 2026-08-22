@@ -8,6 +8,7 @@ import {
 } from "@/features/shared/presentation/safe-http"
 import { reviewTournament } from "@/features/tournament-operations/application/review-tournament"
 import type { TournamentOperationsRepository } from "@/features/tournament-operations/infrastructure/tournament-operations-repository"
+import { tournamentGovernanceFailureResponse } from "@/features/tournament-operations/presentation/tournament-governance-error-response"
 
 const reviewSchema = z
   .object({
@@ -65,6 +66,9 @@ export async function handleReviewRequest(
     )
     return Response.json({ tournament })
   } catch (error) {
+    const governanceFailure = tournamentGovernanceFailureResponse(error)
+    if (governanceFailure) return governanceFailure
+
     const message = error instanceof Error ? error.message : "UNKNOWN"
     const statusByError: Record<string, number> = {
       FORBIDDEN: 403,

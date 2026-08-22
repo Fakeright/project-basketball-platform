@@ -13,6 +13,7 @@ import {
   type SafeHttpDiagnostics,
   withSafeRouteBoundary,
 } from "@/features/shared/presentation/safe-http"
+import { tournamentGovernanceFailureResponse } from "@/features/tournament-operations/presentation/tournament-governance-error-response"
 
 type TournamentCompetitionLifecycleAction = "START" | "COMPLETE"
 
@@ -68,6 +69,9 @@ export function handleTournamentCompetitionLifecycle(
         )
         return Response.json({ tournament })
       } catch (error) {
+        const governanceFailure = tournamentGovernanceFailureResponse(error)
+        if (governanceFailure) return governanceFailure
+
         if (error instanceof TournamentCompetitionPolicyError) {
           return policyFailureResponse(error.issues, action)
         }

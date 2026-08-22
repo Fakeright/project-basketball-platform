@@ -57,6 +57,29 @@ describe("submitTournamentHandler", () => {
 
     expect(response.status).toBe(403)
   })
+
+  it("maps a suspended tournament to a typed Thai 409 response", async () => {
+    const repository = new InMemoryTournamentOperationsRepository()
+    const tournament = await repository.create({
+      ...validTournament,
+      organizerId: organizer.id,
+    })
+    await repository.updateWithVersion(tournament.id, tournament.version, {
+      governanceStatus: "SUSPENDED",
+    })
+
+    const response = await submitTournamentHandler({
+      actor: organizer,
+      id: tournament.id,
+      repository,
+    })
+
+    expect(response.status).toBe(409)
+    await expect(response.json()).resolves.toEqual({
+      message: "รายการแข่งขันถูกระงับหรือถูกนำออก กรุณาตรวจสอบสถานะล่าสุด",
+      issues: ["TOURNAMENT_SUSPENDED"],
+    })
+  })
 })
 
 describe("saveTournamentHandler", () => {
@@ -131,6 +154,38 @@ describe("saveTournamentHandler", () => {
     expect(response.status).toBe(409)
     await expect(response.json()).resolves.toMatchObject({
       message: "ข้อมูลถูกแก้ไขจากอีกหน้าต่าง กรุณาโหลดใหม่",
+    })
+  })
+
+  it("maps a removed tournament edit to a typed Thai 409 response", async () => {
+    const repository = new InMemoryTournamentOperationsRepository()
+    const tournament = await repository.create({
+      ...validTournament,
+      organizerId: organizer.id,
+    })
+    const removed = await repository.updateWithVersion(
+      tournament.id,
+      tournament.version,
+      { governanceStatus: "REMOVED" },
+    )
+
+    const response = await saveTournamentHandler({
+      actor: organizer,
+      id: tournament.id,
+      request: new Request(
+        `http://localhost/api/admin/tournaments/${tournament.id}`,
+        {
+          method: "PUT",
+          body: JSON.stringify({ ...validTournament, version: removed.version }),
+        },
+      ),
+      repository,
+    })
+
+    expect(response.status).toBe(409)
+    await expect(response.json()).resolves.toEqual({
+      message: "รายการแข่งขันถูกระงับหรือถูกนำออก กรุณาตรวจสอบสถานะล่าสุด",
+      issues: ["TOURNAMENT_REMOVED"],
     })
   })
 

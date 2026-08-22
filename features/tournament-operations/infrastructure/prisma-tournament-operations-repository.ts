@@ -4,7 +4,6 @@ import {
   Prisma,
   type PrismaClient,
 } from "@/lib/generated/prisma/client"
-import type { TournamentCompetitionLifecycleContext } from "@/features/competition/domain/competition"
 import {
   assertTournamentCanComplete,
   assertTournamentCanStart,
@@ -22,6 +21,7 @@ import type {
 
 import type {
   TournamentCompetitionTransition,
+  TournamentCompetitionOperationContext,
   TournamentLifecycleTransition,
   AdminTournamentFilters,
   TournamentMutationAudit,
@@ -174,7 +174,7 @@ export class PrismaTournamentOperationsRepository
 
   async findCompetitionLifecycleContext(
     id: string,
-  ): Promise<TournamentCompetitionLifecycleContext | null> {
+  ): Promise<TournamentCompetitionOperationContext | null> {
     const tournament = await this.prisma.tournament.findUnique({
       where: { id },
       include: tournamentCompetitionLifecycleInclude,
@@ -635,12 +635,13 @@ async function appendTournamentAudit(
 
 function mapCompetitionLifecycleContext(
   tournament: TournamentCompetitionLifecycleRow,
-): TournamentCompetitionLifecycleContext {
+): TournamentCompetitionOperationContext {
   const bracket = tournament.brackets[0]
   return {
     tournamentId: tournament.id,
     organizerId: tournament.organizerId,
     status: tournament.status,
+    governanceStatus: tournament.governanceStatus,
     version: tournament.version,
     activeBracket: bracket
       ? {

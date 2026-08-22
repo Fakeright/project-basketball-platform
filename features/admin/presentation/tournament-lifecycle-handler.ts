@@ -11,6 +11,7 @@ import {
   publishTournament,
 } from "@/features/tournament-operations/application/transition-tournament-lifecycle"
 import type { TournamentOperationsRepository } from "@/features/tournament-operations/infrastructure/tournament-operations-repository"
+import { tournamentGovernanceFailureResponse } from "@/features/tournament-operations/presentation/tournament-governance-error-response"
 
 type TournamentLifecycleAction = "PUBLISH" | "CLOSE_REGISTRATION"
 
@@ -66,6 +67,9 @@ export async function handleTournamentLifecycleRequest(
             )
       return Response.json({ tournament })
     } catch (error) {
+      const governanceFailure = tournamentGovernanceFailureResponse(error)
+      if (governanceFailure) return governanceFailure
+
       const code = error instanceof Error ? error.message : "UNKNOWN"
       if (code === "FORBIDDEN") {
         return Response.json(

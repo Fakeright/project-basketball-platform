@@ -51,4 +51,24 @@ describe("reviewTournament", () => {
       reviewTournament(repository, tournament.id, { decision: "APPROVED", note: "ผ่าน", version: 0 }, admin),
     ).rejects.toThrow("CONFLICT")
   })
+
+  it("blocks reviewing a suspended tournament before persistence", async () => {
+    const repository = new InMemoryTournamentOperationsRepository()
+    const tournament = await createTournament(repository, input, organizer)
+    await repository.updateWithVersion(tournament.id, 0, {
+      status: "SUBMITTED",
+      governanceStatus: "SUSPENDED",
+    })
+    const reviewWithVersion = vi.spyOn(repository, "reviewWithVersion")
+
+    await expect(
+      reviewTournament(
+        repository,
+        tournament.id,
+        { decision: "APPROVED", note: "ผ่าน", version: 1 },
+        admin,
+      ),
+    ).rejects.toMatchObject({ issues: ["TOURNAMENT_SUSPENDED"] })
+    expect(reviewWithVersion).not.toHaveBeenCalled()
+  })
 })

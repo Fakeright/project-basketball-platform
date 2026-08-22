@@ -137,6 +137,7 @@ export class PrismaRegistrationRepository implements RegistrationRepository {
         title: true,
         organizerId: true,
         status: true,
+        governanceStatus: true,
         capacity: true,
       },
     })
@@ -197,12 +198,13 @@ class PrismaRegistrationOperations implements RegistrationRepositoryTransaction 
         ageGroup: RegistrationApplicationContext["tournament"]["ageGroup"]
         startsAt: Date
         status: RegistrationApplicationContext["tournament"]["status"]
+        governanceStatus: RegistrationApplicationContext["tournament"]["governanceStatus"]
         registrationDeadline: Date
         capacity: number
       }>
     >(
       Prisma.sql`
-        SELECT "id", "format", "ageGroup", "startsAt", "status", "registrationDeadline", "capacity"
+        SELECT "id", "format", "ageGroup", "startsAt", "status", "governanceStatus", "registrationDeadline", "capacity"
         FROM "Tournament"
         WHERE "id" = ${tournamentId}
         FOR UPDATE
@@ -244,6 +246,7 @@ class PrismaRegistrationOperations implements RegistrationRepositoryTransaction 
         ageGroup: tournament.ageGroup,
         startsAt: tournament.startsAt.toISOString(),
         status: tournament.status,
+        governanceStatus: tournament.governanceStatus,
         registrationDeadline: tournament.registrationDeadline.toISOString(),
         capacity: tournament.capacity,
         approvedCount,
@@ -301,10 +304,19 @@ class PrismaRegistrationOperations implements RegistrationRepositoryTransaction 
   async findById(id: string): Promise<TournamentRegistrationWithOwnership | null> {
     const registration = await this.prisma.registration.findUnique({
       where: { id },
-      include: { team: { include: { province: true } } },
+      include: {
+        team: { include: { province: true } },
+        tournament: { select: { governanceStatus: true } },
+      },
     })
     return registration
-      ? { ...mapRegistration(registration), team: mapTeam(registration.team) }
+      ? {
+          ...mapRegistration(registration),
+          team: mapTeam(registration.team),
+          tournament: {
+            governanceStatus: registration.tournament.governanceStatus,
+          },
+        }
       : null
   }
 
@@ -361,6 +373,7 @@ class PrismaRegistrationOperations implements RegistrationRepositoryTransaction 
             title: true,
             organizerId: true,
             status: true,
+            governanceStatus: true,
             capacity: true,
           },
         },
@@ -578,6 +591,7 @@ function mapReviewTournament(tournament: {
   title: string
   organizerId: string
   status: RegistrationReviewTournament["status"]
+  governanceStatus: RegistrationReviewTournament["governanceStatus"]
   capacity: number
 }): RegistrationReviewTournament {
   return {
@@ -585,6 +599,7 @@ function mapReviewTournament(tournament: {
     title: tournament.title,
     organizerId: tournament.organizerId,
     status: tournament.status,
+    governanceStatus: tournament.governanceStatus,
     capacity: tournament.capacity,
   }
 }

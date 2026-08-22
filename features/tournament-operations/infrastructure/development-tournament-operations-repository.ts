@@ -13,7 +13,6 @@ import {
   assertTournamentCanComplete,
   assertTournamentCanStart,
 } from "@/features/competition/domain/tournament-competition-policy"
-import type { TournamentCompetitionLifecycleContext } from "@/features/competition/domain/competition"
 import {
   getTournamentGovernanceIssues,
   getTournamentGovernanceReasonIssues,
@@ -23,6 +22,7 @@ import {
 
 import type {
   TournamentCompetitionTransition,
+  TournamentCompetitionOperationContext,
   TournamentLifecycleTransition,
   TournamentMutationAudit,
   TournamentOperationsRepository,
@@ -104,13 +104,14 @@ class DevelopmentTournamentOperationsRepository
 
   async findCompetitionLifecycleContext(
     id: string,
-  ): Promise<TournamentCompetitionLifecycleContext | null> {
+  ): Promise<TournamentCompetitionOperationContext | null> {
     const tournament = await this.findById(id)
     return tournament
       ? {
           tournamentId: tournament.id,
           organizerId: tournament.organizerId,
           status: tournament.status,
+          governanceStatus: tournament.governanceStatus,
           version: tournament.version,
           activeBracket: null,
         }

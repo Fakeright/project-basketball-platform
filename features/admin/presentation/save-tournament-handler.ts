@@ -9,6 +9,7 @@ import {
   updateTournament,
 } from "@/features/tournament-operations/application/create-tournament"
 import type { TournamentOperationsRepository } from "@/features/tournament-operations/infrastructure/tournament-operations-repository"
+import { tournamentGovernanceFailureResponse } from "@/features/tournament-operations/presentation/tournament-governance-error-response"
 
 import { tournamentEditorSchema } from "./tournament-editor-schema"
 
@@ -54,6 +55,7 @@ export async function saveTournamentHandler(
     return Response.json({ tournament }, { status: id ? 200 : 201 })
   } catch (error) {
     return (
+      tournamentGovernanceFailureResponse(error) ??
       saveTournamentFailureResponse(error) ??
       unexpectedFailureResponse(error, "tournament.save", input)
     )

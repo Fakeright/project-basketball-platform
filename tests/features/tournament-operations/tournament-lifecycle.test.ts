@@ -18,6 +18,7 @@ const approvedTournament: TournamentOperation = {
   description: "Community tournament",
   rules: "Standard rules",
   provinceCode: "10",
+  province: "กรุงเทพมหานคร",
   venue: "COURTSIDE Arena",
   format: "FIVE_V_FIVE",
   ageGroup: "Open",
@@ -127,6 +128,42 @@ describe("tournament public lifecycle", () => {
         { now: () => new Date("2026-10-01T00:00:00.000Z") },
       ),
     ).rejects.toThrow("CONFLICT")
+    expect(repository.transitionWithVersion).not.toHaveBeenCalled()
+  })
+
+  it("blocks publishing a suspended tournament before persistence", async () => {
+    const repository = createRepository({
+      ...approvedTournament,
+      governanceStatus: "SUSPENDED",
+    })
+
+    await expect(
+      publishTournament(
+        repository,
+        { tournamentId: approvedTournament.id, version: 3 },
+        organizer,
+        { now: () => new Date("2026-10-01T00:00:00.000Z") },
+      ),
+    ).rejects.toMatchObject({ issues: ["TOURNAMENT_SUSPENDED"] })
+    expect(repository.transitionWithVersion).not.toHaveBeenCalled()
+  })
+
+  it("blocks closing registration for a removed tournament before persistence", async () => {
+    const removedTournament = {
+      ...approvedTournament,
+      status: "PUBLISHED" as const,
+      governanceStatus: "REMOVED" as const,
+      version: 4,
+    }
+    const repository = createRepository(removedTournament)
+
+    await expect(
+      closeTournamentRegistration(
+        repository,
+        { tournamentId: removedTournament.id, version: 4 },
+        organizer,
+      ),
+    ).rejects.toMatchObject({ issues: ["TOURNAMENT_REMOVED"] })
     expect(repository.transitionWithVersion).not.toHaveBeenCalled()
   })
 })

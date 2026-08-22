@@ -5,6 +5,7 @@ import {
 } from "@/features/shared/presentation/safe-http"
 import { submitTournament } from "@/features/tournament-operations/application/create-tournament"
 import type { TournamentOperationsRepository } from "@/features/tournament-operations/infrastructure/tournament-operations-repository"
+import { tournamentGovernanceFailureResponse } from "@/features/tournament-operations/presentation/tournament-governance-error-response"
 
 export async function submitTournamentHandler({
   actor,
@@ -25,6 +26,9 @@ export async function submitTournamentHandler({
     const tournament = await submitTournament(repository, id, actor)
     return Response.json({ tournament })
   } catch (error) {
+    const governanceFailure = tournamentGovernanceFailureResponse(error)
+    if (governanceFailure) return governanceFailure
+
     const code = error instanceof Error ? error.message : "UNKNOWN"
     const status =
       code === "FORBIDDEN"

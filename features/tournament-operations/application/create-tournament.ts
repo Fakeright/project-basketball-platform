@@ -4,6 +4,7 @@ import type { TournamentOperation, TournamentOperationInput } from "@/features/t
 import { canSubmit, validateTournamentInput } from "@/features/tournament-operations/domain/tournament-workflow"
 import type { TournamentOperationsRepository } from "@/features/tournament-operations/infrastructure/tournament-operations-repository"
 import { assertProvinceCode } from "@/features/provinces/application/assert-province-code"
+import { assertTournamentGovernanceAllowsOperation } from "@/features/tournament-operations/domain/tournament-governance-policy"
 
 export async function createTournament(repository: TournamentOperationsRepository, input: TournamentOperationInput, actor: Actor): Promise<TournamentOperation> {
   assertProvinceCode(input.provinceCode)
@@ -31,6 +32,7 @@ export async function updateTournament(
   authorize(actor, "tournament.update", {
     organizerId: tournament.organizerId,
   })
+  assertTournamentGovernanceAllowsOperation(tournament.governanceStatus)
   if (tournament.status !== "DRAFT" && tournament.status !== "CHANGES_REQUESTED") {
     throw new Error("INVALID_UPDATE_STATUS")
   }
@@ -48,6 +50,7 @@ export async function submitTournament(repository: TournamentOperationsRepositor
   const tournament = await repository.findById(id)
   if (!tournament) throw new Error("NOT_FOUND")
   authorize(actor, "tournament.submit", { organizerId: tournament.organizerId })
+  assertTournamentGovernanceAllowsOperation(tournament.governanceStatus)
   if (!canSubmit(tournament.status)) throw new Error("INVALID_SUBMIT_STATUS")
   return repository.updateWithVersion(
     id,

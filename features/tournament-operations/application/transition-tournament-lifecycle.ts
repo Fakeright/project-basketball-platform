@@ -1,6 +1,7 @@
 import { authorize } from "@/features/identity/application/authorize"
 import type { Actor } from "@/features/identity/domain/actor"
 import type { TournamentOperation } from "@/features/tournament-operations/domain/tournament-operation"
+import { assertTournamentGovernanceAllowsOperation } from "@/features/tournament-operations/domain/tournament-governance-policy"
 import {
   assertCanCloseRegistration,
   assertCanPublish,
@@ -59,6 +60,7 @@ async function loadAuthorizedTournament(
   authorize(actor, "tournament.publish", {
     organizerId: tournament.organizerId,
   })
+  assertTournamentGovernanceAllowsOperation(tournament.governanceStatus)
   if (input.version !== tournament.version) throw new Error("CONFLICT")
   return tournament
 }

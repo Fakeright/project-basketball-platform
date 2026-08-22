@@ -30,6 +30,7 @@ const reviewContext = {
     title: "Bangkok Open",
     organizerId: organizer.id,
     status: "PUBLISHED" as const,
+    governanceStatus: "ACTIVE" as const,
     capacity: 1,
   },
 }
@@ -224,5 +225,35 @@ describe("decideRegistration", () => {
         },
       ),
     ).rejects.toThrow("NOT_FOUND")
+  })
+
+  it("blocks a decision for a suspended tournament before persistence", async () => {
+    const repository = createRepository({
+      findReviewContext: vi.fn(async () => ({
+        ...reviewContext,
+        tournament: {
+          ...reviewContext.tournament,
+          governanceStatus: "SUSPENDED",
+        },
+      })),
+    })
+
+    await expect(
+      decideRegistration(
+        {
+          tournamentId: "tournament-1",
+          registrationId: pendingRegistration.id,
+          decision: "APPROVE",
+          note: "",
+          version: 0,
+        },
+        organizer,
+        {
+          registrations: repository,
+          now: () => new Date("2026-10-02T00:00:00.000Z"),
+        },
+      ),
+    ).rejects.toMatchObject({ issues: ["TOURNAMENT_SUSPENDED"] })
+    expect(repository.approveWithCapacity).not.toHaveBeenCalled()
   })
 })

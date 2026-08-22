@@ -41,6 +41,7 @@ const context = {
     ageGroup: "Open" as const,
     startsAt: "2026-11-15T02:00:00.000Z",
     status: "PUBLISHED" as const,
+    governanceStatus: "ACTIVE" as const,
     registrationDeadline: "2026-11-01T00:00:00.000Z",
     capacity: 8,
     approvedCount: 7,
@@ -122,7 +123,10 @@ describe("applyToTournament", () => {
     const repository = createRepository({
       getApplicationContext: vi.fn(async () => ({
         ...context,
-        tournament: { ...context.tournament, format: "THREE_V_THREE" },
+        tournament: {
+          ...context.tournament,
+          format: "THREE_V_THREE" as const,
+        },
       })),
     })
 
@@ -248,4 +252,31 @@ describe("applyToTournament", () => {
       expect.objectContaining({ adminOverride: true }),
     )
   })
+
+  it.each([
+    ["SUSPENDED", "TOURNAMENT_SUSPENDED"],
+    ["REMOVED", "TOURNAMENT_REMOVED"],
+  ] as const)(
+    "blocks an application when governance is %s before persistence",
+    async (governanceStatus, issue) => {
+      const repository = createRepository({
+        getApplicationContext: vi.fn(async () => ({
+          ...context,
+          tournament: { ...context.tournament, governanceStatus },
+        })),
+      })
+
+      await expect(
+        applyToTournament(
+          { tournamentId: "tournament-1", teamId: "team-1" },
+          teamManager,
+          {
+            registrations: repository,
+            now: () => new Date("2026-10-01T00:00:00Z"),
+          },
+        ),
+      ).rejects.toMatchObject({ issues: [issue] })
+      expect(repository.createPending).not.toHaveBeenCalled()
+    },
+  )
 })

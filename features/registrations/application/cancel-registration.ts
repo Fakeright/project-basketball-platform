@@ -2,6 +2,7 @@ import type { Actor } from "@/features/identity/domain/actor"
 import { authorizeTeamAccess } from "@/features/team-management/application/team-access"
 import { transitionRegistration } from "@/features/registrations/domain/registration-policy"
 import type { TournamentRegistration } from "@/features/registrations/domain/registration"
+import { assertTournamentGovernanceAllowsOperation } from "@/features/tournament-operations/domain/tournament-governance-policy"
 
 import type { RegistrationRepository } from "./ports/registration-repository"
 
@@ -20,6 +21,9 @@ export async function cancelRegistration(
     if (!registration) throw new Error("NOT_FOUND")
 
     authorizeTeamAccess(actor, "registration.cancel", registration.team)
+    assertTournamentGovernanceAllowsOperation(
+      registration.tournament.governanceStatus,
+    )
     transitionRegistration(registration.status, "CANCEL", {
       tournamentStatus: "PUBLISHED",
       reason: "",

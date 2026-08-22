@@ -8,7 +8,10 @@ const owner = createTestActor("manager-1", "TEAM_MANAGER_COACH")
 const anotherManager = createTestActor("manager-2", "TEAM_MANAGER_COACH")
 const platformAdmin = createTestActor("admin-1", "PLATFORM_ADMIN")
 
-function createRepository(ownerId = owner.id): RegistrationRepository {
+function createRepository(
+  ownerId = owner.id,
+  governanceStatus: "ACTIVE" | "SUSPENDED" | "REMOVED" = "ACTIVE",
+): RegistrationRepository {
   const repository: RegistrationRepository = {
     getApplicationContext: vi.fn(),
     findActive: vi.fn(),
@@ -25,7 +28,18 @@ function createRepository(ownerId = owner.id): RegistrationRepository {
       version: 0,
       createdAt: "2026-10-01T00:00:00.000Z",
       updatedAt: "2026-10-01T00:00:00.000Z",
-      team: { id: "team-1", name: "Ballers", provinceCode: "10", province: "กรุงเทพมหานคร", ownerId },
+      team: {
+        id: "team-1",
+        name: "Ballers",
+        provinceCode: "10",
+        province: "กรุงเทพมหานคร",
+        ownerId,
+        format: "FIVE_V_FIVE" as const,
+        isActive: true,
+        deactivatedAt: null,
+        version: 0,
+      },
+      tournament: { governanceStatus },
     })),
     cancelWithVersion: vi.fn(async () => ({
       id: "registration-1",
@@ -44,7 +58,17 @@ function createRepository(ownerId = owner.id): RegistrationRepository {
     approveWithCapacity: vi.fn(),
     rejectWithVersion: vi.fn(),
     withdrawWithVersion: vi.fn(),
-    findTeam: vi.fn(async () => ({ id: "team-1", name: "Ballers", provinceCode: "10", province: "กรุงเทพมหานคร", ownerId })),
+    findTeam: vi.fn(async () => ({
+      id: "team-1",
+      name: "Ballers",
+      provinceCode: "10",
+      province: "กรุงเทพมหานคร",
+      ownerId,
+      format: "FIVE_V_FIVE" as const,
+      isActive: true,
+      deactivatedAt: null,
+      version: 0,
+    })),
     listByTeam: vi.fn(async () => []),
     findTournamentForReview: vi.fn(),
     listByTournament: vi.fn(async () => []),
@@ -101,5 +125,21 @@ describe("cancelRegistration", () => {
       "2026-10-02T00:00:00.000Z",
       true,
     )
+  })
+
+  it("blocks cancellation for a suspended tournament before persistence", async () => {
+    const repository = createRepository(owner.id, "SUSPENDED")
+
+    await expect(
+      cancelRegistration(
+        { registrationId: "registration-1", version: 0 },
+        owner,
+        {
+          registrations: repository,
+          now: () => new Date("2026-10-02T00:00:00Z"),
+        },
+      ),
+    ).rejects.toMatchObject({ issues: ["TOURNAMENT_SUSPENDED"] })
+    expect(repository.cancelWithVersion).not.toHaveBeenCalled()
   })
 })
