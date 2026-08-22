@@ -97,8 +97,6 @@ export interface TournamentGovernanceTransition {
   expectedVersion: number
   sourceStatus: TournamentOperationStatus
   sourceGovernanceStatus: TournamentGovernanceStatus
-  targetStatus: TournamentOperationStatus
-  targetGovernanceStatus: TournamentGovernanceStatus
   reason: string
   actorId: string
   at: string

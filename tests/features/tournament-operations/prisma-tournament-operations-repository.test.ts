@@ -28,6 +28,20 @@ const tournamentRow = {
   updatedAt: new Date("2026-07-26T02:00:00.000Z"),
 }
 
+const governanceTargetCases = [
+  ["SUSPEND", "DRAFT", "ACTIVE", "DRAFT", "SUSPENDED"],
+  ["RESUME", "DRAFT", "SUSPENDED", "DRAFT", "ACTIVE"],
+  ["REMOVE", "DRAFT", "ACTIVE", "DRAFT", "REMOVED"],
+  ["ARCHIVE", "COMPLETED", "ACTIVE", "ARCHIVED", "ACTIVE"],
+  [
+    "REOPEN_REGISTRATION",
+    "REGISTRATION_CLOSED",
+    "ACTIVE",
+    "PUBLISHED",
+    "ACTIVE",
+  ],
+] as const
+
 function createPrismaMock() {
   const prisma = {
     tournament: {
@@ -52,6 +66,74 @@ function createPrismaMock() {
 }
 
 describe("PrismaTournamentOperationsRepository", () => {
+  it.each(governanceTargetCases)(
+    "derives exact %s persistence targets inside the transaction",
+    async (
+      action,
+      sourceStatus,
+      sourceGovernanceStatus,
+      expectedStatus,
+      expectedGovernanceStatus,
+    ) => {
+      const prisma = createPrismaMock()
+      prisma.tournament.findUnique
+        .mockResolvedValueOnce({
+          ...tournamentRow,
+          status: sourceStatus,
+          governanceStatus: sourceGovernanceStatus,
+          version: 4,
+          _count: {
+            reviews: 0,
+            registrations: 0,
+            brackets: 0,
+            matches: 0,
+            mediaAssets: 0,
+          },
+          brackets: [],
+        })
+        .mockResolvedValueOnce({
+          ...tournamentRow,
+          status: expectedStatus,
+          governanceStatus: expectedGovernanceStatus,
+          version: 5,
+        })
+      prisma.tournament.updateMany.mockResolvedValue({ count: 1 })
+      const repository = new PrismaTournamentOperationsRepository(
+        prisma as unknown as PrismaClient,
+      )
+
+      const governed = await repository.governWithVersion({
+        action,
+        tournamentId: "tournament-1",
+        expectedVersion: 4,
+        sourceStatus,
+        sourceGovernanceStatus,
+        reason: "เหตุผลการกำกับรายการ",
+        actorId: "admin-1",
+        at: "2026-08-22T10:00:00.000Z",
+      })
+
+      expect(prisma.tournament.updateMany).toHaveBeenCalledWith({
+        where: {
+          id: "tournament-1",
+          version: 4,
+          status: sourceStatus,
+          governanceStatus: sourceGovernanceStatus,
+        },
+        data: expect.objectContaining({
+          status: expectedStatus,
+          governanceStatus: expectedGovernanceStatus,
+          version: { increment: 1 },
+        }),
+      })
+      expect(governed).toMatchObject({
+        status: expectedStatus,
+        governanceStatus: expectedGovernanceStatus,
+        version: 5,
+      })
+    },
+  )
+
   it("projects governance dependency counts and the active bracket", async () => {
     const prisma = createPrismaMock()
     prisma.tournament.findUnique.mockResolvedValue({
@@ -165,8 +247,6 @@ describe("PrismaTournamentOperationsRepository", () => {
       expectedVersion: 4,
       sourceStatus: "REGISTRATION_CLOSED",
       sourceGovernanceStatus: "ACTIVE",
-      targetStatus: "REGISTRATION_CLOSED",
-      targetGovernanceStatus: "SUSPENDED",
       reason: "ตรวจสอบข้อมูลผู้จัด",
       actorId: "admin-1",
       at: "2026-08-22T10:00:00.000Z",
@@ -242,8 +322,6 @@ describe("PrismaTournamentOperationsRepository", () => {
         expectedVersion: 4,
         sourceStatus: "REGISTRATION_CLOSED",
         sourceGovernanceStatus: "ACTIVE",
-        targetStatus: "REGISTRATION_CLOSED",
-        targetGovernanceStatus: "SUSPENDED",
         reason: "ตรวจสอบข้อมูลผู้จัด",
         actorId: "admin-1",
         at: "2026-08-22T10:00:00.000Z",

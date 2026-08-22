@@ -407,6 +407,7 @@ export class PrismaTournamentOperationsRepository
         input.at,
         reason,
       )
+      const target = governanceTarget(input.action, input.sourceStatus)
 
       const update = await transaction.tournament.updateMany({
         where: {
@@ -416,8 +417,8 @@ export class PrismaTournamentOperationsRepository
           governanceStatus: input.sourceGovernanceStatus,
         },
         data: {
-          status: input.targetStatus,
-          governanceStatus: input.targetGovernanceStatus,
+          status: target.status,
+          governanceStatus: target.governanceStatus,
           ...(updatesGovernanceMetadata(input.action)
             ? {
                 governanceReason: reason,
@@ -532,6 +533,24 @@ function updatesGovernanceMetadata(
   action: TournamentGovernanceTransition["action"],
 ) {
   return action === "SUSPEND" || action === "RESUME" || action === "REMOVE"
+}
+
+function governanceTarget(
+  action: TournamentGovernanceTransition["action"],
+  sourceStatus: TournamentGovernanceTransition["sourceStatus"],
+) {
+  switch (action) {
+    case "SUSPEND":
+      return { status: sourceStatus, governanceStatus: "SUSPENDED" as const }
+    case "RESUME":
+      return { status: sourceStatus, governanceStatus: "ACTIVE" as const }
+    case "REMOVE":
+      return { status: sourceStatus, governanceStatus: "REMOVED" as const }
+    case "ARCHIVE":
+      return { status: "ARCHIVED" as const, governanceStatus: "ACTIVE" as const }
+    case "REOPEN_REGISTRATION":
+      return { status: "PUBLISHED" as const, governanceStatus: "ACTIVE" as const }
+  }
 }
 
 function governanceAuditAction(

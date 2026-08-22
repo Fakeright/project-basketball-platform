@@ -53,7 +53,9 @@ export class InMemoryTournamentOperationsRepository implements TournamentOperati
     id: string,
   ): Promise<TournamentGovernanceContext | null> {
     const tournament = this.tournaments.get(id)
-    return tournament ? dependencyFreeGovernanceContext(tournament) : null
+    return tournament
+      ? mapGovernanceContext(tournament, this.reviewCount(id))
+      : null
   }
 
   async findCompetitionLifecycleContext(
@@ -209,14 +211,15 @@ export class InMemoryTournamentOperationsRepository implements TournamentOperati
     const reason = input.reason.trim()
     assertGovernancePolicy(
       input.action,
-      dependencyFreeGovernanceContext(current),
+      mapGovernanceContext(current, this.reviewCount(input.tournamentId)),
       input.at,
       reason,
     )
+    const target = governanceTarget(input.action, input.sourceStatus)
     const updated: TournamentOperation = {
       ...current,
-      status: input.targetStatus,
-      governanceStatus: input.targetGovernanceStatus,
+      status: target.status,
+      governanceStatus: target.governanceStatus,
       ...(updatesGovernanceMetadata(input.action)
         ? {
             governanceReason: reason,
@@ -248,7 +251,7 @@ export class InMemoryTournamentOperationsRepository implements TournamentOperati
     const reason = input.reason.trim()
     assertGovernancePolicy(
       "PERMANENT_DELETE",
-      dependencyFreeGovernanceContext(current),
+      mapGovernanceContext(current, this.reviewCount(input.tournamentId)),
       input.at,
       reason,
       input.confirmationTitle,
@@ -272,6 +275,12 @@ export class InMemoryTournamentOperationsRepository implements TournamentOperati
       },
     )
     this.tournaments.delete(input.tournamentId)
+  }
+
+  private reviewCount(tournamentId: string) {
+    return this.reviews.filter(
+      (review) => review.tournamentId === tournamentId,
+    ).length
   }
 
   private appendAudit(
@@ -299,8 +308,9 @@ export class InMemoryTournamentOperationsRepository implements TournamentOperati
   }
 }
 
-function dependencyFreeGovernanceContext(
+function mapGovernanceContext(
   tournament: TournamentOperation,
+  reviewCount: number,
 ): TournamentGovernanceContext {
   return {
     tournamentId: tournament.id,
@@ -310,7 +320,7 @@ function dependencyFreeGovernanceContext(
     governanceStatus: tournament.governanceStatus,
     version: tournament.version,
     startsAt: tournament.startsAt,
-    reviewCount: 0,
+    reviewCount,
     registrationCount: 0,
     bracketCount: 0,
     matchCount: 0,
@@ -342,6 +352,24 @@ function updatesGovernanceMetadata(
   action: TournamentGovernanceTransition["action"],
 ) {
   return action === "SUSPEND" || action === "RESUME" || action === "REMOVE"
+}
+
+function governanceTarget(
+  action: TournamentGovernanceTransition["action"],
+  sourceStatus: TournamentGovernanceTransition["sourceStatus"],
+) {
+  switch (action) {
+    case "SUSPEND":
+      return { status: sourceStatus, governanceStatus: "SUSPENDED" as const }
+    case "RESUME":
+      return { status: sourceStatus, governanceStatus: "ACTIVE" as const }
+    case "REMOVE":
+      return { status: sourceStatus, governanceStatus: "REMOVED" as const }
+    case "ARCHIVE":
+      return { status: "ARCHIVED" as const, governanceStatus: "ACTIVE" as const }
+    case "REOPEN_REGISTRATION":
+      return { status: "PUBLISHED" as const, governanceStatus: "ACTIVE" as const }
+  }
 }
 
 function governanceAuditAction(
