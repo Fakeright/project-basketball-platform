@@ -12,6 +12,7 @@ export const permissions = [
   "tournament.suspend",
   "tournament.archive",
   "tournament.remove",
+  "tournament.registration.reopen",
   "registration.create",
   "registration.read",
   "registration.decide",

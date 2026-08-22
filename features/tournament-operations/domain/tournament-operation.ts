@@ -1,4 +1,5 @@
 import type { TournamentFormat } from "@/features/tournaments/domain/tournament"
+import type { TournamentGovernanceStatus } from "./tournament-governance-policy"
 
 export type TournamentOperationStatus =
   | "DRAFT"
@@ -35,6 +36,9 @@ export interface TournamentOperation extends TournamentOperationInput {
   organizerId: string
   organizerName?: string
   status: TournamentOperationStatus
+  governanceStatus: TournamentGovernanceStatus
+  governanceReason: string | null
+  governanceUpdatedAt: string | null
   version: number
   createdAt: string
   updatedAt: string
@@ -55,3 +59,9 @@ export type TournamentAuditAction =
   | "tournament.registration_closed"
   | "tournament.started"
   | "tournament.completed"
+  | "tournament.suspended"
+  | "tournament.resumed"
+  | "tournament.removed"
+  | "tournament.archived"
+  | "tournament.registration_reopened"
+  | "tournament.deleted"
