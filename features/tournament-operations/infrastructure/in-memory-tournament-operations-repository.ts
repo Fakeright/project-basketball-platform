@@ -33,7 +33,7 @@ export class InMemoryTournamentOperationsRepository implements TournamentOperati
     audit: TournamentMutationAudit = systemAudit("tournament.created"),
   ): Promise<TournamentOperation> {
     const now = new Date().toISOString()
-    const tournament: TournamentOperation = { ...input, province: provinceName(input.provinceCode), id: `tournament-${this.tournaments.size + 1}`, status: "DRAFT", version: 0, createdAt: now, updatedAt: now }
+    const tournament: TournamentOperation = { ...input, province: provinceName(input.provinceCode), id: `tournament-${this.tournaments.size + 1}`, status: "DRAFT", governanceStatus: "ACTIVE", governanceReason: null, governanceUpdatedAt: null, version: 0, createdAt: now, updatedAt: now }
     this.tournaments.set(tournament.id, tournament)
     this.appendAudit(audit, tournament.id, null, tournament)
     return tournament

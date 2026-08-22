@@ -66,6 +66,9 @@ class DevelopmentTournamentOperationsRepository
       province: provinceName(input.provinceCode),
       id: `tournament-${state.tournaments.length + 1}`,
       status: "DRAFT",
+      governanceStatus: "ACTIVE",
+      governanceReason: null,
+      governanceUpdatedAt: null,
       version: 0,
       createdAt: now,
       updatedAt: now,
@@ -276,6 +279,12 @@ async function readState(): Promise<DevelopmentState> {
     await readFile(statePath, "utf8"),
   ) as DevelopmentState
   state.audits ??= []
+  state.tournaments = state.tournaments.map((tournament) => ({
+    ...tournament,
+    governanceStatus: tournament.governanceStatus ?? "ACTIVE",
+    governanceReason: tournament.governanceReason ?? null,
+    governanceUpdatedAt: tournament.governanceUpdatedAt ?? null,
+  }))
   return state
 }
 
@@ -308,6 +317,9 @@ function createSeedState(): DevelopmentState {
       registrationDeadline: "2026-11-01T23:59:00+07:00",
       capacity: 16,
       status: "SUBMITTED",
+      governanceStatus: "ACTIVE",
+      governanceReason: null,
+      governanceUpdatedAt: null,
       version: 1,
       createdAt: now,
       updatedAt: now,

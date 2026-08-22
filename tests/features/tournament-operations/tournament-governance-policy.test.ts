@@ -2,9 +2,12 @@ import { describe, expect, it } from "vitest"
 
 import {
   assertTournamentGovernanceAllowsOperation,
+  getTournamentGovernanceReasonIssues,
   getTournamentGovernanceIssues,
   TournamentGovernancePolicyError,
+  type TournamentGovernanceAction,
   type TournamentGovernanceContext,
+  type TournamentGovernanceStatus,
 } from "@/features/tournament-operations/domain/tournament-governance-policy"
 
 const now = new Date("2026-08-22T10:00:00.000Z")
@@ -26,6 +29,67 @@ const context: TournamentGovernanceContext = {
 }
 
 describe("tournament governance policy", () => {
+  it.each([
+    ["blank", "", ["GOVERNANCE_REASON_REQUIRED"]],
+    ["whitespace", "  \n\t ", ["GOVERNANCE_REASON_REQUIRED"]],
+    ["one character", "x", []],
+    ["500 characters", "x".repeat(500), []],
+    ["501 characters", "x".repeat(501), ["GOVERNANCE_REASON_TOO_LONG"]],
+  ] as const)("validates %s governance reasons", (_label, reason, expectedIssues) => {
+    expect(getTournamentGovernanceReasonIssues(reason)).toEqual(expectedIssues)
+  })
+
+  it.each([
+    ["SUSPEND", "ACTIVE", "REGISTRATION_CLOSED", true],
+    ["SUSPEND", "SUSPENDED", "REGISTRATION_CLOSED", false],
+    ["SUSPEND", "REMOVED", "REGISTRATION_CLOSED", false],
+    ["RESUME", "ACTIVE", "REGISTRATION_CLOSED", false],
+    ["RESUME", "SUSPENDED", "REGISTRATION_CLOSED", true],
+    ["RESUME", "REMOVED", "REGISTRATION_CLOSED", false],
+    ["REMOVE", "ACTIVE", "REGISTRATION_CLOSED", true],
+    ["REMOVE", "SUSPENDED", "REGISTRATION_CLOSED", true],
+    ["REMOVE", "REMOVED", "REGISTRATION_CLOSED", false],
+    ["ARCHIVE", "ACTIVE", "COMPLETED", true],
+    ["ARCHIVE", "SUSPENDED", "COMPLETED", false],
+    ["ARCHIVE", "REMOVED", "COMPLETED", false],
+    ["REOPEN_REGISTRATION", "ACTIVE", "REGISTRATION_CLOSED", true],
+    ["REOPEN_REGISTRATION", "SUSPENDED", "REGISTRATION_CLOSED", false],
+    ["REOPEN_REGISTRATION", "REMOVED", "REGISTRATION_CLOSED", false],
+    ["PERMANENT_DELETE", "ACTIVE", "DRAFT", true],
+    ["PERMANENT_DELETE", "SUSPENDED", "DRAFT", false],
+    ["PERMANENT_DELETE", "REMOVED", "DRAFT", false],
+  ] as const)(
+    "%s is %s for %s governance",
+    (action, governanceStatus, status, allowed) => {
+      const issues = getTournamentGovernanceIssues(
+        action,
+        getGovernanceContext(action, governanceStatus, status),
+        now,
+        "COURTSIDE Open",
+      )
+
+      expect(issues.includes("GOVERNANCE_STATUS_INVALID")).toBe(!allowed)
+      expect(issues).toEqual(allowed ? [] : ["GOVERNANCE_STATUS_INVALID"])
+    },
+  )
+
+  it.each([
+    ["SUSPEND", "ARCHIVED"],
+    ["REMOVE", "ARCHIVED"],
+    ["ARCHIVE", "REGISTRATION_CLOSED"],
+    ["REOPEN_REGISTRATION", "PUBLISHED"],
+    ["PERMANENT_DELETE", "PUBLISHED"],
+  ] as const)("reports invalid operational status for %s", (action, status) => {
+    expect(
+      getTournamentGovernanceIssues(
+        action,
+        getGovernanceContext(action, "ACTIVE", status),
+        now,
+        "COURTSIDE Open",
+      ),
+    ).toContain("TOURNAMENT_STATUS_INVALID")
+  })
+
   it("allows each governance command in its valid transition state", () => {
     expect(getTournamentGovernanceIssues("SUSPEND", context, now)).toEqual([])
     expect(
@@ -206,3 +270,16 @@ describe("tournament governance policy", () => {
     }
   })
 })
+
+function getGovernanceContext(
+  action: TournamentGovernanceAction,
+  governanceStatus: TournamentGovernanceStatus,
+  status: TournamentGovernanceContext["status"],
+): TournamentGovernanceContext {
+  return {
+    ...context,
+    governanceStatus,
+    status,
+    registrationCount: action === "PERMANENT_DELETE" ? 0 : context.registrationCount,
+  }
+}

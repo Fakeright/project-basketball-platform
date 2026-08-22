@@ -32,6 +32,8 @@ export interface TournamentGovernanceContext {
 
 export type TournamentGovernanceIssueCode =
   | "GOVERNANCE_STATUS_INVALID"
+  | "GOVERNANCE_REASON_REQUIRED"
+  | "GOVERNANCE_REASON_TOO_LONG"
   | "TOURNAMENT_STATUS_INVALID"
   | "TOURNAMENT_ALREADY_STARTED"
   | "BRACKET_PUBLISHED"
@@ -77,6 +79,15 @@ export function getTournamentGovernanceIssues(
     case "PERMANENT_DELETE":
       return getPermanentDeleteIssues(context, confirmationTitle)
   }
+}
+
+export function getTournamentGovernanceReasonIssues(
+  reason: string,
+): TournamentGovernanceIssueCode[] {
+  const trimmedReason = reason.trim()
+  if (!trimmedReason) return ["GOVERNANCE_REASON_REQUIRED"]
+  if (trimmedReason.length > 500) return ["GOVERNANCE_REASON_TOO_LONG"]
+  return []
 }
 
 export function assertTournamentGovernanceAllowsOperation(
