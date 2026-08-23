@@ -12,7 +12,10 @@ import {
 } from "@/features/shared/presentation/safe-http"
 import type { TournamentOperationsRepository } from "@/features/tournament-operations/infrastructure/tournament-operations-repository"
 
-import { tournamentGovernanceFailureResponse } from "./tournament-governance-error-response"
+import {
+  tournamentGovernanceCommandFailureResponse,
+  tournamentGovernanceFailureResponse,
+} from "./tournament-governance-error-response"
 
 const baseCommand = {
   version: z.number().int().nonnegative(),
@@ -49,6 +52,12 @@ export async function handleTournamentGovernance(
     if (!actor) {
       return Response.json({ message: "กรุณาเข้าสู่ระบบ" }, { status: 401 })
     }
+    if (actor.role !== "PLATFORM_ADMIN") {
+      return Response.json(
+        { message: "ไม่มีสิทธิ์ดำเนินการกับรายการนี้" },
+        { status: 403 },
+      )
+    }
 
     const payload = await parseJsonRequest(request)
     if (!payload.ok) return governanceValidationResponse()
@@ -72,6 +81,8 @@ export async function handleTournamentGovernance(
     } catch (error) {
       const governanceFailure = tournamentGovernanceFailureResponse(error)
       if (governanceFailure) return governanceFailure
+      const commandFailure = tournamentGovernanceCommandFailureResponse(error)
+      if (commandFailure) return commandFailure
 
       const code = error instanceof Error ? error.message : "UNKNOWN"
       if (code === "FORBIDDEN") {

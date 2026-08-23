@@ -45,13 +45,14 @@ export async function governTournament(
   actor: Actor,
   dependencies: { now: () => Date },
 ): Promise<TournamentOperation | null> {
+  if (actor.role !== "PLATFORM_ADMIN") throw new Error("FORBIDDEN")
+
   const context = await repository.findGovernanceContext(command.tournamentId)
   if (!context) throw new Error("NOT_FOUND")
 
   authorize(actor, permissionByAction[command.action], {
     organizerId: context.organizerId,
   })
-  if (actor.role !== "PLATFORM_ADMIN") throw new Error("FORBIDDEN")
   if (command.version !== context.version) throw new Error("CONFLICT")
 
   const reason = command.reason.trim()

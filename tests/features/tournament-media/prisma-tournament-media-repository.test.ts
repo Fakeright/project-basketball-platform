@@ -29,6 +29,9 @@ function createPrismaMock() {
     auditLog: {
       create: vi.fn(),
     },
+    $queryRaw: vi.fn().mockResolvedValue([
+      { id: "tournament-1", governanceStatus: "ACTIVE" },
+    ]),
     $transaction: vi.fn(
       async (operation: (client: typeof prisma) => Promise<unknown>) =>
         operation(prisma),
@@ -38,6 +41,61 @@ function createPrismaMock() {
 }
 
 describe("PrismaTournamentMediaRepository", () => {
+  it.each([
+    {
+      operation: "commit uploaded media",
+      run: (repository: PrismaTournamentMediaRepository) =>
+        repository.commitUpload({
+          asset: {
+            id: mediaRow.id,
+            tournamentId: mediaRow.tournamentId,
+            kind: mediaRow.kind,
+            bucket: mediaRow.bucket,
+            objectPath: mediaRow.objectPath,
+            fileName: mediaRow.fileName,
+            contentType: mediaRow.contentType,
+            byteSize: mediaRow.byteSize,
+            createdById: mediaRow.createdById,
+          },
+          actorId: "organizer-1",
+          adminOverride: false,
+        }),
+    },
+    {
+      operation: "retire media",
+      run: (repository: PrismaTournamentMediaRepository) =>
+        repository.retireWithAudit({
+          tournamentId: "tournament-1",
+          assetId: "asset-1",
+          actorId: "organizer-1",
+          adminOverride: false,
+        }),
+    },
+  ])(
+    "locks and rechecks tournament governance before attempting to $operation",
+    async ({ run }) => {
+      const prisma = createPrismaMock()
+      prisma.$queryRaw.mockResolvedValueOnce([
+        { id: "tournament-1", governanceStatus: "SUSPENDED" },
+      ])
+      const repository = new PrismaTournamentMediaRepository(
+        prisma as unknown as PrismaClient,
+      )
+
+      await expect(run(repository)).rejects.toMatchObject({
+        issues: ["TOURNAMENT_SUSPENDED"],
+      })
+
+      expect(prisma.$queryRaw).toHaveBeenCalledOnce()
+      const [lockQuery] = prisma.$queryRaw.mock.calls[0]
+      expect(lockQuery.text).toContain('FROM "Tournament"')
+      expect(lockQuery.text).toMatch(/\bFOR\s+UPDATE\b/i)
+      expect(prisma.mediaAsset.create).not.toHaveBeenCalled()
+      expect(prisma.mediaAsset.updateMany).not.toHaveBeenCalled()
+      expect(prisma.auditLog.create).not.toHaveBeenCalled()
+    },
+  )
+
   it("retires the previous poster, creates the replacement, and audits in one transaction", async () => {
     const prisma = createPrismaMock()
     const oldPoster = { ...mediaRow, id: "asset-old" }
@@ -116,6 +174,9 @@ describe("PrismaTournamentMediaRepository", () => {
     let activeAssetIds = ["asset-old"]
     const oldPoster = { ...mediaRow, id: "asset-old" }
     const transactionClient = {
+      $queryRaw: vi.fn(async () => [
+        { id: "tournament-1", governanceStatus: "ACTIVE" },
+      ]),
       mediaAsset: {
         findFirst: vi.fn(async () =>
           activeAssetIds.includes("asset-old") ? oldPoster : null,

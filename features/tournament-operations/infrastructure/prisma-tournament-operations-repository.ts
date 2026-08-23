@@ -30,6 +30,7 @@ import type {
   TournamentReviewTransition,
   TournamentGovernanceTransition,
 } from "./tournament-operations-repository"
+import { lockTournamentGovernanceRow } from "./prisma-tournament-governance-lock"
 
 const tournamentOperationInclude = {
   province: true,
@@ -394,6 +395,7 @@ export class PrismaTournamentOperationsRepository
     input: TournamentGovernanceTransition,
   ): Promise<TournamentOperation> {
     return runSerializableTransaction(this.prisma, async (transaction) => {
+      await lockTournamentGovernanceRow(transaction, input.tournamentId)
       const current = await transaction.tournament.findUnique({
         where: { id: input.tournamentId },
         include: tournamentGovernanceTransactionInclude,
@@ -453,6 +455,7 @@ export class PrismaTournamentOperationsRepository
     input: TournamentPermanentDelete,
   ): Promise<void> {
     await runSerializableTransaction(this.prisma, async (transaction) => {
+      await lockTournamentGovernanceRow(transaction, input.tournamentId)
       const current = await transaction.tournament.findUnique({
         where: { id: input.tournamentId },
         include: tournamentGovernanceTransactionInclude,

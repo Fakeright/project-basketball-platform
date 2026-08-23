@@ -17,6 +17,9 @@ function createPrismaMock() {
     tournament: { findUnique: vi.fn(), updateMany: vi.fn() },
     auditLog: { create: vi.fn() },
     matchResult: { create: vi.fn(), updateMany: vi.fn() },
+    $queryRaw: vi.fn().mockResolvedValue([
+      { id: "tournament-1", governanceStatus: "ACTIVE" },
+    ]),
     $transaction: vi.fn(
       async (operation: (client: typeof prisma) => Promise<unknown>) =>
         operation(prisma),
@@ -26,6 +29,183 @@ function createPrismaMock() {
 }
 
 describe("PrismaCompetitionRepository", () => {
+  it.each([
+    {
+      operation: "lock bracket entries",
+      run: (repository: PrismaCompetitionRepository) =>
+        repository.lockEntries({
+          tournamentId: "tournament-1",
+          expectedVersion: 3,
+          actorId: "organizer-1",
+          at: "2026-08-19T05:00:00.000Z",
+          adminOverride: false,
+        }),
+    },
+    {
+      operation: "persist a generated bracket",
+      run: (repository: PrismaCompetitionRepository) =>
+        repository.persistGeneratedPlan({
+          tournamentId: "tournament-1",
+          bracketId: "bracket-1",
+          expectedVersion: 2,
+          generationMethod: "SEEDED",
+          drawToken: null,
+          entries: [],
+          plan: { rounds: [], matches: [] },
+          actorId: "organizer-1",
+          adminOverride: false,
+          at: "2026-08-19T05:00:00.000Z",
+        }),
+    },
+    {
+      operation: "publish a bracket",
+      run: (repository: PrismaCompetitionRepository) =>
+        repository.setPublication({
+          tournamentId: "tournament-1",
+          bracketId: "bracket-1",
+          expectedVersion: 2,
+          published: true,
+          reason: null,
+          actorId: "organizer-1",
+          adminOverride: false,
+          at: "2026-08-19T05:00:00.000Z",
+        }),
+    },
+    {
+      operation: "create an external match",
+      run: (repository: PrismaCompetitionRepository) =>
+        repository.createExternalMatch({
+          tournamentId: "tournament-1",
+          bracketId: "bracket-1",
+          roundName: "Final",
+          sequence: 1,
+          homeTeamId: "team-1",
+          awayTeamId: "team-2",
+          scheduledAt: "2026-11-15T05:00:00.000Z",
+          court: "Court A",
+          purpose: "CHAMPIONSHIP",
+          expectedVersion: 2,
+          actorId: "organizer-1",
+          adminOverride: false,
+          overrideReason: null,
+          at: "2026-08-19T05:00:00.000Z",
+        }),
+    },
+    {
+      operation: "update external match purpose",
+      run: (repository: PrismaCompetitionRepository) =>
+        repository.updateExternalMatchPurpose({
+          tournamentId: "tournament-1",
+          matchId: "match-1",
+          purpose: "CHAMPIONSHIP",
+          previousPurpose: "PLACEMENT",
+          expectedVersion: 2,
+          actorId: "organizer-1",
+          adminOverride: false,
+          overrideReason: null,
+          at: "2026-08-19T05:00:00.000Z",
+        }),
+    },
+    {
+      operation: "schedule a match",
+      run: (repository: PrismaCompetitionRepository) =>
+        repository.scheduleMatch({
+          tournamentId: "tournament-1",
+          matchId: "match-1",
+          scheduledAt: "2026-11-15T05:00:00.000Z",
+          court: "Court A",
+          expectedVersion: 2,
+          overrideReason: null,
+          actorId: "organizer-1",
+          adminOverride: false,
+          at: "2026-08-19T05:00:00.000Z",
+        }),
+    },
+    {
+      operation: "record a score",
+      run: (repository: PrismaCompetitionRepository) =>
+        repository.recordScore({
+          tournamentId: "tournament-1",
+          matchId: "match-1",
+          homeScore: 72,
+          awayScore: 68,
+          expectedVersion: 2,
+          actorId: "organizer-1",
+          adminOverride: false,
+          at: "2026-08-19T05:00:00.000Z",
+        }),
+    },
+    {
+      operation: "confirm a result",
+      run: (repository: PrismaCompetitionRepository) =>
+        repository.confirmResultAndAdvance({
+          tournamentId: "tournament-1",
+          matchId: "match-1",
+          homeScore: 72,
+          awayScore: 68,
+          expectedVersion: 2,
+          winnerTeamId: "team-1",
+          nextMatchId: null,
+          nextSlot: null,
+          actorId: "organizer-1",
+          adminOverride: false,
+          at: "2026-08-19T05:00:00.000Z",
+        }),
+    },
+    {
+      operation: "correct a result",
+      run: (repository: PrismaCompetitionRepository) =>
+        repository.correctResult({
+          tournamentId: "tournament-1",
+          matchId: "match-1",
+          homeScore: 68,
+          awayScore: 72,
+          expectedVersion: 3,
+          previousWinnerTeamId: "team-1",
+          winnerTeamId: "team-2",
+          nextMatchId: null,
+          nextSlot: null,
+          replaceDownstreamSlot: false,
+          reason: "แก้ผลการแข่งขัน",
+          actorId: "admin-1",
+          at: "2026-08-19T05:00:00.000Z",
+        }),
+    },
+  ])(
+    "locks and rechecks tournament governance before attempting to $operation",
+    async ({ run }) => {
+      const prisma = createPrismaMock()
+      prisma.$queryRaw.mockResolvedValueOnce([
+        { id: "tournament-1", governanceStatus: "SUSPENDED" },
+      ])
+      const repository = new PrismaCompetitionRepository(
+        prisma as unknown as PrismaClient,
+      )
+
+      await expect(run(repository)).rejects.toMatchObject({
+        issues: ["TOURNAMENT_SUSPENDED"],
+      })
+
+      expect(prisma.$transaction).toHaveBeenCalledOnce()
+      expect(prisma.$queryRaw).toHaveBeenCalledOnce()
+      const [lockQuery] = prisma.$queryRaw.mock.calls[0]
+      expect(lockQuery.text).toContain('FROM "Tournament"')
+      expect(lockQuery.text).toMatch(/\bFOR\s+UPDATE\b/i)
+      expect(prisma.tournament.updateMany).not.toHaveBeenCalled()
+      expect(prisma.bracket.create).not.toHaveBeenCalled()
+      expect(prisma.bracket.updateMany).not.toHaveBeenCalled()
+      expect(prisma.bracketEntry.createMany).not.toHaveBeenCalled()
+      expect(prisma.bracketEntry.update).not.toHaveBeenCalled()
+      expect(prisma.bracketRound.createMany).not.toHaveBeenCalled()
+      expect(prisma.bracketRound.deleteMany).not.toHaveBeenCalled()
+      expect(prisma.match.createMany).not.toHaveBeenCalled()
+      expect(prisma.match.updateMany).not.toHaveBeenCalled()
+      expect(prisma.matchResult.create).not.toHaveBeenCalled()
+      expect(prisma.matchResult.updateMany).not.toHaveBeenCalled()
+      expect(prisma.auditLog.create).not.toHaveBeenCalled()
+    },
+  )
+
   it("loads the tournament status with a mutable result context", async () => {
     const prisma = createPrismaMock()
     prisma.match.findFirst.mockResolvedValue({

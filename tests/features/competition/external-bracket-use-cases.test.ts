@@ -7,6 +7,7 @@ import { uploadExternalBracket } from "@/features/competition/application/upload
 import type { ExternalBracketRepository } from "@/features/competition/application/ports/external-bracket-repository"
 import { ObjectStorageError } from "@/features/tournament-media/application/ports/object-storage"
 import type { Actor } from "@/features/identity/domain/actor"
+import { TournamentGovernancePolicyError } from "@/features/tournament-operations/domain/tournament-governance-policy"
 
 const organizer: Actor = {
   id: "organizer-1",
@@ -266,6 +267,25 @@ describe("uploadExternalBracket", () => {
         dependencies,
       ),
     ).rejects.toThrow("CONFLICT")
+    expect(dependencies.storage.remove).toHaveBeenCalledWith(
+      "tournament-brackets",
+      "tournaments/t-1/bracket/revisions/asset-1.pdf",
+    )
+  })
+
+  it("removes the final object when a transactional governance recheck rejects persistence", async () => {
+    const dependencies = createDependencies()
+    dependencies.externalBrackets.commitUploadedRevision.mockRejectedValue(
+      new TournamentGovernancePolicyError(["TOURNAMENT_SUSPENDED"]),
+    )
+
+    await expect(
+      uploadExternalBracket(
+        { tournamentId: "t-1", expectedVersion: 3, file: pdfFile },
+        organizer,
+        dependencies,
+      ),
+    ).rejects.toMatchObject({ issues: ["TOURNAMENT_SUSPENDED"] })
     expect(dependencies.storage.remove).toHaveBeenCalledWith(
       "tournament-brackets",
       "tournaments/t-1/bracket/revisions/asset-1.pdf",

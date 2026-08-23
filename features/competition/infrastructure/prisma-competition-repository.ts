@@ -29,6 +29,7 @@ import type {
   UpdateExternalMatchPurposeMutation,
   UpdatedExternalMatchPurpose,
 } from "@/features/competition/application/ports/competition-repository"
+import { lockActiveTournamentForMutation } from "@/features/tournament-operations/infrastructure/prisma-tournament-governance-lock"
 
 type CompetitionDatabaseClient = Pick<
   PrismaClient,
@@ -39,6 +40,7 @@ type CompetitionDatabaseClient = Pick<
   | "matchResult"
   | "auditLog"
   | "tournament"
+  | "$queryRaw"
 >
 
 export class PrismaCompetitionRepository implements CompetitionRepository {
@@ -433,6 +435,7 @@ class PrismaCompetitionOperations implements CompetitionRepositoryTransaction {
   async lockEntries(
     input: LockEntriesInput,
   ): Promise<LockedCompetitionWorkspace> {
+    await lockActiveTournamentForMutation(this.prisma, input.tournamentId)
     const context = await this.findLockContext(input.tournamentId)
     if (!context) throw new Error("NOT_FOUND")
 
@@ -490,6 +493,7 @@ class PrismaCompetitionOperations implements CompetitionRepositoryTransaction {
   async persistGeneratedPlan(
     input: PersistGeneratedPlanInput,
   ): Promise<PersistedCompetitionBracket> {
+    await lockActiveTournamentForMutation(this.prisma, input.tournamentId)
     const updated = await this.prisma.bracket.updateMany({
       where: {
         id: input.bracketId,
@@ -581,6 +585,7 @@ class PrismaCompetitionOperations implements CompetitionRepositoryTransaction {
   async setPublication(
     input: SetBracketPublicationInput,
   ): Promise<PersistedCompetitionBracket> {
+    await lockActiveTournamentForMutation(this.prisma, input.tournamentId)
     const beforeStatus = input.published ? "DRAFT" : "PUBLISHED"
     const afterStatus = input.published ? "PUBLISHED" : "DRAFT"
     const updated = await this.prisma.bracket.updateMany({
@@ -692,6 +697,7 @@ class PrismaCompetitionOperations implements CompetitionRepositoryTransaction {
   async createExternalMatch(
     input: CreateExternalMatchMutation,
   ): Promise<CreatedExternalMatch> {
+    await lockActiveTournamentForMutation(this.prisma, input.tournamentId)
     const reserved = await this.prisma.bracket.updateMany({
       where: {
         id: input.bracketId,
@@ -820,6 +826,7 @@ class PrismaCompetitionOperations implements CompetitionRepositoryTransaction {
   async updateExternalMatchPurpose(
     input: UpdateExternalMatchPurposeMutation,
   ): Promise<UpdatedExternalMatchPurpose> {
+    await lockActiveTournamentForMutation(this.prisma, input.tournamentId)
     let updated
     try {
       updated = await this.prisma.match.updateMany({
@@ -925,6 +932,7 @@ class PrismaCompetitionOperations implements CompetitionRepositoryTransaction {
   async scheduleMatch(
     input: ScheduleMatchMutation,
   ): Promise<ScheduledCompetitionMatch> {
+    await lockActiveTournamentForMutation(this.prisma, input.tournamentId)
     const updated = await this.prisma.match.updateMany({
       where: {
         id: input.matchId,
@@ -1025,6 +1033,7 @@ class PrismaCompetitionOperations implements CompetitionRepositoryTransaction {
   async recordScore(
     input: RecordMatchScoreMutation,
   ): Promise<ResultCompetitionMatch> {
+    await lockActiveTournamentForMutation(this.prisma, input.tournamentId)
     const updated = await this.prisma.match.updateMany({
       where: {
         id: input.matchId,
@@ -1133,6 +1142,7 @@ class PrismaCompetitionOperations implements CompetitionRepositoryTransaction {
   async correctResult(
     input: CorrectMatchResultMutation,
   ): Promise<ResultCompetitionMatch> {
+    await lockActiveTournamentForMutation(this.prisma, input.tournamentId)
     const corrected = await this.prisma.match.updateMany({
       where: {
         id: input.matchId,
@@ -1218,6 +1228,7 @@ class PrismaCompetitionOperations implements CompetitionRepositoryTransaction {
   async confirmResultAndAdvance(
     input: ConfirmMatchResultMutation,
   ): Promise<ResultCompetitionMatch> {
+    await lockActiveTournamentForMutation(this.prisma, input.tournamentId)
     const updated = await this.prisma.match.updateMany({
       where: {
         id: input.matchId,

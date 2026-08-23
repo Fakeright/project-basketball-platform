@@ -14,6 +14,7 @@ import type {
 } from "@/features/registrations/application/ports/registration-repository"
 import type { TeamPlayer, TeamSummary } from "@/features/team-management/domain/team"
 import type { TournamentRegistration } from "@/features/registrations/domain/registration"
+import { lockActiveTournamentForMutation } from "@/features/tournament-operations/infrastructure/prisma-tournament-governance-lock"
 
 type RegistrationDatabaseClient = Pick<
   PrismaClient,
@@ -66,7 +67,9 @@ export class PrismaRegistrationRepository implements RegistrationRepository {
     actorId: string
     adminOverride: boolean
   }) {
-    return this.operations.createPending(input)
+    return this.inTransaction((registrations) =>
+      registrations.createPending(input),
+    )
   }
 
   findById(id: string) {
@@ -80,12 +83,14 @@ export class PrismaRegistrationRepository implements RegistrationRepository {
     at: string,
     adminOverride: boolean,
   ) {
-    return this.operations.cancelWithVersion(
-      id,
-      version,
-      actorId,
-      at,
-      adminOverride,
+    return this.inTransaction((registrations) =>
+      registrations.cancelWithVersion(
+        id,
+        version,
+        actorId,
+        at,
+        adminOverride,
+      ),
     )
   }
 
@@ -94,15 +99,21 @@ export class PrismaRegistrationRepository implements RegistrationRepository {
   }
 
   approveWithCapacity(input: ApproveRegistrationInput) {
-    return this.operations.approveWithCapacity(input)
+    return this.inTransaction((registrations) =>
+      registrations.approveWithCapacity(input),
+    )
   }
 
   rejectWithVersion(input: RejectRegistrationInput) {
-    return this.operations.rejectWithVersion(input)
+    return this.inTransaction((registrations) =>
+      registrations.rejectWithVersion(input),
+    )
   }
 
   withdrawWithVersion(input: WithdrawRegistrationMutationInput) {
-    return this.operations.withdrawWithVersion(input)
+    return this.inTransaction((registrations) =>
+      registrations.withdrawWithVersion(input),
+    )
   }
 
   async findTeam(teamId: string): Promise<TeamSummary | null> {
@@ -269,6 +280,10 @@ class PrismaRegistrationOperations implements RegistrationRepositoryTransaction 
     adminOverride: boolean
   }) {
     try {
+      await lockActiveTournamentForMutation(
+        this.prisma,
+        input.tournamentId,
+      )
       const registration = await this.prisma.registration.create({
         data: { tournamentId: input.tournamentId, teamId: input.teamId, status: "PENDING" },
       })
@@ -327,6 +342,16 @@ class PrismaRegistrationOperations implements RegistrationRepositoryTransaction 
     at: string,
     adminOverride: boolean,
   ) {
+    const current = await this.prisma.registration.findUnique({
+      where: { id },
+      select: { tournamentId: true },
+    })
+    if (!current) throw new Error("NOT_FOUND")
+    await lockActiveTournamentForMutation(
+      this.prisma,
+      current.tournamentId,
+    )
+
     const cancelledAt = new Date(at)
     const updated = await this.prisma.registration.updateMany({
       where: { id, status: "PENDING", version },
@@ -390,18 +415,11 @@ class PrismaRegistrationOperations implements RegistrationRepositoryTransaction 
   async approveWithCapacity(
     input: ApproveRegistrationInput,
   ): Promise<TournamentRegistration> {
-    const lockedTournament = await this.prisma.$queryRaw<
-      Array<{ capacity: number }>
-    >(
-      Prisma.sql`
-        SELECT "capacity"
-        FROM "Tournament"
-        WHERE "id" = ${input.before.tournamentId}
-        FOR UPDATE
-      `,
+    const lockedTournament = await lockActiveTournamentForMutation(
+      this.prisma,
+      input.before.tournamentId,
     )
-    const capacity = lockedTournament[0]?.capacity
-    if (capacity === undefined) throw new Error("NOT_FOUND")
+    const capacity = lockedTournament.capacity
 
     const approvedCount = await this.prisma.registration.count({
       where: {
@@ -430,7 +448,7 @@ class PrismaRegistrationOperations implements RegistrationRepositoryTransaction 
   rejectWithVersion(
     input: RejectRegistrationInput,
   ): Promise<TournamentRegistration> {
-    return this.updateDecision({
+    return this.updateDecisionWithGovernanceLock({
       before: input.before,
       version: input.version,
       actorId: input.actorId,
@@ -447,7 +465,7 @@ class PrismaRegistrationOperations implements RegistrationRepositoryTransaction 
   withdrawWithVersion(
     input: WithdrawRegistrationMutationInput,
   ): Promise<TournamentRegistration> {
-    return this.updateDecision({
+    return this.updateDecisionWithGovernanceLock({
       before: input.before,
       version: input.version,
       actorId: input.actorId,
@@ -459,6 +477,25 @@ class PrismaRegistrationOperations implements RegistrationRepositoryTransaction 
       action: "registration.withdrawn",
       timestampField: "withdrawnAt",
     })
+  }
+
+  private async updateDecisionWithGovernanceLock(input: {
+    before: TournamentRegistration
+    version: number
+    actorId: string
+    at: string
+    adminOverride: boolean
+    sourceStatus: "PENDING" | "APPROVED"
+    status: "REJECTED" | "WITHDRAWN"
+    note: string
+    action: "registration.rejected" | "registration.withdrawn"
+    timestampField: "decidedAt" | "withdrawnAt"
+  }) {
+    await lockActiveTournamentForMutation(
+      this.prisma,
+      input.before.tournamentId,
+    )
+    return this.updateDecision(input)
   }
 
   private async updateDecision(input: {

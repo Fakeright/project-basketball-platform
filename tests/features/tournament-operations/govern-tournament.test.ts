@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest"
+import { describe, expect, it, vi } from "vitest"
 
 import { governTournament } from "@/features/tournament-operations/application/govern-tournament"
 import {
@@ -27,15 +27,23 @@ const tournamentInput = {
 }
 
 describe("governTournament", () => {
-  it("allows only platform admins to govern a tournament", async () => {
+  it.each(["existing-tournament", "missing-tournament"])(
+    "rejects non-admin governance for an %s without a repository lookup",
+    async (resource) => {
     const { repository, tournament } = await createRepository()
+    const findGovernanceContext = vi.spyOn(
+      repository,
+      "findGovernanceContext",
+    )
+    const tournamentId =
+      resource === "existing-tournament" ? tournament.id : "missing-tournament"
 
     await expect(
       governTournament(
         repository,
         {
           action: "SUSPEND",
-          tournamentId: tournament.id,
+          tournamentId,
           version: tournament.version,
           reason: "ตรวจสอบข้อมูลผู้จัด",
         },
@@ -43,7 +51,9 @@ describe("governTournament", () => {
         { now },
       ),
     ).rejects.toThrow("FORBIDDEN")
-  })
+    expect(findGovernanceContext).not.toHaveBeenCalled()
+    },
+  )
 
   it.each([
     ["SUSPEND", "DRAFT", "ACTIVE", "DRAFT", "SUSPENDED"],

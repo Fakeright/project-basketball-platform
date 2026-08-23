@@ -15,6 +15,7 @@ import type {
   RetireExternalRevisionInput,
   SelectBracketModeInput,
 } from "@/features/competition/application/ports/external-bracket-repository"
+import { lockActiveTournamentForMutation } from "@/features/tournament-operations/infrastructure/prisma-tournament-governance-lock"
 
 const revisionInclude = {
   mediaAsset: true,
@@ -79,6 +80,7 @@ export class PrismaExternalBracketRepository
 
   selectMode(input: SelectBracketModeInput) {
     return this.prisma.$transaction(async (transaction) => {
+      await lockActiveTournamentForMutation(transaction, input.tournamentId)
       await lockBracket(transaction, input.bracketId, input.tournamentId)
       const bracket = await transaction.bracket.findFirst({
         where: { id: input.bracketId, tournamentId: input.tournamentId },
@@ -155,6 +157,10 @@ export class PrismaExternalBracketRepository
     for (let attempt = 0; attempt < 2; attempt += 1) {
       try {
         return await this.prisma.$transaction(async (transaction) => {
+          await lockActiveTournamentForMutation(
+            transaction,
+            input.tournamentId,
+          )
           await lockBracket(transaction, input.bracketId, input.tournamentId)
           await assertExternalBracket(transaction, input)
 
@@ -212,6 +218,7 @@ export class PrismaExternalBracketRepository
 
   publishRevision(input: PublishExternalRevisionInput) {
     return this.prisma.$transaction(async (transaction) => {
+      await lockActiveTournamentForMutation(transaction, input.tournamentId)
       await lockBracket(transaction, input.bracketId, input.tournamentId)
       const selected = await transaction.externalBracketRevision.findFirst({
         where: {
@@ -283,6 +290,7 @@ export class PrismaExternalBracketRepository
 
   retireRevision(input: RetireExternalRevisionInput) {
     return this.prisma.$transaction(async (transaction) => {
+      await lockActiveTournamentForMutation(transaction, input.tournamentId)
       await lockBracket(transaction, input.bracketId, input.tournamentId)
       const selected = await transaction.externalBracketRevision.findFirst({
         where: {
@@ -392,7 +400,13 @@ export class PrismaExternalBracketRepository
         slug,
         governanceStatus: "ACTIVE",
         status: {
-          in: ["PUBLISHED", "REGISTRATION_CLOSED", "IN_PROGRESS", "COMPLETED"],
+          in: [
+            "PUBLISHED",
+            "REGISTRATION_CLOSED",
+            "IN_PROGRESS",
+            "COMPLETED",
+            "ARCHIVED",
+          ],
         },
       },
       select: {

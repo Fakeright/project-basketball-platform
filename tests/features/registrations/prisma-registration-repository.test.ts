@@ -68,6 +68,108 @@ function repositoryWithTransactionClient(client: object) {
 }
 
 describe("PrismaRegistrationRepository transactions", () => {
+  it.each([
+    {
+      operation: "create a registration",
+      run: (repository: PrismaRegistrationRepository) =>
+        repository.inTransaction((registrations) =>
+          registrations.createPending({
+            tournamentId: "tournament-1",
+            teamId: "team-1",
+            actorId: "manager-1",
+            adminOverride: false,
+          }),
+        ),
+    },
+    {
+      operation: "cancel a registration",
+      run: (repository: PrismaRegistrationRepository) =>
+        repository.inTransaction((registrations) =>
+          registrations.cancelWithVersion(
+            "registration-1",
+            0,
+            "manager-1",
+            "2026-10-02T00:00:00.000Z",
+            false,
+          ),
+        ),
+    },
+    {
+      operation: "approve a registration",
+      run: (repository: PrismaRegistrationRepository) =>
+        repository.inTransaction((registrations) =>
+          registrations.approveWithCapacity({
+            before: pendingRegistration,
+            version: 0,
+            note: "",
+            actorId: "organizer-1",
+            at: "2026-10-02T00:00:00.000Z",
+            adminOverride: false,
+          }),
+        ),
+    },
+    {
+      operation: "reject a registration",
+      run: (repository: PrismaRegistrationRepository) =>
+        repository.inTransaction((registrations) =>
+          registrations.rejectWithVersion({
+            before: pendingRegistration,
+            version: 0,
+            note: "ไม่ผ่านเงื่อนไข",
+            actorId: "organizer-1",
+            at: "2026-10-02T00:00:00.000Z",
+            adminOverride: false,
+          }),
+        ),
+    },
+    {
+      operation: "withdraw a registration",
+      run: (repository: PrismaRegistrationRepository) =>
+        repository.inTransaction((registrations) =>
+          registrations.withdrawWithVersion({
+            before: { ...pendingRegistration, status: "APPROVED" },
+            version: 0,
+            reason: "ถอนทีม",
+            actorId: "organizer-1",
+            at: "2026-10-02T00:00:00.000Z",
+            adminOverride: false,
+          }),
+        ),
+    },
+  ])(
+    "locks and rechecks tournament governance before attempting to $operation",
+    async ({ run }) => {
+      const queryRaw = vi.fn(async () => [
+        { id: "tournament-1", governanceStatus: "SUSPENDED", capacity: 8 },
+      ])
+      const create = vi.fn()
+      const updateMany = vi.fn()
+      const createAudit = vi.fn()
+      const { repository } = repositoryWithTransactionClient({
+        $queryRaw: queryRaw,
+        registration: {
+          create,
+          updateMany,
+          count: vi.fn(),
+          findUnique: vi.fn(async () => registrationRow("PENDING", 0)),
+        },
+        auditLog: { create: createAudit },
+      })
+
+      await expect(run(repository)).rejects.toMatchObject({
+        issues: ["TOURNAMENT_SUSPENDED"],
+      })
+
+      expect(queryRaw).toHaveBeenCalledOnce()
+      const [lockQuery] = queryRaw.mock.calls[0]
+      expect(lockQuery.text).toContain('FROM "Tournament"')
+      expect(lockQuery.text).toMatch(/\bFOR\s+UPDATE\b/i)
+      expect(create).not.toHaveBeenCalled()
+      expect(updateMany).not.toHaveBeenCalled()
+      expect(createAudit).not.toHaveBeenCalled()
+    },
+  )
+
   it("maps team compatibility fields for registration reads", async () => {
     const repository = new PrismaRegistrationRepository({
       team: { findUnique: vi.fn(async () => teamRow) },
@@ -120,6 +222,92 @@ describe("PrismaRegistrationRepository transactions", () => {
 
     await expect(repository.inTransaction(async () => "created")).rejects.toThrow("CONFLICT")
     expect(transaction).toHaveBeenCalledTimes(3)
+  })
+
+  it.each([
+    {
+      operation: "createPending",
+      run: (repository: PrismaRegistrationRepository) =>
+        repository.createPending({
+          tournamentId: "tournament-1",
+          teamId: "team-1",
+          actorId: "manager-1",
+          adminOverride: false,
+        }),
+    },
+    {
+      operation: "cancelWithVersion",
+      run: (repository: PrismaRegistrationRepository) =>
+        repository.cancelWithVersion(
+          "registration-1",
+          0,
+          "manager-1",
+          "2026-10-02T00:00:00.000Z",
+          false,
+        ),
+    },
+    {
+      operation: "approveWithCapacity",
+      run: (repository: PrismaRegistrationRepository) =>
+        repository.approveWithCapacity({
+          before: pendingRegistration,
+          version: 0,
+          note: "",
+          actorId: "organizer-1",
+          at: "2026-10-02T00:00:00.000Z",
+          adminOverride: false,
+        }),
+    },
+    {
+      operation: "rejectWithVersion",
+      run: (repository: PrismaRegistrationRepository) =>
+        repository.rejectWithVersion({
+          before: pendingRegistration,
+          version: 0,
+          note: "ไม่ผ่านเงื่อนไข",
+          actorId: "organizer-1",
+          at: "2026-10-02T00:00:00.000Z",
+          adminOverride: false,
+        }),
+    },
+    {
+      operation: "withdrawWithVersion",
+      run: (repository: PrismaRegistrationRepository) =>
+        repository.withdrawWithVersion({
+          before: { ...pendingRegistration, status: "APPROVED" },
+          version: 0,
+          reason: "ถอนทีม",
+          actorId: "organizer-1",
+          at: "2026-10-02T00:00:00.000Z",
+          adminOverride: false,
+        }),
+    },
+  ])("wraps direct $operation calls in a serializable transaction", async ({ run }) => {
+    const prisma = {
+      $queryRaw: vi.fn(async () => [
+        { id: "tournament-1", governanceStatus: "ACTIVE", capacity: 8 },
+      ]),
+      registration: {
+        create: vi.fn(async () => registrationRow("PENDING", 0)),
+        updateMany: vi.fn(async () => ({ count: 1 })),
+        count: vi.fn(async () => 0),
+        findUnique: vi.fn(async () => registrationRow("PENDING", 0)),
+      },
+      auditLog: { create: vi.fn(async () => undefined) },
+      $transaction: vi.fn(
+        async (operation: (client: unknown) => Promise<unknown>) =>
+          operation(prisma),
+      ),
+    }
+    const repository = new PrismaRegistrationRepository(
+      prisma as unknown as PrismaClient,
+    )
+
+    await run(repository)
+
+    expect(prisma.$transaction).toHaveBeenCalledWith(expect.any(Function), {
+      isolationLevel: "Serializable",
+    })
   })
 
   it("locks application eligibility and counts approved teams in the same transaction", async () => {
@@ -299,6 +487,9 @@ describe("PrismaRegistrationRepository transactions", () => {
     }
     const createAudit = vi.fn(async () => undefined)
     const { repository } = repositoryWithTransactionClient({
+      $queryRaw: vi.fn(async () => [
+        { id: "tournament-1", governanceStatus: "ACTIVE", capacity: 8 },
+      ]),
       registration,
       auditLog: { create: createAudit },
     })
@@ -330,7 +521,9 @@ describe("PrismaRegistrationRepository transactions", () => {
   })
 
   it("locks the tournament and rejects approval deterministically at capacity", async () => {
-    const lockTournament = vi.fn(async () => [{ capacity: 1 }])
+    const lockTournament = vi.fn(async () => [
+      { id: "tournament-1", governanceStatus: "ACTIVE", capacity: 1 },
+    ])
     const count = vi.fn(async () => 1)
     const updateMany = vi.fn()
     const createAudit = vi.fn()
@@ -365,7 +558,9 @@ describe("PrismaRegistrationRepository transactions", () => {
   })
 
   it("conditionally approves a pending version and audits after the capacity lock", async () => {
-    const lockTournament = vi.fn(async () => [{ capacity: 2 }])
+    const lockTournament = vi.fn(async () => [
+      { id: "tournament-1", governanceStatus: "ACTIVE", capacity: 2 },
+    ])
     const count = vi.fn(async () => 1)
     const updateMany = vi.fn(async () => ({ count: 1 }))
     const findUnique = vi.fn(async () => registrationRow("APPROVED", 1))
@@ -449,6 +644,9 @@ describe("PrismaRegistrationRepository transactions", () => {
       )
       const createAudit = vi.fn(async () => undefined)
       const { repository } = repositoryWithTransactionClient({
+        $queryRaw: vi.fn(async () => [
+          { id: "tournament-1", governanceStatus: "ACTIVE", capacity: 8 },
+        ]),
         registration: { updateMany, findUnique },
         auditLog: { create: createAudit },
       })
@@ -494,7 +692,9 @@ describe("PrismaRegistrationRepository transactions", () => {
   it("aborts the registration decision when its audit write fails", async () => {
     let persistedStatus = "PENDING"
     const client = {
-      $queryRaw: vi.fn(async () => [{ capacity: 2 }]),
+      $queryRaw: vi.fn(async () => [
+        { id: "tournament-1", governanceStatus: "ACTIVE", capacity: 2 },
+      ]),
       registration: {
         count: vi.fn(async () => 0),
         updateMany: vi.fn(async () => {

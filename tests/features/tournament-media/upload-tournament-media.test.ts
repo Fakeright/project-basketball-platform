@@ -5,6 +5,7 @@ import type { ObjectStorage } from "@/features/tournament-media/application/port
 import type { TournamentMediaRepository } from "@/features/tournament-media/application/ports/tournament-media-repository"
 import type { TournamentMediaAsset } from "@/features/tournament-media/domain/media-asset"
 import type { TournamentOperation } from "@/features/tournament-operations/domain/tournament-operation"
+import { TournamentGovernancePolicyError } from "@/features/tournament-operations/domain/tournament-governance-policy"
 import { createTestActor } from "@/tests/fixtures/actor"
 
 const organizer = createTestActor("organizer-1", "TOURNAMENT_ORGANIZER")
@@ -147,6 +148,22 @@ describe("uploadTournamentMedia", () => {
     await expect(
       uploadTournamentMedia(posterInput, organizer, dependencies),
     ).rejects.toThrow("DATABASE_UNAVAILABLE")
+    expect(dependencies.storage.remove).toHaveBeenCalledWith(
+      "tournament-posters",
+      "tournaments/tournament-1/poster/asset-new.webp",
+    )
+  })
+
+  it("removes the uploaded object when a transactional governance recheck rejects persistence", async () => {
+    const dependencies = createDependencies({
+      commitUpload: vi.fn(async () => {
+        throw new TournamentGovernancePolicyError(["TOURNAMENT_SUSPENDED"])
+      }),
+    })
+
+    await expect(
+      uploadTournamentMedia(posterInput, organizer, dependencies),
+    ).rejects.toMatchObject({ issues: ["TOURNAMENT_SUSPENDED"] })
     expect(dependencies.storage.remove).toHaveBeenCalledWith(
       "tournament-posters",
       "tournaments/tournament-1/poster/asset-new.webp",

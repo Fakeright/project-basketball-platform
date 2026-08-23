@@ -25,11 +25,11 @@ const tournamentInput = {
 }
 
 describe("POST tournament governance", () => {
-  it("returns 401 for an unauthenticated request", async () => {
+  it("returns 401 before parsing an unauthenticated request", async () => {
     const { repository, tournament } = await createRepository()
 
     const response = await handleTournamentGovernance(
-      commandRequest({ action: "SUSPEND", version: tournament.version }),
+      malformedRequest(),
       tournament.id,
       dependencies(null, repository),
     )
@@ -37,17 +37,27 @@ describe("POST tournament governance", () => {
     expect(response.status).toBe(401)
   })
 
-  it("returns 403 for a non-admin actor", async () => {
+  it.each(["existing-tournament", "missing-tournament"])(
+    "returns 403 before parsing or looking up an %s for a non-admin actor",
+    async (resource) => {
     const { repository, tournament } = await createRepository()
+    const findGovernanceContext = vi.spyOn(
+      repository,
+      "findGovernanceContext",
+    )
+    const tournamentId =
+      resource === "existing-tournament" ? tournament.id : "missing-tournament"
 
     const response = await handleTournamentGovernance(
-      commandRequest({ action: "SUSPEND", version: tournament.version }),
-      tournament.id,
+      malformedRequest(),
+      tournamentId,
       dependencies(organizer, repository),
     )
 
     expect(response.status).toBe(403)
-  })
+    expect(findGovernanceContext).not.toHaveBeenCalled()
+    },
+  )
 
   it.each([
     { action: "SUSPEND", version: 0, reason: "" },
@@ -112,9 +122,65 @@ describe("POST tournament governance", () => {
 
     expect(response.status).toBe(409)
     await expect(response.json()).resolves.toEqual({
-      message: "รายการแข่งขันถูกระงับหรือถูกนำออก กรุณาตรวจสอบสถานะล่าสุด",
+      message: "สถานะรายการแข่งขันไม่รองรับคำสั่งนี้ กรุณาตรวจสอบสถานะล่าสุด",
       issues: ["GOVERNANCE_STATUS_INVALID", "TOURNAMENT_STATUS_INVALID"],
     })
+  })
+
+  it("returns 422 with an actionable message when permanent-delete confirmation does not match", async () => {
+    const { repository, tournament } = await createRepository()
+
+    const response = await handleTournamentGovernance(
+      commandRequest({
+        action: "PERMANENT_DELETE",
+        version: tournament.version,
+        confirmationTitle: "ชื่อรายการอื่น",
+      }),
+      tournament.id,
+      dependencies(admin, repository),
+    )
+
+    expect(response.status).toBe(422)
+    await expect(response.json()).resolves.toEqual({
+      message: "ชื่อยืนยันไม่ตรงกับชื่อรายการแข่งขัน",
+      issues: ["CONFIRMATION_TITLE_MISMATCH"],
+    })
+  })
+
+  it("returns 422 with dependency issues when permanent delete is not safe", async () => {
+    const { repository, tournament } = await createRepository()
+    const context = await repository.findGovernanceContext(tournament.id)
+    if (!context) throw new Error("test tournament governance context missing")
+    vi.spyOn(repository, "findGovernanceContext").mockResolvedValueOnce({
+      ...context,
+      registrationCount: 1,
+      mediaAssetCount: 1,
+    })
+    const permanentlyDelete = vi.spyOn(
+      repository,
+      "permanentlyDeleteWithVersion",
+    )
+
+    const response = await handleTournamentGovernance(
+      commandRequest({
+        action: "PERMANENT_DELETE",
+        version: tournament.version,
+        confirmationTitle: tournament.title,
+      }),
+      tournament.id,
+      dependencies(admin, repository),
+    )
+
+    expect(response.status).toBe(422)
+    await expect(response.json()).resolves.toEqual({
+      message:
+        "รายการแข่งขันยังมีข้อมูลสัมพันธ์ กรุณานำข้อมูลออกก่อนลบถาวร",
+      issues: [
+        "TOURNAMENT_HAS_REGISTRATIONS",
+        "TOURNAMENT_HAS_MEDIA_ASSETS",
+      ],
+    })
+    expect(permanentlyDelete).not.toHaveBeenCalled()
   })
 
   it("returns 200 with the transitioned tournament", async () => {
@@ -185,6 +251,13 @@ function commandRequest(
     method: "POST",
     body: JSON.stringify({ reason: "ตรวจสอบข้อมูลผู้จัด", ...body }),
   })
+}
+
+function malformedRequest() {
+  return new Request(
+    "http://localhost/api/admin/tournaments/tournament-1/governance",
+    { method: "POST", body: "{" },
+  )
 }
 
 function dependencies(

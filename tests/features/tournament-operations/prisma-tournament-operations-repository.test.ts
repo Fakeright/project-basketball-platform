@@ -57,6 +57,9 @@ function createPrismaMock() {
     auditLog: {
       create: vi.fn(),
     },
+    $queryRaw: vi.fn().mockResolvedValue([
+      { id: "tournament-1", governanceStatus: "ACTIVE" },
+    ]),
     $transaction: vi.fn(async (operation: (client: unknown) => unknown) =>
       operation(prisma),
     ),
@@ -255,6 +258,13 @@ describe("PrismaTournamentOperationsRepository", () => {
     expect(prisma.$transaction).toHaveBeenCalledWith(
       expect.any(Function),
       { isolationLevel: "Serializable" },
+    )
+    expect(prisma.$queryRaw).toHaveBeenCalledOnce()
+    const [lockQuery] = prisma.$queryRaw.mock.calls[0]
+    expect(lockQuery.text).toContain('FROM "Tournament"')
+    expect(lockQuery.text).toMatch(/\bFOR\s+UPDATE\b/i)
+    expect(prisma.$queryRaw.mock.invocationCallOrder[0]).toBeLessThan(
+      prisma.tournament.findUnique.mock.invocationCallOrder[0],
     )
     expect(prisma.tournament.updateMany).toHaveBeenCalledWith({
       where: {

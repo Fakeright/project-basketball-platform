@@ -8,6 +8,7 @@ import type {
   MediaAssetKind,
   TournamentMediaAsset,
 } from "@/features/tournament-media/domain/media-asset"
+import { lockActiveTournamentForMutation } from "@/features/tournament-operations/infrastructure/prisma-tournament-governance-lock"
 
 export class PrismaTournamentMediaRepository
   implements TournamentMediaRepository
@@ -21,6 +22,10 @@ export class PrismaTournamentMediaRepository
   }) {
     try {
       return await this.prisma.$transaction(async (transaction) => {
+        await lockActiveTournamentForMutation(
+          transaction,
+          input.asset.tournamentId,
+        )
         const previousPoster =
           input.asset.kind === "POSTER"
             ? await transaction.mediaAsset.findFirst({
@@ -76,6 +81,7 @@ export class PrismaTournamentMediaRepository
     adminOverride: boolean
   }) {
     return this.prisma.$transaction(async (transaction) => {
+      await lockActiveTournamentForMutation(transaction, input.tournamentId)
       const current = await transaction.mediaAsset.findFirst({
         where: {
           id: input.assetId,

@@ -36,7 +36,12 @@ const revisionRow = {
 function createPrismaMock() {
   let bracketVersion = 3
   const transaction = {
-    $queryRaw: vi.fn().mockResolvedValue([{ id: "bracket-1" }]),
+    $queryRaw: vi.fn().mockResolvedValue([
+      {
+        id: "tournament-1",
+        governanceStatus: "ACTIVE",
+      },
+    ]),
     bracket: {
       findFirst: vi.fn().mockImplementation(async () => ({
         id: "bracket-1",
@@ -103,6 +108,80 @@ const uploadInput = {
 }
 
 describe("PrismaExternalBracketRepository", () => {
+  it.each([
+    {
+      operation: "select bracket mode",
+      run: (adapter: PrismaExternalBracketRepository) =>
+        adapter.selectMode({
+          tournamentId: "tournament-1",
+          bracketId: "bracket-1",
+          targetMode: "EXTERNAL_DOCUMENT",
+          expectedVersion: 3,
+          actorId: "organizer-1",
+          adminOverride: false,
+          reason: null,
+          at: now.toISOString(),
+        }),
+    },
+    {
+      operation: "commit an uploaded revision",
+      run: (adapter: PrismaExternalBracketRepository) =>
+        adapter.commitUploadedRevision(uploadInput),
+    },
+    {
+      operation: "publish a revision",
+      run: (adapter: PrismaExternalBracketRepository) =>
+        adapter.publishRevision({
+          tournamentId: "tournament-1",
+          bracketId: "bracket-1",
+          revisionId: "revision-2",
+          expectedVersion: 3,
+          actorId: "organizer-1",
+          adminOverride: false,
+          reason: null,
+        }),
+    },
+    {
+      operation: "retire a revision",
+      run: (adapter: PrismaExternalBracketRepository) =>
+        adapter.retireRevision({
+          tournamentId: "tournament-1",
+          bracketId: "bracket-1",
+          revisionId: "revision-2",
+          expectedVersion: 3,
+          actorId: "organizer-1",
+          adminOverride: false,
+          reason: null,
+        }),
+    },
+  ])(
+    "locks and rechecks tournament governance before attempting to $operation",
+    async ({ run }) => {
+      const { prisma, transaction } = createPrismaMock()
+      transaction.$queryRaw.mockResolvedValueOnce([
+        { id: "tournament-1", governanceStatus: "SUSPENDED" },
+      ])
+
+      await expect(run(repository(prisma))).rejects.toMatchObject({
+        issues: ["TOURNAMENT_SUSPENDED"],
+      })
+
+      expect(transaction.$queryRaw).toHaveBeenCalledOnce()
+      const [lockQuery] = transaction.$queryRaw.mock.calls[0]
+      expect(lockQuery.text).toContain('FROM "Tournament"')
+      expect(lockQuery.text).toMatch(/\bFOR\s+UPDATE\b/i)
+      expect(transaction.bracket.updateMany).not.toHaveBeenCalled()
+      expect(transaction.match.deleteMany).not.toHaveBeenCalled()
+      expect(transaction.bracketRound.deleteMany).not.toHaveBeenCalled()
+      expect(transaction.mediaAsset.create).not.toHaveBeenCalled()
+      expect(transaction.externalBracketRevision.create).not.toHaveBeenCalled()
+      expect(
+        transaction.externalBracketRevision.updateMany,
+      ).not.toHaveBeenCalled()
+      expect(transaction.auditLog.create).not.toHaveBeenCalled()
+    },
+  )
+
   it("changes mode with a version guard and clears generated draft structure atomically", async () => {
     const { prisma, transaction } = createPrismaMock()
     transaction.bracket.findFirst.mockResolvedValueOnce({
@@ -165,7 +244,13 @@ describe("PrismaExternalBracketRepository", () => {
     const created = await repository(prisma).commitUploadedRevision(uploadInput)
 
     expect(prisma.$transaction).toHaveBeenCalledOnce()
-    expect(transaction.$queryRaw).toHaveBeenCalledOnce()
+    expect(transaction.$queryRaw).toHaveBeenCalledTimes(2)
+    expect(transaction.$queryRaw.mock.calls[0][0].text).toContain(
+      'FROM "Tournament"',
+    )
+    expect(transaction.$queryRaw.mock.calls[1][0].text).toContain(
+      'FROM "Bracket"',
+    )
     expect(transaction.bracket.updateMany).toHaveBeenCalledWith({
       where: {
         id: "bracket-1",
@@ -353,4 +438,64 @@ describe("PrismaExternalBracketRepository", () => {
       }),
     )
   })
+
+  it.each([
+    ["ACTIVE", true],
+    ["SUSPENDED", false],
+    ["REMOVED", false],
+  ] as const)(
+    "keeps an archived published bracket public when governance is %s",
+    async (governanceStatus, expectedVisible) => {
+      const { prisma, transaction } = createPrismaMock()
+      const archivedTournament = {
+        id: "tournament-1",
+        title: "Archived Cup",
+        slug: "archived-cup",
+        status: "ARCHIVED",
+        governanceStatus,
+        brackets: [
+          {
+            id: "bracket-1",
+            externalRevisions: [
+              { ...revisionRow, status: "PUBLISHED", publishedAt: now },
+            ],
+          },
+        ],
+      }
+      transaction.tournament.findFirst.mockImplementation(
+        async ({ where }: {
+          where: {
+            governanceStatus: string
+            status: { in: string[] }
+          }
+        }) =>
+          where.governanceStatus === archivedTournament.governanceStatus &&
+          where.status.in.includes(archivedTournament.status)
+            ? archivedTournament
+            : null,
+      )
+
+      const result = await repository(prisma).findPublicByTournamentSlug(
+        "archived-cup",
+      )
+
+      expect(result !== null).toBe(expectedVisible)
+      expect(transaction.tournament.findFirst).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            governanceStatus: "ACTIVE",
+            status: {
+              in: [
+                "PUBLISHED",
+                "REGISTRATION_CLOSED",
+                "IN_PROGRESS",
+                "COMPLETED",
+                "ARCHIVED",
+              ],
+            },
+          }),
+        }),
+      )
+    },
+  )
 })
