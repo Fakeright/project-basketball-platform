@@ -1,6 +1,6 @@
 # COURTSIDE Roadmap
 
-อัปเดตล่าสุด: 20 สิงหาคม 2026
+อัปเดตล่าสุด: 24 สิงหาคม 2026
 
 ## ความหมายของสถานะ
 
@@ -33,6 +33,7 @@
 - การกำหนดประเภทคู่แข่งขันทั่วไป ชิงอันดับ 3 และชิงชนะเลิศในโหมดไฟล์ภายนอก พร้อมแก้ไขก่อนเริ่มแข่ง unique placement constraints, audit และ optimistic concurrency
 - การเริ่มการแข่งขันจากสถานะปิดรับสมัครและการจบรายการเมื่อยืนยันผลครบ พร้อม readiness checklist, server-side lifecycle policy และเหตุผลบังคับเมื่อ Platform Admin ดำเนินการแทนผู้จัด
 - การสรุป Winner, Runner-up และอันดับ 3 แบบ optional จากประเภทคู่ที่ชัดเจน พร้อมหน้าสาธารณะ `/results`, loading/empty/error states และลิงก์เชื่อมจากรายละเอียด ตาราง และสายการแข่งขัน
+- การกำกับ tournament โดย Platform Admin เท่านั้น: ระงับและเปิดใช้งานต่อโดยรักษาสถานะ lifecycle เดิม, นำออกโดยไม่ลบข้อมูล, archive รายการที่จบหรือยกเลิก, เปิดรับสมัครอีกครั้งภายใต้ bracket guard และลบ draft ว่างแบบยืนยันชื่อตรงกัน พร้อมเหตุผลที่บังคับใช้, optimistic concurrency, audit สำหรับคำสั่งและ admin override, การบล็อก mutation เมื่อ governance ไม่อนุญาต และการกรองรายการ `SUSPENDED`/`REMOVED` ออกจาก public surfaces
 - Prisma migrations, seed/reset tooling และ automated Vitest/RTL coverage
 
 ## กำลังพัฒนา
@@ -40,7 +41,6 @@
 - การส่งอีเมลยืนยันและการทำ callback ให้แข็งแรงขึ้น รวมถึง production SMTP และ redirect configuration
 - ประสบการณ์แบบบริการตนเองของบัญชี `PLAYER` ซึ่งยังไม่มี permission/workspace เฉพาะ และไม่ใช่เงื่อนไขสำหรับการอยู่ในรายชื่อทีม
 - การจัดการ profile, การยืนยัน organizer และการบริหาร platform role
-- ช่องว่างด้าน governance ของ tournament: delete/remove, suspend, archive และการเปิดรับสมัครอีกครั้ง
 - Admin analytics ซึ่งปัจจุบันมี counts และ audits แต่ยังไม่มี visitor tracking, province popularity, trends หรือ charts
 - การตรวจสอบ browser แบบ responsive สำหรับทุก protected workflow และ production observability
 - การ reconcile `TeamMember` เดิมก่อน production cutover: audit แบบอ่านอย่างเดียวครอบคลุมทั้ง active และ inactive history รวมถึงทีมที่มีเฉพาะ inactive rows การตรวจเมื่อ 9 สิงหาคม 2026 พบ 5 ทีมที่มี legacy rows ทั้งหมดเป็น active แต่ข้อมูลเดิมไม่มีวันเกิด/ข้อมูลตัวตนเพียงพอสำหรับ backfill ที่ปลอดภัย ต้องยืนยันรูปแบบ `5v5`/`3v3`, กรอก `TeamPlayer` จากข้อมูลที่ตรวจสอบได้ และทบทวนประวัติการสมัครรายทีม โดยไม่ลบข้อมูลเดิมหรือสร้างวันเกิดขึ้นแทน
@@ -52,6 +52,7 @@
 - Email notifications และ announcements สำหรับผลการสมัคร, การเปลี่ยนตาราง และผลการแข่งขัน
 - Visitor analytics, monthly charts, popular provinces, conversion metrics, monitoring, CI/CD และ production deployment
 - การนำเข้ารายชื่อผู้เล่นด้วย CSV ซึ่งไม่รวมอยู่ใน workflow ปัจจุบัน
+- การ restore tournament ที่มี governance status เป็น `REMOVED` ซึ่งยังไม่รวมอยู่ใน governance workflow ปัจจุบัน
 - migration ที่ผ่านการอนุมัติเพื่อลบ `TeamMember` เดิม หลัง audit/reconciliation รายทีมเสร็จสมบูรณ์และยืนยันว่าไม่มี active หรือ inactive history ที่ต้องรักษา ระหว่างนี้ใบสมัครสถานะ `PENDING`/`APPROVED` จะบล็อกการลบหรือปิดใช้งานก่อน เมื่อผ่าน guard นี้แล้ว ประวัติการสมัครสถานะสิ้นสุดหรือการมี `TeamMember` ใด ๆ จะทำให้ระบบเลือกปิดใช้งานแทน hard delete เพื่อรักษาประวัติและป้องกัน cascade โดย production cutover ห้ามนับ legacy members เป็น roster และห้ามสร้างข้อมูลผู้เล่นที่ขาดหายขึ้นเอง
 
 ## ลำดับการส่งมอบถัดไป
