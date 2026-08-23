@@ -106,7 +106,7 @@ export default async function AdminTournamentListPage({
                 </p>
               </div>
               <div className="flex flex-wrap gap-2 lg:justify-end">
-                <OperationLink href={`/organizer/tournaments/${tournament.id}`} label="เปิดข้อมูลรายการ">
+                <OperationLink href={`/admin/tournaments/${tournament.id}`} label="เปิดข้อมูลรายการ">
                   <Eye aria-hidden="true" />
                 </OperationLink>
                 <OperationLink href={`/organizer/tournaments/${tournament.id}/bracket`} label="เปิดสายการแข่งขัน">

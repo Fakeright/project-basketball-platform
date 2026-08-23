@@ -390,6 +390,7 @@ export class PrismaExternalBracketRepository
     const tournament = await this.prisma.tournament.findFirst({
       where: {
         slug,
+        governanceStatus: "ACTIVE",
         status: {
           in: ["PUBLISHED", "REGISTRATION_CLOSED", "IN_PROGRESS", "COMPLETED"],
         },

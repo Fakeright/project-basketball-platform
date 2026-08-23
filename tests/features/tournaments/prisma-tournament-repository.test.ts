@@ -144,6 +144,7 @@ describe("PrismaTournamentRepository", () => {
     expect(prisma.tournament.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: {
+          governanceStatus: "ACTIVE",
           status: {
             in: [
               "PUBLISHED",
@@ -163,6 +164,26 @@ describe("PrismaTournamentRepository", () => {
         status: "OPEN",
       }),
     ])
+  })
+
+  it("requires active governance for public detail and competition reads", async () => {
+    const { prisma, repository } = createRepository()
+
+    await repository.findBySlug("published-bangkok-open")
+    await repository.findCompetitionBySlug("published-bangkok-open")
+
+    expect(prisma.tournament.findFirst).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        where: expect.objectContaining({ governanceStatus: "ACTIVE" }),
+      }),
+    )
+    expect(prisma.tournament.findFirst).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        where: expect.objectContaining({ governanceStatus: "ACTIVE" }),
+      }),
+    )
   })
 
   it("maps approved teams, confirmed scores, poster, and signed documents", async () => {

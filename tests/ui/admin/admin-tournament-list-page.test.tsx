@@ -73,7 +73,7 @@ describe("AdminTournamentListPage", () => {
       status: "IN_PROGRESS",
     })
     expect(screen.getByRole("link", { name: "เปิดข้อมูลรายการ" }).getAttribute("href"))
-      .toBe("/organizer/tournaments/tournament-1")
+      .toBe("/admin/tournaments/tournament-1")
     expect(screen.getByRole("link", { name: "กำกับผล" }).getAttribute("href"))
       .toBe("/admin/tournaments/tournament-1/results")
   })

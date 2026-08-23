@@ -1,6 +1,9 @@
 import type { Tournament } from "@/features/tournaments/domain/tournament"
+import type { TournamentGovernanceStatus } from "@/features/tournament-operations/domain/tournament-governance-policy"
 
-export const mockTournamentData: Tournament[] = [
+export const mockTournamentData: Array<
+  Tournament & { governanceStatus: TournamentGovernanceStatus }
+> = [
   {
     id: "mock-bangkok-open-2026",
     slug: "bangkok-open-2026",
@@ -11,6 +14,7 @@ export const mockTournamentData: Tournament[] = [
     format: "FIVE_V_FIVE",
     ageGroup: "Open",
     status: "OPEN",
+    governanceStatus: "ACTIVE",
     documents: [],
     posterUrl: "/images/courtside-hero.jpg",
     startsAt: "2026-11-15T09:00:00+07:00",
@@ -43,6 +47,7 @@ export const mockTournamentData: Tournament[] = [
     format: "THREE_V_THREE",
     ageGroup: "U18",
     status: "CLOSED",
+    governanceStatus: "ACTIVE",
     documents: [],
     startsAt: "2026-10-04T10:00:00+07:00",
     endsAt: "2026-10-04T19:00:00+07:00",
@@ -61,6 +66,7 @@ export const mockTournamentData: Tournament[] = [
     format: "FIVE_V_FIVE",
     ageGroup: "U16",
     status: "ONGOING",
+    governanceStatus: "ACTIVE",
     documents: [],
     startsAt: "2026-07-24T09:00:00+07:00",
     endsAt: "2026-07-26T18:00:00+07:00",
@@ -92,6 +98,7 @@ export const mockTournamentData: Tournament[] = [
     format: "FIVE_V_FIVE",
     ageGroup: "U14",
     status: "COMPLETED",
+    governanceStatus: "ACTIVE",
     documents: [],
     startsAt: "2026-06-20T09:00:00+07:00",
     endsAt: "2026-06-21T17:00:00+07:00",
@@ -123,6 +130,7 @@ export const mockTournamentData: Tournament[] = [
     format: "FIVE_V_FIVE",
     ageGroup: "35+",
     status: "COMPLETED",
+    governanceStatus: "ACTIVE",
     documents: [],
     startsAt: "2026-04-11T09:00:00+07:00",
     endsAt: "2026-04-12T18:00:00+07:00",
@@ -141,6 +149,7 @@ export const mockTournamentData: Tournament[] = [
     format: "FIVE_V_FIVE",
     ageGroup: "U20",
     status: "CLOSED",
+    governanceStatus: "ACTIVE",
     documents: [],
     startsAt: "2026-03-08T09:00:00+07:00",
     endsAt: "2026-03-09T18:00:00+07:00",

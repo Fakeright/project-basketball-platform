@@ -30,6 +30,7 @@ export class MockTournamentRepository implements TournamentRepository {
         ].join(" ")
 
         return (
+          tournament.governanceStatus === "ACTIVE" &&
           (!filters.query || matchesText(searchText, filters.query)) &&
           (!filters.provinceCode || tournament.provinceCode === filters.provinceCode) &&
           (!filters.format || tournament.format === filters.format) &&
@@ -44,7 +45,13 @@ export class MockTournamentRepository implements TournamentRepository {
   }
 
   async findBySlug(slug: string): Promise<Tournament | null> {
-    return mockTournamentData.find((tournament) => tournament.slug === slug) ?? null
+    return (
+      mockTournamentData.find(
+        (tournament) =>
+          tournament.governanceStatus === "ACTIVE" &&
+          tournament.slug === slug,
+      ) ?? null
+    )
   }
 
   async findCompetitionBySlug(slug: string): Promise<Tournament | null> {

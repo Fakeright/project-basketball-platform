@@ -124,6 +124,7 @@ export class PrismaTournamentRepository implements TournamentRepository {
     const row = await this.prisma.tournament.findFirst({
       where: {
         slug,
+        governanceStatus: "ACTIVE",
         status: { in: [...publicStatuses] },
       },
       include: publicDetailInclude,
@@ -136,6 +137,7 @@ export class PrismaTournamentRepository implements TournamentRepository {
     const row = await this.prisma.tournament.findFirst({
       where: {
         slug,
+        governanceStatus: "ACTIVE",
         status: { in: [...publicStatuses] },
       },
       include: publicCompetitionInclude,
@@ -234,6 +236,7 @@ function buildDiscoveryWhere(
     : undefined
 
   return {
+    governanceStatus: "ACTIVE",
     status: { in: [...statuses] },
     ...(filters.query
       ? {

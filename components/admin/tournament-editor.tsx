@@ -23,6 +23,7 @@ export interface EditableTournament extends TournamentEditorInput {
   id: string
   version: number
   status?: string
+  province?: string
   mediaAssets?: TournamentMediaManagerAsset[]
 }
 
@@ -31,8 +32,10 @@ const fieldClassName =
 
 export function TournamentEditor({
   initialTournament,
+  readOnly = false,
 }: {
   initialTournament: EditableTournament | null
+  readOnly?: boolean
 }) {
   const router = useRouter()
   const [tournament, setTournament] = useState(initialTournament)
@@ -128,6 +131,10 @@ export function TournamentEditor({
     } finally {
       setPending(false)
     }
+  }
+
+  if (readOnly && tournament) {
+    return <ReadOnlyTournament tournament={tournament} />
   }
 
   return (
@@ -253,6 +260,71 @@ export function TournamentEditor({
         </button>
       </div>
     </form>
+  )
+}
+
+function ReadOnlyTournament({
+  tournament,
+}: {
+  tournament: EditableTournament
+}) {
+  const facts = [
+    { label: "ชื่อรายการ", value: tournament.title },
+    { label: "จังหวัด", value: tournament.province ?? tournament.provinceCode },
+    { label: "สถานที่", value: tournament.venue },
+    { label: "รุ่นอายุ", value: tournament.ageGroup },
+    {
+      label: "ประเภทการแข่งขัน",
+      value: tournament.format === "FIVE_V_FIVE" ? "5v5" : "3v3",
+    },
+    { label: "จำนวนทีมสูงสุด", value: `${tournament.capacity} ทีม` },
+    { label: "วันเริ่มแข่งขัน", value: tournament.startsAt },
+    { label: "วันสิ้นสุดการแข่งขัน", value: tournament.endsAt },
+    { label: "วันปิดรับสมัคร", value: tournament.registrationDeadline },
+  ]
+
+  return (
+    <section aria-labelledby="read-only-tournament-title">
+      <header className="border-b border-border pb-5">
+        <p className="text-xs font-semibold text-court">TOURNAMENT IDENTITY</p>
+        <h1
+          className="mt-2 break-words text-2xl font-semibold"
+          id="read-only-tournament-title"
+        >
+          {tournament.title}
+        </h1>
+        <p className="mt-2 text-sm text-muted-foreground">
+          ข้อมูลรายการสำหรับตรวจสอบเท่านั้น
+        </p>
+      </header>
+
+      <dl className="grid gap-px border-b border-border bg-border sm:grid-cols-2 lg:grid-cols-3">
+        {facts.map((fact) => (
+          <div className="min-w-0 bg-background px-3 py-4" key={fact.label}>
+            <dt className="text-xs font-medium text-muted-foreground">
+              {fact.label}
+            </dt>
+            <dd className="mt-1 break-words text-sm font-medium">{fact.value}</dd>
+          </div>
+        ))}
+      </dl>
+
+      <div className="grid gap-6 border-b border-border py-6 md:grid-cols-2">
+        <ReadOnlyText label="รายละเอียด" value={tournament.description} />
+        <ReadOnlyText label="กติกา" value={tournament.rules} />
+      </div>
+    </section>
+  )
+}
+
+function ReadOnlyText({ label, value }: { label: string; value: string }) {
+  return (
+    <section>
+      <h2 className="text-sm font-semibold">{label}</h2>
+      <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-muted-foreground">
+        {value}
+      </p>
+    </section>
   )
 }
 

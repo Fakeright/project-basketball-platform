@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation"
 import { BracketWorkspace } from "@/components/organizer/bracket-workspace"
 import { CompetitionWorkspaceNav } from "@/components/organizer/competition-workspace-nav"
 import { ExternalBracketWorkspace } from "@/components/organizer/external-bracket-workspace"
+import { SuspendedTournamentWorkspace } from "@/components/admin/tournament-governance-read-only"
 import { getOrganizerExternalBracketWorkspace } from "@/features/competition/application/get-organizer-external-bracket-workspace"
 import { getOrganizerCompetition } from "@/features/competition/application/get-organizer-competition"
 import { getCompetitionRepository } from "@/features/competition/infrastructure/get-competition-repository"
@@ -23,12 +24,6 @@ export default async function OrganizerBracketPage({
     workspace = await getOrganizerCompetition(id, actor, {
       competitions: getCompetitionRepository(),
     })
-    if (workspace.bracket) {
-      externalBracketState = await getOrganizerExternalBracketWorkspace(id, actor, {
-        externalBrackets: getExternalBracketRepository(),
-        storage: new SupabaseObjectStorage(),
-      })
-    }
   } catch (error) {
     if (
       error instanceof Error &&
@@ -37,6 +32,28 @@ export default async function OrganizerBracketPage({
       notFound()
     }
     throw error
+  }
+
+  if (workspace.tournament.tournamentGovernanceStatus === "REMOVED") notFound()
+  if (workspace.tournament.tournamentGovernanceStatus === "SUSPENDED") {
+    return <SuspendedTournamentWorkspace title={workspace.tournament.title} />
+  }
+
+  if (workspace.bracket) {
+    try {
+      externalBracketState = await getOrganizerExternalBracketWorkspace(id, actor, {
+        externalBrackets: getExternalBracketRepository(),
+        storage: new SupabaseObjectStorage(),
+      })
+    } catch (error) {
+      if (
+        error instanceof Error &&
+        (error.message === "NOT_FOUND" || error.message === "FORBIDDEN")
+      ) {
+        notFound()
+      }
+      throw error
+    }
   }
 
   return (

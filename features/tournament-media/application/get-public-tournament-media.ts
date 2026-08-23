@@ -24,12 +24,19 @@ const visibleStatuses = new Set<TournamentOperation["status"]>([
 ])
 
 export async function getPublicTournamentMedia(
-  tournament: Pick<TournamentOperation, "id" | "status">,
+  tournament: Pick<
+    TournamentOperation,
+    "id" | "status" | "governanceStatus"
+  >,
   dependencies: {
     media: TournamentMediaRepository
     storage: ObjectStorage
   },
 ): Promise<PublicTournamentMedia> {
+  if (tournament.governanceStatus !== "ACTIVE") {
+    return { posterUrl: undefined, documents: [] }
+  }
+
   const assets = await dependencies.media.listActiveAssets(tournament.id)
   const poster = assets.find((asset) => asset.kind === "POSTER")
   const posterUrl = poster

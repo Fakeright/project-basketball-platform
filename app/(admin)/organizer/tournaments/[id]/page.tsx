@@ -3,6 +3,7 @@ import Link from "next/link"
 import { ClipboardCheck, Workflow } from "lucide-react"
 
 import { TournamentEditor } from "@/components/admin/tournament-editor"
+import { TournamentGovernanceNotice } from "@/components/admin/tournament-governance-read-only"
 import { TournamentLifecycleActions } from "@/components/admin/tournament-lifecycle-actions"
 import { utcToBangkokDateTimeLocal } from "@/features/admin/presentation/tournament-editor-time"
 import { authorize } from "@/features/identity/application/authorize"
@@ -19,7 +20,6 @@ export default async function EditTournamentPage({
 
   const { id } = await params
   const repository = await getTournamentOperationsRepository()
-  const mediaRepository = await getTournamentMediaRepository()
   const tournament = await repository.findById(id)
   if (!tournament) notFound()
 
@@ -31,6 +31,27 @@ export default async function EditTournamentPage({
     notFound()
   }
 
+  if (tournament.governanceStatus === "REMOVED") notFound()
+
+  const editorTournament = {
+    ...tournament,
+    startsAt: utcToBangkokDateTimeLocal(tournament.startsAt),
+    endsAt: utcToBangkokDateTimeLocal(tournament.endsAt),
+    registrationDeadline: utcToBangkokDateTimeLocal(
+      tournament.registrationDeadline,
+    ),
+  }
+
+  if (tournament.governanceStatus === "SUSPENDED") {
+    return (
+      <div className="space-y-8">
+        <TournamentGovernanceNotice reason={tournament.governanceReason} />
+        <TournamentEditor initialTournament={editorTournament} readOnly />
+      </div>
+    )
+  }
+
+  const mediaRepository = await getTournamentMediaRepository()
   const storage = new SupabaseObjectStorage()
   const mediaAssets = (await mediaRepository.listActiveAssets(id))
     .filter(
@@ -82,12 +103,7 @@ export default async function EditTournamentPage({
       </section>
       <TournamentEditor
         initialTournament={{
-          ...tournament,
-          startsAt: utcToBangkokDateTimeLocal(tournament.startsAt),
-          endsAt: utcToBangkokDateTimeLocal(tournament.endsAt),
-          registrationDeadline: utcToBangkokDateTimeLocal(
-            tournament.registrationDeadline,
-          ),
+          ...editorTournament,
           mediaAssets,
         }}
       />

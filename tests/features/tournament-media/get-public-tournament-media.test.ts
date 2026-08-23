@@ -29,7 +29,10 @@ const document = {
   contentType: "application/pdf",
 }
 
-function tournament(status: TournamentOperation["status"]): TournamentOperation {
+function tournament(
+  status: TournamentOperation["status"],
+  governanceStatus: TournamentOperation["governanceStatus"] = "ACTIVE",
+): TournamentOperation {
   return {
     id: "tournament-1",
     organizerId: "organizer-1",
@@ -46,7 +49,7 @@ function tournament(status: TournamentOperation["status"]): TournamentOperation 
     registrationDeadline: "2026-12-01T23:59:00+07:00",
     capacity: 16,
     status,
-    governanceStatus: "ACTIVE",
+    governanceStatus,
     governanceReason: null,
     governanceUpdatedAt: null,
     version: 0,
@@ -94,4 +97,21 @@ describe("getPublicTournamentMedia", () => {
     expect(media.documents).toEqual([])
     expect(services.storage.createSignedUrl).not.toHaveBeenCalled()
   })
+
+  it.each(["SUSPENDED", "REMOVED"] as const)(
+    "does not expose any media links when governance is %s",
+    async (governanceStatus) => {
+      const services = dependencies()
+
+      const media = await getPublicTournamentMedia(
+        tournament("PUBLISHED", governanceStatus),
+        services,
+      )
+
+      expect(media).toEqual({ posterUrl: undefined, documents: [] })
+      expect(services.media.listActiveAssets).not.toHaveBeenCalled()
+      expect(services.storage.getPublicUrl).not.toHaveBeenCalled()
+      expect(services.storage.createSignedUrl).not.toHaveBeenCalled()
+    },
+  )
 })

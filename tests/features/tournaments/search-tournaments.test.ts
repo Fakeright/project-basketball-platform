@@ -1,5 +1,6 @@
 import { searchTournaments } from "@/features/tournaments/application/search-tournaments"
 import { MockTournamentRepository } from "@/features/tournaments/infrastructure/mock-tournament-repository"
+import { mockTournamentData } from "@/features/tournaments/infrastructure/mock-tournament-data"
 import { expect, test } from "vitest"
 
 const repository = new MockTournamentRepository()
@@ -73,4 +74,21 @@ test("returns matching tournaments newest first", async () => {
     expect.objectContaining({ slug: "chiang-mai-hoops-classic" }),
     expect.objectContaining({ slug: "lanna-community-cup" }),
   ])
+})
+
+test("mock public reads hide tournaments that are not actively governed", async () => {
+  const tournament = mockTournamentData[0] as (typeof mockTournamentData)[number] & {
+    governanceStatus: "ACTIVE" | "SUSPENDED" | "REMOVED"
+  }
+  const previousStatus = tournament.governanceStatus
+  tournament.governanceStatus = "SUSPENDED"
+
+  try {
+    await expect(repository.findBySlug(tournament.slug)).resolves.toBeNull()
+    await expect(repository.list({})).resolves.not.toContainEqual(
+      expect.objectContaining({ id: tournament.id }),
+    )
+  } finally {
+    tournament.governanceStatus = previousStatus
+  }
 })

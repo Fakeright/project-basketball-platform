@@ -347,5 +347,10 @@ describe("PrismaExternalBracketRepository", () => {
       tournamentSlug: "external-cup",
       revision: { id: "revision-2", publishedAt: now.toISOString() },
     })
+    expect(transaction.tournament.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ governanceStatus: "ACTIVE" }),
+      }),
+    )
   })
 })

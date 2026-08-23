@@ -1,6 +1,7 @@
 import { notFound, redirect } from "next/navigation"
 
 import { RegistrationReviewList } from "@/components/organizer/registration-review-list"
+import { SuspendedTournamentWorkspace } from "@/components/admin/tournament-governance-read-only"
 import { createNextCookieCurrentActorProvider } from "@/features/identity/infrastructure/next-cookie-current-actor-provider"
 import {
   listTournamentRegistrations,
@@ -33,6 +34,11 @@ export default async function TournamentRegistrationsPage({
       notFound()
     }
     throw error
+  }
+
+  if (review.tournament.governanceStatus === "REMOVED") notFound()
+  if (review.tournament.governanceStatus === "SUSPENDED") {
+    return <SuspendedTournamentWorkspace title={review.tournament.title} />
   }
 
   return (

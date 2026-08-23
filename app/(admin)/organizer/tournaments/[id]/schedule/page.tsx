@@ -1,6 +1,7 @@
 import { notFound, redirect } from "next/navigation"
 
 import { CompetitionWorkspaceNav } from "@/components/organizer/competition-workspace-nav"
+import { SuspendedTournamentWorkspace } from "@/components/admin/tournament-governance-read-only"
 import { ExternalMatchEditor } from "@/components/organizer/external-match-editor"
 import {
   MatchScheduleEditor,
@@ -31,6 +32,11 @@ export default async function OrganizerSchedulePage({
       notFound()
     }
     throw error
+  }
+
+  if (workspace.tournament.tournamentGovernanceStatus === "REMOVED") notFound()
+  if (workspace.tournament.tournamentGovernanceStatus === "SUSPENDED") {
+    return <SuspendedTournamentWorkspace title={workspace.tournament.title} />
   }
 
   const teamNames = new Map(
