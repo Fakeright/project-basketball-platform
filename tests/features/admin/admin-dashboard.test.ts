@@ -16,6 +16,8 @@ describe("getAdminDashboard", () => {
         users: 72,
         registrations: 24,
       },
+      reviewQueue: [],
+      governanceQueue: [],
       recentAudits: [],
     }
     const repository: AdminDashboardRepository = {
@@ -28,15 +30,37 @@ describe("getAdminDashboard", () => {
 })
 
 describe("PrismaAdminDashboardRepository", () => {
-  it("reads real counts and maps recent audits", async () => {
+  it("reads bounded work queues, real counts, and recent audits", async () => {
     const tournamentCount = vi
       .fn()
       .mockResolvedValueOnce(12)
       .mockResolvedValueOnce(3)
       .mockResolvedValueOnce(4)
       .mockResolvedValueOnce(2)
+    const tournamentFindMany = vi
+      .fn()
+      .mockResolvedValueOnce([
+        {
+          id: "tournament-submitted",
+          title: "COURTSIDE Review Cup",
+          status: "SUBMITTED",
+          governanceReason: null,
+          updatedAt: new Date("2026-07-30T02:30:00.000Z"),
+          organizer: { displayName: "สมาคมบาสกรุงเทพ" },
+        },
+      ])
+      .mockResolvedValueOnce([
+        {
+          id: "tournament-suspended",
+          title: "Suspended Summer League",
+          status: "PUBLISHED",
+          governanceReason: "รอเอกสารรับรองสนาม",
+          updatedAt: new Date("2026-07-31T02:30:00.000Z"),
+          organizer: { displayName: "ชมรมบาสเยาวชน" },
+        },
+      ])
     const prisma = {
-      tournament: { count: tournamentCount },
+      tournament: { count: tournamentCount, findMany: tournamentFindMany },
       team: { count: vi.fn(async () => 18) },
       user: { count: vi.fn(async () => 72) },
       registration: { count: vi.fn(async () => 24) },
@@ -67,6 +91,38 @@ describe("PrismaAdminDashboardRepository", () => {
       [{ where: { status: "PUBLISHED" } }],
       [{ where: { status: "IN_PROGRESS" } }],
     ])
+    expect(tournamentFindMany.mock.calls).toEqual([
+      [
+        {
+          where: { status: "SUBMITTED", governanceStatus: "ACTIVE" },
+          orderBy: { updatedAt: "asc" },
+          take: 4,
+          select: {
+            id: true,
+            title: true,
+            status: true,
+            governanceReason: true,
+            updatedAt: true,
+            organizer: { select: { displayName: true } },
+          },
+        },
+      ],
+      [
+        {
+          where: { governanceStatus: "SUSPENDED" },
+          orderBy: { governanceUpdatedAt: "desc" },
+          take: 4,
+          select: {
+            id: true,
+            title: true,
+            status: true,
+            governanceReason: true,
+            updatedAt: true,
+            organizer: { select: { displayName: true } },
+          },
+        },
+      ],
+    ])
     expect(prisma.auditLog.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         orderBy: { createdAt: "desc" },
@@ -83,6 +139,26 @@ describe("PrismaAdminDashboardRepository", () => {
         users: 72,
         registrations: 24,
       },
+      reviewQueue: [
+        {
+          id: "tournament-submitted",
+          title: "COURTSIDE Review Cup",
+          organizerName: "สมาคมบาสกรุงเทพ",
+          status: "SUBMITTED",
+          governanceReason: null,
+          updatedAt: "2026-07-30T02:30:00.000Z",
+        },
+      ],
+      governanceQueue: [
+        {
+          id: "tournament-suspended",
+          title: "Suspended Summer League",
+          organizerName: "ชมรมบาสเยาวชน",
+          status: "PUBLISHED",
+          governanceReason: "รอเอกสารรับรองสนาม",
+          updatedAt: "2026-07-31T02:30:00.000Z",
+        },
+      ],
       recentAudits: [
         {
           id: "audit-1",

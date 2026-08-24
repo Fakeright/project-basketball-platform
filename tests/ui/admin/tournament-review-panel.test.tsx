@@ -71,4 +71,25 @@ describe("TournamentReviewPanel", () => {
 
     expect(fetchMock).not.toHaveBeenCalled()
   })
+
+  it("keeps the successful review result readable with a link back to the queue", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({ tournament: { status: "PUBLISHED" } }),
+        { status: 200 },
+      ),
+    )
+    vi.stubGlobal("fetch", fetchMock)
+    vi.stubGlobal("confirm", vi.fn(() => true))
+    const user = userEvent.setup()
+
+    render(<TournamentReviewPanel tournament={tournament} />)
+
+    await user.click(screen.getByRole("button", { name: "อนุมัติ" }))
+
+    expect(
+      (await screen.findByRole("link", { name: "กลับคิวตรวจสอบ" })).getAttribute("href"),
+    ).toBe("/admin/reviews")
+    expect(screen.getByRole("status").textContent).toContain("อนุมัติรายการแล้ว")
+  })
 })

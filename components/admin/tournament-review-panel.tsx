@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import Link from "next/link"
 
 type ReviewDecision = "APPROVED" | "CHANGES_REQUESTED" | "REJECTED"
 
@@ -107,11 +108,19 @@ export function TournamentReviewPanel({
       </p>
       {message ? (
         <p
-          aria-live="polite"
           className="mt-4 border-l-4 border-court px-3 py-2 text-sm"
+          role={completed ? "status" : undefined}
         >
           {message}
         </p>
+      ) : null}
+      {completed ? (
+        <Link
+          className="mt-4 inline-flex min-h-10 items-center border border-foreground px-4 text-sm font-medium hover:bg-foreground hover:text-background"
+          href="/admin/reviews"
+        >
+          กลับคิวตรวจสอบ
+        </Link>
       ) : null}
       <div className="mt-5 flex flex-col gap-2 sm:flex-row">
         <ReviewButton

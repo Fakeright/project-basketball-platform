@@ -8,6 +8,25 @@ export interface AdminDashboardViewModel {
     summary?: string
     emphasized?: boolean
   }>
+  reviewQueue: Array<{
+    id: string
+    title: string
+    organizerName: string
+    actionLabel: string
+    href: string
+    submittedAt: string
+    submittedAtValue: string
+  }>
+  governanceQueue: Array<{
+    id: string
+    title: string
+    organizerName: string
+    actionLabel: string
+    href: string
+    governanceReason: string
+    updatedAt: string
+    updatedAtValue: string
+  }>
   recentAudits: Array<{
     id: string
     actionLabel: string
@@ -92,6 +111,25 @@ export function createAdminDashboardViewModel(
         value: dashboard.metrics.registrations,
       },
     ],
+    reviewQueue: dashboard.reviewQueue.map((task) => ({
+      id: task.id,
+      title: task.title,
+      organizerName: task.organizerName,
+      actionLabel: "ตรวจรายการ",
+      href: `/admin/reviews/${task.id}`,
+      submittedAt: bangkokDateTimeFormatter.format(new Date(task.updatedAt)),
+      submittedAtValue: task.updatedAt,
+    })),
+    governanceQueue: dashboard.governanceQueue.map((task) => ({
+      id: task.id,
+      title: task.title,
+      organizerName: task.organizerName,
+      actionLabel: "เปิดหน้ากำกับ",
+      href: `/admin/tournaments/${task.id}`,
+      governanceReason: task.governanceReason ?? "ไม่ระบุเหตุผลล่าสุด",
+      updatedAt: bangkokDateTimeFormatter.format(new Date(task.updatedAt)),
+      updatedAtValue: task.updatedAt,
+    })),
     recentAudits: dashboard.recentAudits.map((audit) => ({
       id: audit.id,
       actionLabel: actionLabels[audit.action] ?? "บันทึกกิจกรรมระบบ",

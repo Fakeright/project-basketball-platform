@@ -19,8 +19,19 @@ export interface AdminDashboardAudit {
   createdAt: string
 }
 
+export interface AdminDashboardTaskItem {
+  id: string
+  title: string
+  organizerName: string
+  status: string
+  governanceReason: string | null
+  updatedAt: string
+}
+
 export interface AdminDashboardReadModel {
   metrics: AdminDashboardMetrics
+  reviewQueue: AdminDashboardTaskItem[]
+  governanceQueue: AdminDashboardTaskItem[]
   recentAudits: AdminDashboardAudit[]
 }
 
