@@ -1,0 +1,386 @@
+import type { GeneratedBracketPlan } from "@/features/competition/domain/bracket-generator"
+import type {
+  BracketGenerationMethod,
+  LockedBracketEntry,
+  MatchPurpose,
+} from "@/features/competition/domain/competition"
+import type { TournamentGovernanceStatus } from "@/features/tournament-operations/domain/tournament-governance-policy"
+
+export interface PersistGeneratedPlanInput {
+  tournamentId: string
+  bracketId: string
+  expectedVersion: number
+  generationMethod: BracketGenerationMethod
+  drawToken: string | null
+  entries: readonly LockedBracketEntry[]
+  plan: GeneratedBracketPlan
+  actorId: string
+  adminOverride: boolean
+  at: string
+}
+
+export interface BracketGenerationContext {
+  tournamentId: string
+  organizerId: string
+  tournamentGovernanceStatus: TournamentGovernanceStatus
+  bracketId: string
+  bracketVersion: number
+  generationMethod: BracketGenerationMethod | null
+  drawToken: string | null
+  hasStartedMatch: boolean
+  entries: LockedBracketEntry[]
+}
+
+export interface OrganizerCompetitionWorkspace {
+  tournament: {
+    id: string
+    title: string
+    organizerId: string
+    tournamentGovernanceStatus: TournamentGovernanceStatus
+    status: string
+    version: number
+  }
+  approvedTeamCount: number
+  bracket: null | {
+    id: string
+    version: number
+    status: string
+    mode: "SYSTEM_GENERATED" | "EXTERNAL_DOCUMENT"
+    generationMethod: BracketGenerationMethod | null
+    entriesLockedAt: string | null
+    hasStartedMatch: boolean
+    entries: LockedBracketEntry[]
+    rounds: Array<{
+      id: string
+      name: string
+      sequence: number
+      matches: Array<{
+        id: string
+        sequence: number
+        homeTeamId: string | null
+        awayTeamId: string | null
+        status: string
+        scheduledAt: string | null
+        court: string | null
+        version: number
+        homeScore: number | null
+        awayScore: number | null
+        winnerTeamId: string | null
+        purpose: MatchPurpose
+        resultConfirmed: boolean
+      }>
+    }>
+  }
+}
+
+export interface BracketPublicationContext {
+  tournamentId: string
+  organizerId: string
+  tournamentGovernanceStatus: TournamentGovernanceStatus
+  bracketId: string
+  bracketVersion: number
+  bracketStatus: string
+  entryCount: number
+  roundCount: number
+  matchCount: number
+  hasStartedMatch: boolean
+}
+
+export interface SetBracketPublicationInput {
+  tournamentId: string
+  bracketId: string
+  expectedVersion: number
+  published: boolean
+  reason: string | null
+  actorId: string
+  adminOverride: boolean
+  at: string
+}
+
+export interface MatchScheduleContext {
+  tournamentId: string
+  organizerId: string
+  tournamentGovernanceStatus: TournamentGovernanceStatus
+  tournamentStatus: string
+  tournamentStartsAt: string
+  tournamentEndsAt: string
+  bracketStatus: string
+  matchId: string
+  matchStatus: string
+  matchVersion: number
+  hasCourtConflict: boolean
+}
+
+export interface ExternalMatchCreationContext {
+  tournamentId: string
+  organizerId: string
+  tournamentGovernanceStatus: TournamentGovernanceStatus
+  tournamentStartsAt: string
+  tournamentEndsAt: string
+  bracketId: string
+  bracketVersion: number
+  bracketStatus: string
+  bracketMode: "SYSTEM_GENERATED" | "EXTERNAL_DOCUMENT"
+  lockedTeamIds: string[]
+  sequenceTaken: boolean
+  hasCourtConflict: boolean
+}
+
+export interface CreateExternalMatchMutation {
+  tournamentId: string
+  bracketId: string
+  roundName: string
+  sequence: number
+  homeTeamId: string
+  awayTeamId: string
+  scheduledAt: string
+  court: string
+  purpose: MatchPurpose
+  expectedVersion: number
+  actorId: string
+  adminOverride: boolean
+  overrideReason: string | null
+  at: string
+}
+
+export interface ExternalMatchPurposeContext {
+  tournamentId: string
+  organizerId: string
+  tournamentGovernanceStatus: TournamentGovernanceStatus
+  bracketMode: "SYSTEM_GENERATED" | "EXTERNAL_DOCUMENT"
+  matchId: string
+  matchPurpose: MatchPurpose
+  matchStatus: string
+  matchVersion: number
+  hasScore: boolean
+  resultConfirmed: boolean
+}
+
+export interface UpdateExternalMatchPurposeMutation {
+  tournamentId: string
+  matchId: string
+  purpose: MatchPurpose
+  previousPurpose: MatchPurpose
+  expectedVersion: number
+  actorId: string
+  adminOverride: boolean
+  overrideReason: string | null
+  at: string
+}
+
+export interface UpdatedExternalMatchPurpose {
+  id: string
+  purpose: MatchPurpose
+  version: number
+}
+
+export interface CreatedExternalMatch {
+  id: string
+  version: number
+  bracketVersion: number
+}
+
+export interface ScheduleMatchMutation {
+  tournamentId: string
+  matchId: string
+  scheduledAt: string
+  court: string
+  expectedVersion: number
+  overrideReason: string | null
+  actorId: string
+  adminOverride: boolean
+  at: string
+}
+
+export interface ScheduledCompetitionMatch {
+  id: string
+  scheduledAt: string
+  court: string
+  version: number
+}
+
+export interface MatchResultContext {
+  tournamentId: string
+  organizerId: string
+  tournamentGovernanceStatus: TournamentGovernanceStatus
+  tournamentStatus: string
+  bracketStatus: string
+  bracketMode: "SYSTEM_GENERATED" | "EXTERNAL_DOCUMENT"
+  matchId: string
+  matchStatus: string
+  matchVersion: number
+  homeTeamId: string | null
+  awayTeamId: string | null
+  nextMatchId: string | null
+  nextSlot: "HOME" | "AWAY" | null
+  nextSlotTeamId: string | null
+  resultConfirmed: boolean
+}
+
+export interface RecordMatchScoreMutation {
+  tournamentId: string
+  matchId: string
+  homeScore: number
+  awayScore: number
+  expectedVersion: number
+  actorId: string
+  adminOverride: boolean
+  at: string
+}
+
+export interface ConfirmMatchResultMutation extends RecordMatchScoreMutation {
+  winnerTeamId: string
+  nextMatchId: string | null
+  nextSlot: "HOME" | "AWAY" | null
+}
+
+export interface ResultCompetitionMatch {
+  id: string
+  status: string
+  homeScore: number
+  awayScore: number
+  winnerTeamId: string | null
+  version: number
+}
+
+export interface MatchResultCorrectionContext {
+  tournamentId: string
+  organizerId: string
+  tournamentGovernanceStatus: TournamentGovernanceStatus
+  matchId: string
+  matchVersion: number
+  matchStatus: string
+  homeTeamId: string
+  awayTeamId: string
+  currentWinnerTeamId: string
+  nextMatchId: string | null
+  nextSlot: "HOME" | "AWAY" | null
+  nextMatchStatus: string | null
+  nextSlotTeamId: string | null
+  nextResultConfirmed: boolean
+  nextHasScore: boolean
+}
+
+export interface CorrectMatchResultMutation {
+  tournamentId: string
+  matchId: string
+  homeScore: number
+  awayScore: number
+  expectedVersion: number
+  previousWinnerTeamId: string
+  winnerTeamId: string
+  nextMatchId: string | null
+  nextSlot: "HOME" | "AWAY" | null
+  replaceDownstreamSlot: boolean
+  reason: string
+  actorId: string
+  at: string
+}
+
+export interface PersistedCompetitionBracket {
+  id: string
+  tournamentId: string
+  version: number
+}
+
+export interface BracketLockContext {
+  tournamentId: string
+  organizerId: string
+  tournamentGovernanceStatus: TournamentGovernanceStatus
+  tournamentStatus: string
+  capacity: number
+  version: number
+  approvedEntries: Array<{
+    registrationId: string
+    teamId: string
+    teamName: string
+  }>
+  hasStartedMatch: boolean
+}
+
+export interface LockedCompetitionWorkspace {
+  id: string
+  tournamentId: string
+  version: number
+  entries: Array<{
+    teamId: string
+    teamNameSnapshot: string
+  }>
+}
+
+export interface LockEntriesInput {
+  tournamentId: string
+  expectedVersion: number
+  actorId: string
+  at: string
+  adminOverride: boolean
+}
+
+export interface CompetitionRepositoryTransaction {
+  findLockContext(tournamentId: string): Promise<BracketLockContext | null>
+  lockEntries(input: LockEntriesInput): Promise<LockedCompetitionWorkspace>
+  findGenerationContext(
+    tournamentId: string,
+  ): Promise<BracketGenerationContext | null>
+  findPublicationContext(
+    tournamentId: string,
+  ): Promise<BracketPublicationContext | null>
+  setPublication(
+    input: SetBracketPublicationInput,
+  ): Promise<PersistedCompetitionBracket>
+  findExternalMatchCreationContext(input: {
+    tournamentId: string
+    roundName: string
+    sequence: number
+    scheduledAt: string
+    court: string
+  }): Promise<ExternalMatchCreationContext | null>
+  createExternalMatch(
+    input: CreateExternalMatchMutation,
+  ): Promise<CreatedExternalMatch>
+  findExternalMatchPurposeContext(input: {
+    tournamentId: string
+    matchId: string
+  }): Promise<ExternalMatchPurposeContext | null>
+  updateExternalMatchPurpose(
+    input: UpdateExternalMatchPurposeMutation,
+  ): Promise<UpdatedExternalMatchPurpose>
+  findMatchScheduleContext(input: {
+    tournamentId: string
+    matchId: string
+    scheduledAt: string
+    court: string
+  }): Promise<MatchScheduleContext | null>
+  scheduleMatch(
+    input: ScheduleMatchMutation,
+  ): Promise<ScheduledCompetitionMatch>
+  findResultContext(input: {
+    tournamentId: string
+    matchId: string
+  }): Promise<MatchResultContext | null>
+  recordScore(
+    input: RecordMatchScoreMutation,
+  ): Promise<ResultCompetitionMatch>
+  confirmResultAndAdvance(
+    input: ConfirmMatchResultMutation,
+  ): Promise<ResultCompetitionMatch>
+  findResultCorrectionContext(input: {
+    tournamentId: string
+    matchId: string
+  }): Promise<MatchResultCorrectionContext | null>
+  correctResult(
+    input: CorrectMatchResultMutation,
+  ): Promise<ResultCompetitionMatch>
+  persistGeneratedPlan(
+    input: PersistGeneratedPlanInput,
+  ): Promise<PersistedCompetitionBracket>
+}
+
+export interface CompetitionRepository extends CompetitionRepositoryTransaction {
+  inTransaction<T>(
+    operation: (repository: CompetitionRepositoryTransaction) => Promise<T>,
+  ): Promise<T>
+  findOrganizerWorkspace(
+    tournamentId: string,
+  ): Promise<OrganizerCompetitionWorkspace | null>
+}

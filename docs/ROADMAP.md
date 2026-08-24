@@ -1,0 +1,68 @@
+# COURTSIDE Roadmap
+
+อัปเดตล่าสุด: 24 สิงหาคม 2026
+
+## ความหมายของสถานะ
+
+- `เสร็จแล้ว`: มีการพัฒนาและเชื่อมต่อกับสถาปัตยกรรมที่ใช้งานอยู่แล้ว
+- `กำลังพัฒนา`: มีการพัฒนาบางส่วนแล้ว หรือยังต้องเสริมความพร้อมสำหรับการใช้งานจริง
+- `วางแผนไว้`: ยังไม่ได้พัฒนานอกเหนือจาก schema ที่รองรับ หรือหน้าจอแบบอ่านอย่างเดียว
+
+การมี schema หรือหน้าจอสาธารณะแบบอ่านอย่างเดียวไม่ถือว่า workflow เชิงปฏิบัติการเสร็จสมบูรณ์ ต้องมีการดำเนินงาน การตรวจสิทธิ์ และการเปลี่ยนสถานะที่เชื่อมต่อครบถ้วนด้วย
+
+## เสร็จแล้ว
+
+- การสมัครสมาชิกด้วยอีเมลและรหัสผ่านผ่าน Supabase, การเข้าสู่ระบบ, การออกจากระบบ, เส้นทางลืมและรีเซ็ตรหัสผ่าน, การสร้าง profile, session และการ redirect ตาม role
+- การตรวจ permission และ ownership ของ server-side actions
+- การสร้างและแก้ไข tournament แบบร่าง, การส่งตรวจ, การตรวจโดย admin, การเผยแพร่, การปิดรับสมัคร, age groups มาตรฐาน, ความจุที่เป็นจำนวนคู่, reference จังหวัดทั้ง 77 จังหวัด, audit และ concurrency checks
+- Home สาธารณะ, รายการ tournament, รายละเอียด tournament, search filters ที่ผูกกับ URL, การแสดง poster และเอกสาร, responsive layouts, dark mode และ loading/empty/error states ที่ใช้ร่วมกัน
+- บทบาทบัญชี `TEAM_MANAGER_COACH` สำหรับผู้จัดการ/โค้ช พร้อมการสมัครสมาชิก session permission และ Team Dashboard ที่สอดคล้องกัน
+- การสร้างและแก้ไขทีม `5v5`/`3v3`, การเพิ่มผู้เล่นหลายคนแบบ atomic, การแก้ไขและนำผู้เล่นออกโดยรักษาประวัติ โดยผู้เล่นเป็นข้อมูล `TeamPlayer` และไม่จำเป็นต้องมีบัญชีผู้ใช้
+- การนำผู้เล่นเดิมจากทุกทีมของบัญชีกลับมาใช้ขณะสร้างทีม พร้อมค้นหา เลือกทั้งหมด แก้ snapshot ก่อนบันทึก และสร้างทีมกับรายชื่อสูงสุด 30 คนแบบ atomic
+- การสมัคร tournament, การยกเลิก, การอนุมัติ, การปฏิเสธ, การถอนตัว และการตรวจรูปแบบทีม สถานะทีม จำนวนผู้เล่นขั้นต่ำ รุ่นอายุ และ capacity บน server
+- การลบทีมที่ไม่มีประวัติอย่างถาวร หรือปิดใช้งานทีมที่ต้องรักษาประวัติ พร้อม optimistic concurrency, การยืนยันชื่อทีม และ audit log
+- การ upload และ delete poster กับเอกสาร tournament ผ่าน Supabase Storage
+- จำนวนสรุปเชิงปฏิบัติการของ admin, review queue และกิจกรรม audit ล่าสุด
+- การล็อกรายชื่อทีมที่อนุมัติ การสร้าง deterministic single-elimination bracket แบบกำหนด Seed หรือสุ่ม การจัดการ Bye และการเผยแพร่สายที่สร้างด้วยระบบ
+- การจัดวันเวลาและสนาม การบันทึกคะแนนร่าง การยืนยันผลแบบ transactional การเลื่อนผู้ชนะเข้ารอบถัดไป และการแสดง Winner/Runner-up จาก Final ที่ยืนยันแล้ว
+- การแก้ผลที่ยืนยันแล้วโดย Platform Admin พร้อมเหตุผล, audit, optimistic concurrency และการบล็อกการเปลี่ยนผู้ชนะเมื่อคู่ถัดไปเริ่มหรือมีผลแล้ว
+- หน้ารวมการแข่งขันของ Platform Admin พร้อมค้นหาชื่อรายการ ผู้จัด จังหวัด กรองสถานะ และเข้าสู่พื้นที่กำกับสายหรือผลโดยตรง
+- หน้า bracket และ schedule สาธารณะที่อ่านเฉพาะสายเผยแพร่ แสดงคะแนน ผู้ชนะ Bye และทีมที่ตกรอบตามรอบจริง
+- สายการแข่งขันจากไฟล์ภายนอก: เลือกโหมด อัปโหลดและตรวจ PDF/JPG/PNG/WebP แบบ private storage, revision history, explicit publication, signed public viewer และคำเตือนเมื่อผลใหม่กว่าไฟล์
+- การสร้างคู่แข่งขันแบบ manual จากทีมที่ล็อกในโหมดไฟล์ภายนอก พร้อมรอบ ลำดับ สนาม เวลา คะแนน และการยืนยันผลโดยไม่เลื่อนผู้ชนะอัตโนมัติ
+- การกำหนดประเภทคู่แข่งขันทั่วไป ชิงอันดับ 3 และชิงชนะเลิศในโหมดไฟล์ภายนอก พร้อมแก้ไขก่อนเริ่มแข่ง unique placement constraints, audit และ optimistic concurrency
+- การเริ่มการแข่งขันจากสถานะปิดรับสมัครและการจบรายการเมื่อยืนยันผลครบ พร้อม readiness checklist, server-side lifecycle policy และเหตุผลบังคับเมื่อ Platform Admin ดำเนินการแทนผู้จัด
+- การสรุป Winner, Runner-up และอันดับ 3 แบบ optional จากประเภทคู่ที่ชัดเจน พร้อมหน้าสาธารณะ `/results`, loading/empty/error states และลิงก์เชื่อมจากรายละเอียด ตาราง และสายการแข่งขัน
+- การกำกับ tournament โดย Platform Admin เท่านั้น: ระงับและเปิดใช้งานต่อโดยรักษาสถานะ lifecycle เดิม, นำออกโดยไม่ลบข้อมูล, archive รายการที่จบหรือยกเลิก, เปิดรับสมัครอีกครั้งภายใต้ bracket guard และลบ draft ว่างแบบยืนยันชื่อตรงกัน พร้อมเหตุผลที่บังคับใช้, optimistic concurrency, audit สำหรับคำสั่งและ admin override, การบล็อก mutation เมื่อ governance ไม่อนุญาต และการกรองรายการ `SUSPENDED`/`REMOVED` ออกจาก public surfaces
+- Prisma migrations, seed/reset tooling และ automated Vitest/RTL coverage
+
+## กำลังพัฒนา
+
+- การส่งอีเมลยืนยันและการทำ callback ให้แข็งแรงขึ้น รวมถึง production SMTP และ redirect configuration
+- ประสบการณ์แบบบริการตนเองของบัญชี `PLAYER` ซึ่งยังไม่มี permission/workspace เฉพาะ และไม่ใช่เงื่อนไขสำหรับการอยู่ในรายชื่อทีม
+- การจัดการ profile, การยืนยัน organizer และการบริหาร platform role
+- Admin analytics ซึ่งปัจจุบันมี counts และ audits แต่ยังไม่มี visitor tracking, province popularity, trends หรือ charts
+- การตรวจสอบ browser แบบ responsive สำหรับทุก protected workflow และ production observability
+- การ reconcile `TeamMember` เดิมก่อน production cutover: audit แบบอ่านอย่างเดียวครอบคลุมทั้ง active และ inactive history รวมถึงทีมที่มีเฉพาะ inactive rows การตรวจเมื่อ 9 สิงหาคม 2026 พบ 5 ทีมที่มี legacy rows ทั้งหมดเป็น active แต่ข้อมูลเดิมไม่มีวันเกิด/ข้อมูลตัวตนเพียงพอสำหรับ backfill ที่ปลอดภัย ต้องยืนยันรูปแบบ `5v5`/`3v3`, กรอก `TeamPlayer` จากข้อมูลที่ตรวจสอบได้ และทบทวนประวัติการสมัครรายทีม โดยไม่ลบข้อมูลเดิมหรือสร้างวันเกิดขึ้นแทน
+- การกำกับ retention ของ TeamPlayer audit เดิม: event ใหม่เก็บเฉพาะ metadata ที่ไม่ใช่ PII และฐาน development ปัจจุบันไม่พบ event เดิมในขอบเขต read-only audit หากฐานเป้าหมายอื่นพบข้อมูล ต้องอนุมัติ redaction/retention แยกต่างหากและห้าม rewrite production audit โดยอัตโนมัติ
+
+## วางแผนไว้
+
+- การ upload team-logo, tournament banners และ galleries
+- Email notifications และ announcements สำหรับผลการสมัคร, การเปลี่ยนตาราง และผลการแข่งขัน
+- Visitor analytics, monthly charts, popular provinces, conversion metrics, monitoring, CI/CD และ production deployment
+- การนำเข้ารายชื่อผู้เล่นด้วย CSV ซึ่งไม่รวมอยู่ใน workflow ปัจจุบัน
+- การ restore tournament ที่มี governance status เป็น `REMOVED` ซึ่งยังไม่รวมอยู่ใน governance workflow ปัจจุบัน
+- migration ที่ผ่านการอนุมัติเพื่อลบ `TeamMember` เดิม หลัง audit/reconciliation รายทีมเสร็จสมบูรณ์และยืนยันว่าไม่มี active หรือ inactive history ที่ต้องรักษา ระหว่างนี้ใบสมัครสถานะ `PENDING`/`APPROVED` จะบล็อกการลบหรือปิดใช้งานก่อน เมื่อผ่าน guard นี้แล้ว ประวัติการสมัครสถานะสิ้นสุดหรือการมี `TeamMember` ใด ๆ จะทำให้ระบบเลือกปิดใช้งานแทน hard delete เพื่อรักษาประวัติและป้องกัน cascade โดย production cutover ห้ามนับ legacy members เป็น roster และห้ามสร้างข้อมูลผู้เล่นที่ขาดหายขึ้นเอง
+
+## ลำดับการส่งมอบถัดไป
+
+1. **Authentication hardening, email verification และ profile management** — ผู้ใช้ยืนยันอีเมล จัดการ profile ได้ และ auth flow พร้อมสำหรับ production configuration
+2. **Remaining media และ notification delivery** — สื่อที่เหลือและการแจ้งเตือนถูกส่งและจัดการผ่าน workflow ที่ใช้งานได้จริง
+3. **Analytics, monitoring, CI/CD และ deployment** — ระบบมี analytics, observability, pipeline และการ deploy production ที่ตรวจสอบได้
+
+## เอกสารประวัติศาสตร์
+
+ไฟล์ที่มีวันที่ภายใต้ `docs/superpowers/specs/` และ `docs/superpowers/plans/` เก็บการตัดสินใจและบริบทของการดำเนินงานในอดีต checkbox ในไฟล์เหล่านั้นไม่ใช่สถานะปัจจุบันของระบบ และ roadmap นี้เป็นแหล่งสถานะที่ authoritative เพียงแหล่งเดียว
+
+บทบาทกรรมการไม่อยู่ในขอบเขตของผลิตภัณฑ์ปัจจุบัน

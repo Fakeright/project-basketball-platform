@@ -1,36 +1,144 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# COURTSIDE
 
-## Getting Started
+COURTSIDE คือแพลตฟอร์มการแข่งขันบาสเกตบอลที่รองรับทุกขนาดหน้าจอ ออกแบบโดยให้ภาษาไทยมาก่อน สำหรับผู้เยี่ยมชม ผู้เล่น ผู้จัดการ/โค้ช ผู้จัดการแข่งขัน และผู้ดูแลแพลตฟอร์ม
 
-First, run the development server:
+รุ่นปัจจุบันรองรับการค้นหารายการแข่งขัน การยืนยันตัวตน การอนุมัติและเผยแพร่การแข่งขัน รายชื่อทีม การสมัคร โปสเตอร์ เอกสาร สายแพ้คัดออกที่ระบบสร้าง และสายการแข่งขันจากไฟล์ภายนอก รวมถึงการเริ่มและจบการแข่งขัน ตาราง ผลการแข่งขัน อันดับ และการเลื่อนทีมในโหมดอัตโนมัติ ส่วนการแจ้งเตือนและการวิเคราะห์ขั้นสูงยังอยู่ในแผนงาน
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+## เทคโนโลยี
+
+dependencies สำหรับ runtime ที่ติดตั้งมีดังนี้:
+
+- `@base-ui/react` `^1.6.0`
+- `@prisma/adapter-pg` `^7.9.0`, `@prisma/client` `^7.9.0` และ `pg` `^8.22.0`
+- `@supabase/ssr` `^0.12.4` และ `@supabase/supabase-js` `^2.110.8`
+- `class-variance-authority` `^0.7.1`, `clsx` `^2.1.1`, `lucide-react` `^1.26.0`, `tailwind-merge` `^3.6.0` และ `zod` `^4.4.3`
+- Next.js `16.2.11` พร้อม App Router, React `19.2.4` และ React DOM `19.2.4`
+- `next-themes` `^0.4.6`, shadcn `^4.14.1`, `tw-animate-css` `^1.4.0`
+- `pdfjs-dist` `^6.2.108` และ `sharp` `^0.35.3` สำหรับตรวจโครงสร้าง PDF และรูปภาพสายการแข่งขันฝั่ง server
+
+dependencies สำหรับการพัฒนาที่ติดตั้งมีดังนี้:
+
+- `@tailwindcss/postcss` `^4` และ Tailwind CSS `^4`
+- `@testing-library/react` `^16.3.2`, `@testing-library/user-event` `^14.6.1` และ JSDOM `^29.1.1`
+- type packages สำหรับ Node, PostgreSQL, React และ React DOM: `@types/node` `^20`, `@types/pg` `^8.20.0`, `@types/react` `^19`, และ `@types/react-dom` `^19`
+- `dotenv` `^17.4.2`, `tsx` `^4.23.1` และ `vite-tsconfig-paths` `^6.1.1`
+- ESLint `^9` พร้อม `eslint-config-next` `16.2.11`
+- Prisma CLI `^7.9.0`, TypeScript `^5` และ Vitest `^4.1.10`
+
+สถาปัตยกรรมใช้ทิศทางการพึ่งพาดังนี้:
+
+```text
+presentation -> application -> domain
+infrastructure -> application/domain contracts
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+ใช้ Server Components เป็นค่าเริ่มต้น และ Route Handlers ดูแล HTTP mutations ส่วน use cases ใน application บังคับสิทธิ์และความเป็นเจ้าของ ขณะที่ Prisma และ Supabase เป็น infrastructure adapters
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## บทบาท
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| บทบาท | ขอบเขตปัจจุบัน |
+| --- | --- |
+| `PLAYER` | บทบาทบัญชีสำหรับความสามารถในอนาคต; ผู้เล่นไม่จำเป็นต้องมีบัญชีเพื่ออยู่ในรายชื่อทีม |
+| `TEAM_MANAGER_COACH` | ผู้จัดการ/โค้ชสร้างและแก้ไขทีม ดูแลรายชื่อผู้เล่น และจัดการการสมัครแข่งขันของทีมที่ตนเป็นเจ้าของ |
+| `TOURNAMENT_ORGANIZER` | สร้างและดำเนินการรายการแข่งขันที่ตนเป็นเจ้าของ รวมถึงทีมสมัคร สายการแข่งขัน ตาราง และผลการแข่งขัน |
+| `PLATFORM_ADMIN` | ตรวจทานและกำกับรายการแข่งขันทั้งแพลตฟอร์ม รวมถึงแก้ผลที่ยืนยันแล้วพร้อมเหตุผลและ audit |
 
-## Learn More
+ไม่มีบทบาทผู้ตัดสิน ผู้จัดการแข่งขันเป็นผู้บันทึกและยืนยันผล ส่วนผู้ดูแลแพลตฟอร์มแก้ผลที่ยืนยันแล้วได้เมื่อผ่านข้อจำกัดความถูกต้องของสายการแข่งขัน
 
-To learn more about Next.js, take a look at the following resources:
+## สายการแข่งขัน
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+ผู้จัดเลือกรูปแบบได้หลังล็อกรายชื่อทีมและก่อนเริ่มแข่งขัน:
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- `สร้างอัตโนมัติ` สร้างสายแพ้คัดออกแบบกำหนด Seed หรือสุ่ม ระบบเลื่อนผู้ชนะไปคู่ถัดไปเมื่อยืนยันผล
+- `ใช้ไฟล์ภายนอก` อัปโหลด PDF สูงสุด 20 MB หรือ JPG/PNG/WebP สูงสุด 10 MB ระบบตรวจ MIME, ขนาด และโครงสร้างไฟล์ฝั่ง server
 
-## Deploy on Vercel
+ไฟล์ภายนอกเก็บเป็น revision และยังไม่เปลี่ยนหน้าสาธารณะจนผู้จัดกดเผยแพร่ revision ที่เลือก ไฟล์อยู่ใน private bucket `tournament-brackets` และเปิดผ่าน signed URL อายุ 10 นาที Revision เดิมยังอยู่ในประวัติเมื่อเผยแพร่ฉบับใหม่
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+ในโหมดไฟล์ภายนอก ผู้จัดสร้างคู่แข่งขันจากทีมที่ล็อกไว้ กำหนดรอบ ลำดับ สนาม เวลา และประเภท `คู่แข่งขันทั่วไป` / `ชิงอันดับ 3` / `ชิงชนะเลิศ` ได้ ประเภทคู่แก้ได้ก่อนเริ่มและก่อนมีคะแนนเท่านั้น โดยหนึ่งสายมีคู่ชิงชนะเลิศและคู่ชิงอันดับ 3 ได้อย่างละไม่เกินหนึ่งคู่ การยืนยันผลไม่เลื่อนผู้ชนะอัตโนมัติเพราะไฟล์เป็นแหล่งอ้างอิงโครงสร้างสาย หากผลที่ยืนยันใหม่กว่าไฟล์ที่เผยแพร่ หน้า Organizer จะแจ้งให้อัปโหลดหรือเผยแพร่ revision ใหม่
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## วงจรการแข่งขันและผล
+
+- ผู้จัดเริ่มการแข่งขันจากสถานะปิดรับสมัครได้เมื่อเผยแพร่สาย ล็อกรายชื่ออย่างน้อย 2 ทีม มีคู่แข่งขัน และมีคู่ชิงชนะเลิศที่ทีมครบ
+- ระบบอนุญาตให้บันทึกและยืนยันผลเมื่อรายการอยู่ในสถานะกำลังแข่งขันเท่านั้น การจบรายการต้องมีผลที่ยืนยันและถูกต้องครบทุกคู่
+- ผลสรุปใช้ประเภทคู่โดยตรงเพื่อหา Winner, Runner-up และอันดับ 3 แบบ optional โดยไม่เดาจากลำดับคู่สุดท้าย
+- หน้าสาธารณะ `/results` รองรับ `?tournament=:slug` และเลือกแสดงรายการที่กำลังแข่งขันล่าสุดก่อนรายการที่จบล่าสุดเมื่อไม่ระบุ slug
+- Platform Admin ดำเนินการเริ่มหรือจบรายการแทนเจ้าของได้เมื่อระบุเหตุผล และระบบบันทึก audit พร้อม optimistic concurrency
+
+Schema สำหรับประเภทคู่และ unique placement constraints อยู่ใน migration `20260820090000_add_match_purpose`
+
+## ทีมและรายชื่อผู้เล่น
+
+- ผู้จัดการ/โค้ชเลือกประเภททีม `5v5` หรือ `3v3` และเพิ่มผู้เล่นหลายคนจากตารางได้ในคำขอเดียว
+- ผู้เล่นในรายชื่อเป็นข้อมูล `TeamPlayer` ที่แยกจากบัญชี `User` จึงไม่ต้องสร้างบัญชี COURTSIDE ให้ผู้เล่นแต่ละคน
+- ระบบแก้ไขข้อมูลผู้เล่นและนำผู้เล่นออกแบบปิดใช้งานเพื่อรักษาประวัติ รวมทั้งตรวจรูปแบบทีม สถานะทีม จำนวนผู้เล่นขั้นต่ำ และรุ่นอายุก่อนสมัครแข่งขัน
+- ทีมที่มีใบสมัครสถานะ `PENDING` หรือ `APPROVED` จะยังลบหรือปิดใช้งานไม่ได้ เมื่อผ่านเงื่อนไขนี้แล้ว ทีมจะลบถาวรได้เฉพาะเมื่อไม่มีทั้งประวัติการสมัครและ `TeamMember` เดิมแม้แต่แถวเดียว ส่วนทีมที่มีประวัติการสมัครสถานะสิ้นสุดหรือมี `TeamMember` จะถูกปิดใช้งานเพื่อรักษาข้อมูล โดยการดำเนินการต้องยืนยันชื่อทีมและผ่านการตรวจสิทธิ์บน server
+- ระยะนี้ไม่รองรับการนำเข้ารายชื่อด้วย CSV
+
+โมเดล `TeamMember` เดิมยังคงอยู่เพื่อรักษาข้อมูลระหว่างเปลี่ยนผ่าน และไม่ใช่แหล่งข้อมูลรายชื่อที่ใช้งานอยู่ ระบบไม่ backfill ข้อมูลนี้เป็น `TeamPlayer` อัตโนมัติ เพราะไม่มีวันเกิดและข้อมูลยืนยันตัวตนที่จำเป็น ห้ามสร้างวันเกิดหรือข้อมูลผู้เล่นขึ้นแทนเพื่อให้ migration ผ่าน
+
+ตรวจสถานะรายทีมแบบอ่านอย่างเดียวได้ด้วย `npx tsx scripts/audit-legacy-team-members.ts` รายงานแสดงเฉพาะ team ID, รูปแบบทีม, จำนวนสมาชิกเดิมแบบ active/inactive แยก PLAYER/COACH, จำนวน `TeamPlayer`, จำนวนและสถานะประวัติการสมัคร และ readiness/issues โดยไม่แสดงข้อมูลส่วนบุคคล รายงานรวมทีมที่มีเฉพาะ inactive legacy history และกำหนดว่าไม่พร้อมลบข้อมูลเดิมเมื่อยังมี `TeamMember` ใด ๆ การตรวจฐาน development เมื่อ 9 สิงหาคม 2026 พบ 5 ทีมที่มี legacy rows ทั้งหมดเป็น active และยังไม่พร้อมลบข้อมูลเดิม
+
+ก่อน production cutover ต้องตรวจรายงานและ reconcile ทุกทีมที่พบ โดยยืนยันรูปแบบ `5v5`/`3v3`, กรอก `TeamPlayer` ใหม่จากข้อมูลที่ตรวจสอบได้ และทบทวนประวัติการสมัคร ห้ามนับ `TeamMember` เป็น roster ที่มีสิทธิ์สมัคร ห้ามลบ legacy rows ระหว่างขั้นตอนนี้ และการลบโมเดลหรือตารางต้องเป็น migration แยกที่ได้รับอนุมัติหลัง reconciliation เท่านั้น
+
+Audit ใหม่ของ `TeamPlayer` เก็บเฉพาะ player/team ID, เบอร์เสื้อ, ตำแหน่ง และสถานะใช้งาน ไม่เก็บชื่อ ชื่อเล่น วันเกิด หรือโทรศัพท์ ตรวจ audit เดิมแบบอ่านอย่างเดียวได้ด้วย `npx tsx scripts/audit-team-player-audit-pii.ts`; ฐาน development ปัจจุบันไม่พบ event เดิมในขอบเขตที่ตรวจ หากฐานอื่นพบ PII ต้องตัดสินใจ retention/redaction เป็นงานที่อนุมัติและตรวจสอบแยกต่างหาก ห้าม rewrite production audit โดยอัตโนมัติ การลบทีมถาวรจึงคง audit ขั้นต่ำสำหรับการตรวจสอบโดยไม่เพิ่ม PII ใหม่
+
+## สิ่งที่ต้องมี
+
+ติดตั้งหรือเตรียมสิ่งต่อไปนี้:
+
+- Node.js 20.9.0 หรือใหม่กว่า
+- npm
+- โครงการ Supabase
+- รายละเอียดการเชื่อมต่อ PostgreSQL
+
+คัดลอก `.env.example` เป็น `.env.local` แล้วกำหนดค่าเฉพาะในไฟล์ท้องถิ่น ใช้ชื่อตัวแปรต่อไปนี้โดยห้าม commit ค่า:
+
+```dotenv
+DATABASE_URL=
+APP_URL=
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=
+SUPABASE_SERVICE_ROLE_KEY=
+AUTH_RECOVERY_SECRET=
+```
+
+ห้าม commit `.env.local`, คีย์ service-role หรือรหัสผ่านฐานข้อมูล และให้หมุนเวียนข้อมูลลับที่เผยแพร่ในแชต logs ภาพหน้าจอ หรือประวัติ source
+
+## การติดตั้ง
+
+รันลำดับการตั้งค่าที่ตรวจสอบแล้วจาก project root:
+
+```powershell
+npm install
+npm run prisma:generate
+npm run prisma:migrate
+npm run prisma:seed
+npm run dev
+```
+
+สร้าง bucket `tournament-brackets` ใน Supabase Storage เป็น private bucket โดยอนุญาตเฉพาะ `application/pdf`, `image/jpeg`, `image/png` และ `image/webp` ขนาดสูงสุด 20 MB ห้ามสร้าง anonymous write policy สำหรับ bucket นี้
+
+`npm run reset:development` เป็นคำสั่งทำลายข้อมูล ใช้ได้กับฐานข้อมูล development ที่ยืนยันชัดเจนเท่านั้น
+
+## การตรวจสอบคุณภาพ
+
+```powershell
+npm run test
+npm run lint
+npm run build
+```
+
+- `npm run test` รันชุดทดสอบ Vitest
+- `npm run lint` ตรวจสอบโครงการด้วย ESLint
+- `npm run build` สร้าง production build
+
+## ผังโครงการ
+
+- `app/` - หน้า layouts สถานะ loading/error และ Route Handlers ของ Next.js App Router
+- `components/` - presentation components และ UI primitives ที่ใช้ร่วมกัน
+- `features/` - โมดูล domain, application, infrastructure และ presentation แบบยึด feature
+- `prisma/` - Prisma schema, migrations และ seed data
+- `tests/` - การทดสอบ unit, integration และ UI
+- `docs/` - ข้อกำหนดผลิตภัณฑ์ แผนการทำงาน และเอกสารการปฏิบัติการ
+
+[roadmap](docs/ROADMAP.md) เป็นแหล่งอ้างอิงเดียวสำหรับสถานะปัจจุบันและงานที่วางแผนไว้ เอกสารระบุวันที่ใน [docs/superpowers/specs/](docs/superpowers/specs/) และ [docs/superpowers/plans/](docs/superpowers/plans/) เป็นบันทึกการออกแบบและการดำเนินงานในอดีต
