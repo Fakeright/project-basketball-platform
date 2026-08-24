@@ -117,7 +117,7 @@ describe("TournamentCompetitionLifecyclePanel", () => {
       completionIssues: ["TOURNAMENT_STATUS_INVALID"],
     })
 
-    expect(screen.getByText("จบการแข่งขันแล้ว")).toBeTruthy()
+    expect(screen.getByText("จบการแข่งขัน")).toBeTruthy()
     expect(screen.queryByText("สถานะรายการไม่พร้อมสำหรับขั้นตอนนี้")).toBeNull()
     expect(screen.queryByRole("button")).toBeNull()
   })

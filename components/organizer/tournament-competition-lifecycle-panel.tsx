@@ -6,27 +6,8 @@ import { CircleAlert, Flag, Play } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import type { TournamentCompetitionIssueCode } from "@/features/competition/domain/tournament-competition-policy"
-
-const issueLabels: Record<TournamentCompetitionIssueCode, string> = {
-  TOURNAMENT_STATUS_INVALID: "สถานะรายการไม่พร้อมสำหรับขั้นตอนนี้",
-  BRACKET_MISSING: "ยังไม่มีสายการแข่งขัน",
-  BRACKET_NOT_PUBLISHED: "ยังไม่ได้เผยแพร่สายการแข่งขัน",
-  ENTRIES_NOT_LOCKED: "ยังไม่ได้ล็อกรายชื่อทีม",
-  ENTRY_COUNT_INVALID: "ต้องมีทีมอย่างน้อย 2 ทีม",
-  MATCH_MISSING: "ยังไม่มีคู่แข่งขัน",
-  CHAMPIONSHIP_MISSING: "ยังไม่มีคู่ชิงชนะเลิศ",
-  CHAMPIONSHIP_DUPLICATE: "มีคู่ชิงชนะเลิศมากกว่าหนึ่งคู่",
-  THIRD_PLACE_DUPLICATE: "มีคู่ชิงอันดับ 3 มากกว่าหนึ่งคู่",
-  PLACEMENT_TEAMS_INCOMPLETE: "คู่จัดอันดับยังมีทีมไม่ครบ",
-  MATCH_RESULT_PENDING: "ยังมีคู่แข่งขันที่ไม่ได้ยืนยันผล",
-  MATCH_RESULT_INVALID: "มีผลการแข่งขันที่ไม่สมบูรณ์",
-}
-
-const statusLabels: Record<string, string> = {
-  REGISTRATION_CLOSED: "ปิดรับสมัครแล้ว",
-  IN_PROGRESS: "กำลังแข่งขัน",
-  COMPLETED: "จบการแข่งขันแล้ว",
-}
+import { tournamentCompetitionIssueLabel } from "@/features/competition/presentation/tournament-competition-issue-label"
+import { tournamentOperationStatusLabel } from "@/features/tournament-operations/presentation/organizer-workflow-guidance"
 
 export interface TournamentCompetitionLifecyclePanelProps {
   tournamentId: string
@@ -107,7 +88,9 @@ export function TournamentCompetitionLifecyclePanel({
             ความพร้อมของการแข่งขัน
           </h2>
           <p className="mt-2 text-sm text-muted-foreground">
-            {statusLabels[status] ?? "ยังไม่อยู่ในขั้นดำเนินการแข่งขัน"}
+            {isTournamentOperationStatus(status)
+              ? tournamentOperationStatusLabel(status)
+              : "ยังไม่อยู่ในขั้นดำเนินการแข่งขัน"}
           </p>
         </div>
         {action ? (
@@ -135,7 +118,7 @@ export function TournamentCompetitionLifecyclePanel({
           {issues.map((issue) => (
             <li className="flex items-start gap-2" key={issue}>
               <CircleAlert aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-destructive" />
-              <span>{issueLabels[issue]}</span>
+              <span>{tournamentCompetitionIssueLabel(issue)}</span>
             </li>
           ))}
         </ul>
@@ -168,4 +151,22 @@ export function TournamentCompetitionLifecyclePanel({
       ) : null}
     </section>
   )
+}
+
+function isTournamentOperationStatus(
+  status: string,
+): status is import("@/features/tournament-operations/domain/tournament-operation").TournamentOperationStatus {
+  return [
+    "DRAFT",
+    "SUBMITTED",
+    "CHANGES_REQUESTED",
+    "APPROVED",
+    "PUBLISHED",
+    "REGISTRATION_CLOSED",
+    "IN_PROGRESS",
+    "COMPLETED",
+    "ARCHIVED",
+    "REJECTED",
+    "SUSPENDED",
+  ].includes(status)
 }
