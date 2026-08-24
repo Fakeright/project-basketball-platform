@@ -44,17 +44,39 @@ describe("TeamList", () => {
     render(
       <TeamList
         workspaces={[
-          { team: activeTeam, players: [{ id: "player-1" }, { id: "player-2" }] },
-          { team: inactiveTeam, players: [{ id: "player-old" }] },
+          {
+            team: activeTeam,
+            players: [{ id: "player-1" }, { id: "player-2" }],
+            guidance: {
+              stageLabel: "รายชื่อผู้เล่นยังไม่ครบ",
+              description: "มีผู้เล่น 2/3 คน",
+              primaryAction: { label: "เพิ่มผู้เล่น", href: "/team/team-1" },
+              blockers: [],
+            },
+          },
+          {
+            team: inactiveTeam,
+            players: [{ id: "player-old" }],
+            guidance: {
+              stageLabel: "ปิดใช้งาน",
+              description: "ทีมนี้ปิดใช้งานและดูข้อมูลได้เท่านั้น",
+              primaryAction: null,
+              blockers: [],
+            },
+          },
         ]}
       />,
     )
 
     expect(screen.getByRole("link", { name: "Bangkok Ballers" })).toBeTruthy()
     expect(screen.getByRole("link", { name: "Historic Hoops" })).toBeTruthy()
-    expect(screen.getByText("ปิดใช้งาน")).toBeTruthy()
+    expect(screen.getAllByText("ปิดใช้งาน")).toHaveLength(2)
     expect(screen.getAllByText("3v3")).toHaveLength(2)
     expect(screen.getByText("ผู้เล่น 2 คน")).toBeTruthy()
+    expect(screen.getByText("มีผู้เล่น 2/3 คน")).toBeTruthy()
+    expect(screen.getByRole("link", { name: "เพิ่มผู้เล่น" }).getAttribute("href")).toBe(
+      "/team/team-1",
+    )
   })
 })
 

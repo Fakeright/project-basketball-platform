@@ -188,6 +188,44 @@ describe("PrismaRegistrationRepository transactions", () => {
     })
   })
 
+  it("projects tournament progress fields when listing a team's registrations", async () => {
+    const findMany = vi.fn(async () => [{
+      ...registrationRow("APPROVED", 1),
+      tournament: {
+        title: "Bangkok Open",
+        slug: "bangkok-open",
+        status: "IN_PROGRESS" as const,
+        governanceStatus: "ACTIVE" as const,
+      },
+    }])
+    const repository = new PrismaRegistrationRepository({
+      registration: { findMany },
+    } as unknown as PrismaClient)
+
+    await expect(repository.listByTeam("team-1")).resolves.toEqual([
+      expect.objectContaining({
+        tournamentName: "Bangkok Open",
+        tournamentSlug: "bangkok-open",
+        tournamentStatus: "IN_PROGRESS",
+        tournamentGovernanceStatus: "ACTIVE",
+      }),
+    ])
+    expect(findMany).toHaveBeenCalledWith({
+      where: { teamId: "team-1" },
+      include: {
+        tournament: {
+          select: {
+            title: true,
+            slug: true,
+            status: true,
+            governanceStatus: true,
+          },
+        },
+      },
+      orderBy: { createdAt: "desc" },
+    })
+  })
+
   it("retries a serializable registration transaction after a PostgreSQL serialization conflict", async () => {
     let attempts = 0
     const transaction = vi.fn(async (

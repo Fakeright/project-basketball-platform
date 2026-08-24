@@ -1,16 +1,19 @@
 import Link from "next/link"
 
 import type { TeamSummary } from "@/features/team-management/domain/team"
+import { WorkflowNextAction } from "@/components/workflow/workflow-next-action"
+import type { WorkflowGuidanceView } from "@/features/workflow-guidance/presentation/workflow-guidance-view"
 
 interface TeamListWorkspace {
   team: TeamSummary
   players: readonly { id: string }[]
+  guidance: WorkflowGuidanceView
 }
 
 export function TeamList({ workspaces }: { workspaces: TeamListWorkspace[] }) {
   return (
     <ul className="divide-y divide-border border-y border-border">
-      {workspaces.map(({ team, players }) => (
+      {workspaces.map(({ team, players, guidance }) => (
         <li
           className="grid min-w-0 gap-3 py-5 sm:grid-cols-[minmax(0,1fr)_auto_auto_auto] sm:items-center"
           key={team.id}
@@ -20,6 +23,9 @@ export function TeamList({ workspaces }: { workspaces: TeamListWorkspace[] }) {
               {team.name}
             </Link>
             <p className="mt-1 text-sm text-muted-foreground">{team.province}</p>
+            <div className="mt-4">
+              <WorkflowNextAction compact guidance={guidance} />
+            </div>
           </div>
           <span className="text-sm font-medium">
             {team.format === "FIVE_V_FIVE" ? "5v5" : "3v3"}

@@ -29,6 +29,9 @@ export interface TournamentRegistrationWithOwnership extends TournamentRegistrat
 
 export interface TeamRegistrationListItem extends TournamentRegistration {
   tournamentName: string
+  tournamentSlug: string
+  tournamentStatus: RegistrationTournamentStatus
+  tournamentGovernanceStatus: TournamentGovernanceStatus
   submittedAt: string
   organizerNote: string | null
 }

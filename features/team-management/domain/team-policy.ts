@@ -7,6 +7,10 @@ const minimumPlayersByFormat: Record<TeamFormat, number> = {
   THREE_V_THREE: 3,
 }
 
+export function getMinimumRosterSize(format: TeamFormat): number {
+  return minimumPlayersByFormat[format]
+}
+
 export function assertRosterEligibility(
   format: TeamFormat,
   players: readonly TeamPlayer[],
@@ -21,7 +25,7 @@ function assertMinimumActivePlayerCount(
   format: TeamFormat,
   activePlayerCount: number,
 ): void {
-  if (activePlayerCount < minimumPlayersByFormat[format]) {
+  if (activePlayerCount < getMinimumRosterSize(format)) {
     throw new Error("ROSTER_INCOMPLETE")
   }
 }

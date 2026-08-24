@@ -127,12 +127,24 @@ export class PrismaRegistrationRepository implements RegistrationRepository {
   async listByTeam(teamId: string): Promise<TeamRegistrationListItem[]> {
     const registrations = await this.prisma.registration.findMany({
       where: { teamId },
-      include: { tournament: { select: { title: true } } },
+      include: {
+        tournament: {
+          select: {
+            title: true,
+            slug: true,
+            status: true,
+            governanceStatus: true,
+          },
+        },
+      },
       orderBy: { createdAt: "desc" },
     })
     return registrations.map((registration) => ({
       ...mapRegistration(registration),
       tournamentName: registration.tournament.title,
+      tournamentSlug: registration.tournament.slug,
+      tournamentStatus: registration.tournament.status,
+      tournamentGovernanceStatus: registration.tournament.governanceStatus,
       submittedAt: registration.createdAt.toISOString(),
       organizerNote: registration.decisionNote,
     }))
