@@ -1,6 +1,7 @@
 import { notFound, redirect } from "next/navigation"
 
 import { RegistrationReviewList } from "@/components/organizer/registration-review-list"
+import { TournamentWorkflowProgress } from "@/components/organizer/tournament-workflow-progress"
 import { SuspendedTournamentWorkspace } from "@/components/admin/tournament-governance-read-only"
 import { createNextCookieCurrentActorProvider } from "@/features/identity/infrastructure/next-cookie-current-actor-provider"
 import {
@@ -54,6 +55,11 @@ export default async function TournamentRegistrationsPage({
           {review.tournament.title}
         </p>
       </header>
+      <TournamentWorkflowProgress
+        currentSection="registrations"
+        status={review.tournament.status}
+        tournamentId={review.tournament.id}
+      />
       <RegistrationReviewList
         registrations={review.registrations.map((registration) => ({
           ...registration,

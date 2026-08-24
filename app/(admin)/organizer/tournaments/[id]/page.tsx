@@ -5,6 +5,7 @@ import { ClipboardCheck, Workflow } from "lucide-react"
 import { TournamentEditor } from "@/components/admin/tournament-editor"
 import { TournamentGovernanceNotice } from "@/components/admin/tournament-governance-read-only"
 import { TournamentLifecycleActions } from "@/components/admin/tournament-lifecycle-actions"
+import { TournamentWorkflowProgress } from "@/components/organizer/tournament-workflow-progress"
 import { utcToBangkokDateTimeLocal } from "@/features/admin/presentation/tournament-editor-time"
 import { authorize } from "@/features/identity/application/authorize"
 import { createNextCookieCurrentActorProvider } from "@/features/identity/infrastructure/next-cookie-current-actor-provider"
@@ -74,6 +75,11 @@ export default async function EditTournamentPage({
         status={tournament.status}
         tournamentId={tournament.id}
         version={tournament.version}
+      />
+      <TournamentWorkflowProgress
+        currentSection="details"
+        status={tournament.status}
+        tournamentId={tournament.id}
       />
       <section className="border-y border-border px-4 py-5 sm:px-6">
         <div className="mx-auto flex w-full max-w-5xl flex-wrap items-center justify-between gap-4">

@@ -1,12 +1,12 @@
 import { notFound, redirect } from "next/navigation"
 
-import { CompetitionWorkspaceNav } from "@/components/organizer/competition-workspace-nav"
 import { SuspendedTournamentWorkspace } from "@/components/admin/tournament-governance-read-only"
 import { ExternalMatchEditor } from "@/components/organizer/external-match-editor"
 import {
   MatchScheduleEditor,
   type EditableMatchSchedule,
 } from "@/components/organizer/match-schedule-editor"
+import { TournamentWorkflowProgress } from "@/components/organizer/tournament-workflow-progress"
 import { utcToBangkokDateTimeLocal } from "@/features/admin/presentation/tournament-editor-time"
 import { getOrganizerCompetition } from "@/features/competition/application/get-organizer-competition"
 import { getCompetitionRepository } from "@/features/competition/infrastructure/get-competition-repository"
@@ -75,7 +75,11 @@ export default async function OrganizerSchedulePage({
           {workspace.tournament.title}
         </p>
       </header>
-      <CompetitionWorkspaceNav tournamentId={workspace.tournament.id} />
+      <TournamentWorkflowProgress
+        currentSection="schedule"
+        status={workspace.tournament.status}
+        tournamentId={workspace.tournament.id}
+      />
       <div className="pt-7">
         {workspace.bracket?.mode === "EXTERNAL_DOCUMENT" ? (
           <ExternalMatchEditor

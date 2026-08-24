@@ -1,12 +1,12 @@
 import { notFound, redirect } from "next/navigation"
 
-import { CompetitionWorkspaceNav } from "@/components/organizer/competition-workspace-nav"
 import { SuspendedTournamentWorkspace } from "@/components/admin/tournament-governance-read-only"
 import { TournamentCompetitionLifecyclePanel } from "@/components/organizer/tournament-competition-lifecycle-panel"
 import {
   MatchResultEditor,
   type EditableMatchResult,
 } from "@/components/organizer/match-result-editor"
+import { TournamentWorkflowProgress } from "@/components/organizer/tournament-workflow-progress"
 import { getOrganizerCompetition } from "@/features/competition/application/get-organizer-competition"
 import { getCompetitionRepository } from "@/features/competition/infrastructure/get-competition-repository"
 import { createNextCookieCurrentActorProvider } from "@/features/identity/infrastructure/next-cookie-current-actor-provider"
@@ -82,7 +82,11 @@ export default async function OrganizerResultsPage({
           {workspace.tournament.title}
         </p>
       </header>
-      <CompetitionWorkspaceNav tournamentId={workspace.tournament.id} />
+      <TournamentWorkflowProgress
+        currentSection="results"
+        status={workspace.tournament.status}
+        tournamentId={workspace.tournament.id}
+      />
       <TournamentCompetitionLifecyclePanel
         completionIssues={workspace.lifecycle.completionIssues}
         requiresOverrideReason={

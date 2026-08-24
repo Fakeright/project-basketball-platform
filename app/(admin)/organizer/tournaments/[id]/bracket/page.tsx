@@ -1,8 +1,8 @@
 import { notFound, redirect } from "next/navigation"
 
 import { BracketWorkspace } from "@/components/organizer/bracket-workspace"
-import { CompetitionWorkspaceNav } from "@/components/organizer/competition-workspace-nav"
 import { ExternalBracketWorkspace } from "@/components/organizer/external-bracket-workspace"
+import { TournamentWorkflowProgress } from "@/components/organizer/tournament-workflow-progress"
 import { SuspendedTournamentWorkspace } from "@/components/admin/tournament-governance-read-only"
 import { getOrganizerExternalBracketWorkspace } from "@/features/competition/application/get-organizer-external-bracket-workspace"
 import { getOrganizerCompetition } from "@/features/competition/application/get-organizer-competition"
@@ -65,7 +65,11 @@ export default async function OrganizerBracketPage({
           {workspace.tournament.title}
         </p>
       </header>
-      <CompetitionWorkspaceNav tournamentId={workspace.tournament.id} />
+      <TournamentWorkflowProgress
+        currentSection="bracket"
+        status={workspace.tournament.status}
+        tournamentId={workspace.tournament.id}
+      />
       {!externalBracketState ||
       externalBracketState.modeContext.bracketMode === "SYSTEM_GENERATED" ? (
         <BracketWorkspace
