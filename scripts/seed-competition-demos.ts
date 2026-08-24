@@ -3,12 +3,18 @@ import { config } from "dotenv"
 
 import { createDemoCompetitionFixtures } from "../features/competition/infrastructure/demo-competition-fixtures"
 import {
+  assertDemoEnvironment,
+  demoSeedTimestamp,
+} from "../features/demo-data/infrastructure/demo-workflow-fixtures"
+import {
   Prisma,
   PrismaClient,
 } from "../lib/generated/prisma/client"
 
 config({ path: ".env.local" })
 config()
+
+assertDemoEnvironment(process.env)
 
 if (!process.env.DATABASE_URL) {
   throw new Error("DATABASE_URL_NOT_CONFIGURED")
@@ -20,6 +26,7 @@ const prisma = new PrismaClient({
 
 const demoOwnerId = "team-manager-1"
 const demoAdminId = "admin-1"
+const demoTimestamp = new Date(demoSeedTimestamp)
 
 async function main() {
   const fixtures = createDemoCompetitionFixtures()
@@ -81,7 +88,7 @@ async function main() {
             teamId: team.id,
             status: "APPROVED",
             decisionNote: "ข้อมูลตัวอย่างสำหรับทดสอบสายการแข่งขัน",
-            decidedAt: new Date(),
+            decidedAt: demoTimestamp,
             cancelledAt: null,
             withdrawnAt: null,
           },
@@ -91,21 +98,30 @@ async function main() {
             teamId: team.id,
             status: "APPROVED",
             decisionNote: "ข้อมูลตัวอย่างสำหรับทดสอบสายการแข่งขัน",
-            decidedAt: new Date(),
+            createdAt: demoTimestamp,
+            decidedAt: demoTimestamp,
           },
         })
       }
 
       await createBracket(transaction, fixture)
-      await transaction.auditLog.deleteMany({
-        where: {
+      await transaction.auditLog.upsert({
+        where: { id: `${fixture.bracketId}-audit` },
+        update: {
+          actorId: demoAdminId,
+          tournamentId: fixture.tournamentId,
           action: "DEMO_COMPETITION_SEEDED",
           entityType: "Bracket",
           entityId: fixture.bracketId,
+          afterJson: {
+            teamCount: fixture.teams.length,
+            matchCount: fixture.matches.length,
+            completedMatchCount: fixture.matches.filter(
+              ({ status }) => status === "COMPLETED",
+            ).length,
+          },
         },
-      })
-      await transaction.auditLog.create({
-        data: {
+        create: {
           id: `${fixture.bracketId}-audit`,
           actorId: demoAdminId,
           tournamentId: fixture.tournamentId,
@@ -119,6 +135,7 @@ async function main() {
               ({ status }) => status === "COMPLETED",
             ).length,
           },
+          createdAt: demoTimestamp,
         },
       })
     }, {
@@ -134,13 +151,13 @@ async function createBracket(
   transaction: Prisma.TransactionClient,
   fixture: ReturnType<typeof createDemoCompetitionFixtures>[number],
 ) {
-  const publishedAt = new Date()
+  const publishedAt = demoTimestamp
 
   await transaction.bracket.create({
     data: {
       id: fixture.bracketId,
       tournamentId: fixture.tournamentId,
-      status: "PUBLISHED",
+      status: fixture.bracketStatus,
       mode: "SYSTEM_GENERATED",
       generationMethod: fixture.generationMethod,
       entriesLockedAt: publishedAt,
@@ -211,6 +228,7 @@ async function createBracket(
           homeScore: match.homeScore,
           awayScore: match.awayScore,
           winnerTeamId: match.winnerTeamId,
+          confirmedAt: demoTimestamp,
         },
       })
     }

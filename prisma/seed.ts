@@ -3,13 +3,20 @@ import { config } from "dotenv"
 import {
   PrismaClient,
   Role,
-  TournamentFormat,
-  TournamentStatus,
 } from "../lib/generated/prisma/client"
+import {
+  assertDemoEnvironment,
+  demoRegistrationScenarios,
+  demoSampleTeams,
+  demoSeedTimestamp,
+  demoWorkflowTournaments,
+} from "../features/demo-data/infrastructure/demo-workflow-fixtures"
 import { thaiProvinces } from "../features/provinces/domain/thai-provinces"
 
 config({ path: ".env.local" })
 config()
+
+assertDemoEnvironment(process.env)
 
 if (!process.env.DATABASE_URL) {
   throw new Error("DATABASE_URL_NOT_CONFIGURED")
@@ -17,15 +24,6 @@ if (!process.env.DATABASE_URL) {
 
 const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL })
 const prisma = new PrismaClient({ adapter })
-
-const tournaments: Array<{ id: string; slug: string; title: string; status: TournamentStatus; organizerId: string }> = [
-  { id: "tournament-draft", slug: "admin-draft-cup", title: "Admin Draft Cup", status: "DRAFT", organizerId: "organizer-1" },
-  { id: "tournament-submitted", slug: "submitted-court-cup", title: "Submitted Court Cup", status: "SUBMITTED", organizerId: "organizer-1" },
-  { id: "tournament-published", slug: "published-bangkok-open", title: "Published Bangkok Open", status: "PUBLISHED", organizerId: "organizer-1" },
-  { id: "tournament-closed", slug: "closed-north-court", title: "North Court Closed", status: "REGISTRATION_CLOSED", organizerId: "organizer-2" },
-  { id: "tournament-ongoing", slug: "ongoing-chonburi-cup", title: "Chonburi Coast Cup", status: "IN_PROGRESS", organizerId: "organizer-2" },
-  { id: "tournament-completed", slug: "completed-hoops-classic", title: "Hoops Classic", status: "COMPLETED", organizerId: "organizer-2" },
-]
 
 async function main() {
   for (const province of thaiProvinces) {
@@ -50,7 +48,11 @@ async function main() {
   ] as const
 
   for (const user of users) {
-    await prisma.user.upsert({ where: { id: user.id }, update: user, create: user })
+    await prisma.user.upsert({
+      where: { id: user.id },
+      update: user,
+      create: { ...user, createdAt: new Date(demoSeedTimestamp) },
+    })
   }
 
   for (const user of users.filter(
@@ -63,48 +65,95 @@ async function main() {
     })
   }
 
-  for (const tournament of tournaments) {
+  for (const tournament of demoWorkflowTournaments) {
     await prisma.tournament.upsert({
       where: { id: tournament.id },
-      update: { status: tournament.status, title: tournament.title },
+      update: tournamentData(tournament),
       create: {
         ...tournament,
-        provinceCode: "10",
-        venue: "COURTSIDE Arena",
-        format: TournamentFormat.FIVE_V_FIVE,
-        ageGroup: "Open",
-        startsAt: new Date("2026-11-15T02:00:00.000Z"),
-        endsAt: new Date("2026-11-16T11:00:00.000Z"),
-        registrationDeadline: new Date("2026-11-01T16:59:00.000Z"),
-        capacity: 16,
-        description: "ข้อมูลตัวอย่างสำหรับการพัฒนา Admin Tournament Management",
-        rules: "กติกามาตรฐานของรายการ",
+        ...tournamentData(tournament),
       },
     })
   }
 
-  const developmentTeam = {
-    id: "team-manager-1-team",
-    name: "COURTSIDE Development Team",
-    provinceCode: "10",
-    ownerId: "team-manager-1",
-    format: TournamentFormat.FIVE_V_FIVE,
+  for (const team of [
+    ...demoSampleTeams,
+    ...demoRegistrationScenarios.map(({ team }) => team),
+  ]) {
+    await seedTeam(team)
   }
+
+  for (const scenario of demoRegistrationScenarios) {
+    await prisma.registration.upsert({
+      where: { id: scenario.id },
+      update: {
+        tournamentId: scenario.tournamentId,
+        teamId: scenario.team.id,
+        status: scenario.status,
+        decisionNote: scenario.decisionNote,
+        decidedAt: scenario.decidedAt ? new Date(scenario.decidedAt) : null,
+        cancelledAt: null,
+        withdrawnAt: null,
+      },
+      create: {
+        id: scenario.id,
+        tournamentId: scenario.tournamentId,
+        teamId: scenario.team.id,
+        status: scenario.status,
+        decisionNote: scenario.decisionNote,
+        createdAt: new Date(scenario.createdAt),
+        decidedAt: scenario.decidedAt ? new Date(scenario.decidedAt) : null,
+      },
+    })
+  }
+}
+
+function tournamentData(
+  tournament: (typeof demoWorkflowTournaments)[number],
+) {
+  return {
+    slug: tournament.slug,
+    title: tournament.title,
+    status: tournament.status,
+    organizerId: tournament.organizerId,
+    provinceCode: tournament.provinceCode,
+    venue: tournament.venue,
+    format: tournament.format,
+    ageGroup: tournament.ageGroup,
+    startsAt: new Date(tournament.startsAt),
+    endsAt: new Date(tournament.endsAt),
+    registrationDeadline: new Date(tournament.registrationDeadline),
+    capacity: tournament.capacity,
+    description: tournament.description,
+    rules: tournament.rules,
+    createdAt: new Date(tournament.createdAt),
+  }
+}
+
+async function seedTeam(
+  team: (typeof demoSampleTeams)[number] | (typeof demoRegistrationScenarios)[number]["team"],
+) {
   await prisma.team.upsert({
-    where: { id: developmentTeam.id },
-    update: developmentTeam,
-    create: developmentTeam,
+    where: { id: team.id },
+    update: {
+      name: team.name,
+      provinceCode: team.provinceCode,
+      ownerId: team.ownerId,
+      format: team.format,
+      isActive: true,
+      deactivatedAt: null,
+    },
+    create: {
+      id: team.id,
+      name: team.name,
+      provinceCode: team.provinceCode,
+      ownerId: team.ownerId,
+      format: team.format,
+      createdAt: new Date(team.createdAt),
+    },
   })
 
-  const players = [
-    { id: "team-manager-1-team-player-1", firstName: "Player", lastName: "One", birthDate: "2008-01-01", jerseyNumber: 1 },
-    { id: "team-manager-1-team-player-2", firstName: "Player", lastName: "Two", birthDate: "2008-02-02", jerseyNumber: 2 },
-    { id: "team-manager-1-team-player-3", firstName: "Player", lastName: "Three", birthDate: "2008-03-03", jerseyNumber: 3 },
-    { id: "team-manager-1-team-player-4", firstName: "Player", lastName: "Four", birthDate: "2008-04-04", jerseyNumber: 4 },
-    { id: "team-manager-1-team-player-5", firstName: "Player", lastName: "Five", birthDate: "2008-05-05", jerseyNumber: 5 },
-  ] as const
-
-  for (const player of players) {
+  for (const player of team.players) {
     await prisma.teamPlayer.upsert({
       where: { id: player.id },
       update: {
@@ -112,16 +161,18 @@ async function main() {
         lastName: player.lastName,
         birthDate: new Date(player.birthDate),
         jerseyNumber: player.jerseyNumber,
-        isActive: true,
+        isActive: player.isActive,
         deactivatedAt: null,
       },
       create: {
         id: player.id,
-        teamId: developmentTeam.id,
+        teamId: team.id,
         firstName: player.firstName,
         lastName: player.lastName,
         birthDate: new Date(player.birthDate),
         jerseyNumber: player.jerseyNumber,
+        isActive: player.isActive,
+        createdAt: new Date(team.createdAt),
       },
     })
   }

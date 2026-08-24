@@ -4,6 +4,19 @@ import { createDemoCompetitionFixtures } from "@/features/competition/infrastruc
 import { getCompetitionSummary } from "@/features/competition/application/get-competition-summary"
 
 describe("demo competition fixtures", () => {
+  it("creates a published four-team Bracket Cup with scheduled matches", () => {
+    const bracketCup = createDemoCompetitionFixtures().find(
+      (fixture) => fixture.tournamentId === "tournament-closed",
+    )
+
+    expect(bracketCup?.bracketStatus).toBe("PUBLISHED")
+    expect(bracketCup?.teams).toHaveLength(4)
+    expect(bracketCup?.matches).toHaveLength(3)
+    expect(
+      bracketCup?.matches.every((match) => match.status === "SCHEDULED"),
+    ).toBe(true)
+  })
+
   it("creates a six-team ongoing bracket with two Bye entries", () => {
     const ongoing = createDemoCompetitionFixtures().find(
       (fixture) => fixture.tournamentId === "tournament-ongoing",

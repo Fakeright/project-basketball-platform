@@ -12,6 +12,7 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:seed": "tsx prisma/seed.ts",
     "seed:competition-demos": "tsx scripts/seed-competition-demos.ts",
+    "seed:demo": "npm run prisma:seed && npm run seed:competition-demos",
     "reset:development": "tsx scripts/reset-development-supabase.ts"
   },
   "dependencies": {

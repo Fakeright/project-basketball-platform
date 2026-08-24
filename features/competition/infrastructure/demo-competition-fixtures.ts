@@ -33,9 +33,10 @@ export interface DemoCompetitionMatch {
 }
 
 export interface DemoCompetitionFixture {
-  tournamentId: "tournament-ongoing" | "tournament-completed"
+  tournamentId: "tournament-closed" | "tournament-ongoing" | "tournament-completed"
   tournamentSlug: string
   bracketId: string
+  bracketStatus: "PUBLISHED"
   generationMethod: "SEEDED" | "RANDOM"
   teams: DemoCompetitionTeam[]
   teamNames: Map<string, string>
@@ -48,6 +49,7 @@ interface DemoCaseDefinition {
   tournamentId: DemoCompetitionFixture["tournamentId"]
   tournamentSlug: string
   prefix: string
+  bracketStatus: DemoCompetitionFixture["bracketStatus"]
   generationMethod: DemoCompetitionFixture["generationMethod"]
   teamNames: string[]
   completedScores: Array<readonly [number, number]>
@@ -56,9 +58,25 @@ interface DemoCaseDefinition {
 
 const definitions: DemoCaseDefinition[] = [
   {
+    tournamentId: "tournament-closed",
+    tournamentSlug: "courtside-bracket-cup",
+    prefix: "demo-bracket",
+    bracketStatus: "PUBLISHED",
+    generationMethod: "SEEDED",
+    teamNames: [
+      "Bangkok Pivot",
+      "Thonburi Five",
+      "Nonthaburi Drive",
+      "Pathum Press",
+    ],
+    completedScores: [],
+    startsAt: "2026-11-15T02:00:00.000Z",
+  },
+  {
     tournamentId: "tournament-ongoing",
-    tournamentSlug: "ongoing-chonburi-cup",
+    tournamentSlug: "courtside-live-cup",
     prefix: "demo-ongoing",
+    bracketStatus: "PUBLISHED",
     generationMethod: "SEEDED",
     teamNames: [
       "Chonburi Sharks",
@@ -76,8 +94,9 @@ const definitions: DemoCaseDefinition[] = [
   },
   {
     tournamentId: "tournament-completed",
-    tournamentSlug: "completed-hoops-classic",
+    tournamentSlug: "courtside-championship",
     prefix: "demo-completed",
+    bracketStatus: "PUBLISHED",
     generationMethod: "RANDOM",
     teamNames: [
       "Bangkok Arrows",
@@ -183,6 +202,7 @@ function createFixture(definition: DemoCaseDefinition): DemoCompetitionFixture {
     tournamentId: definition.tournamentId,
     tournamentSlug: definition.tournamentSlug,
     bracketId,
+    bracketStatus: definition.bracketStatus,
     generationMethod: definition.generationMethod,
     teams,
     teamNames: new Map(teams.map((team) => [team.id, team.name])),
