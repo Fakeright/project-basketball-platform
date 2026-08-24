@@ -372,6 +372,7 @@ class PrismaDemoSeedTransactionPort implements DemoSeedTransactionPort {
         bracketId: fixture.bracketId,
         roundId: match.roundId,
         sequence: match.sequence,
+        purpose: match.purpose,
         scheduledAt: new Date(match.scheduledAt),
         court: match.court,
         homeTeamId: match.homeTeamId,
