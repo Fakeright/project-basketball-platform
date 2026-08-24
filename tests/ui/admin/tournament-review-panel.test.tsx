@@ -31,7 +31,8 @@ describe("TournamentReviewPanel", () => {
     render(<TournamentReviewPanel tournament={tournament} />)
 
     await user.click(screen.getByRole("button", { name: "ขอแก้ไข" }))
-    expect(await screen.findByText("กรุณาระบุเหตุผล")).toBeTruthy()
+    const validationMessage = await screen.findByText("กรุณาระบุเหตุผล")
+    expect(validationMessage.getAttribute("aria-live")).toBe("polite")
     expect(fetchMock).not.toHaveBeenCalled()
 
     await user.type(
@@ -90,6 +91,20 @@ describe("TournamentReviewPanel", () => {
     expect(
       (await screen.findByRole("link", { name: "กลับคิวตรวจสอบ" })).getAttribute("href"),
     ).toBe("/admin/reviews")
-    expect(screen.getByRole("status").textContent).toContain("อนุมัติรายการแล้ว")
+    const successMessage = screen.getByRole("status")
+    expect(successMessage.textContent).toContain("อนุมัติรายการแล้ว")
+    expect(successMessage.getAttribute("aria-live")).toBeNull()
+    expect(screen.getByLabelText("เหตุผลประกอบการพิจารณา").disabled).toBe(
+      true,
+    )
+    expect(screen.getByRole("button", { name: "อนุมัติ" }).disabled).toBe(
+      true,
+    )
+    expect(screen.getByRole("button", { name: "ขอแก้ไข" }).disabled).toBe(
+      true,
+    )
+    expect(screen.getByRole("button", { name: "ปฏิเสธ" }).disabled).toBe(
+      true,
+    )
   })
 })

@@ -108,6 +108,7 @@ export function TournamentReviewPanel({
       </p>
       {message ? (
         <p
+          aria-live={completed ? undefined : "polite"}
           className="mt-4 border-l-4 border-court px-3 py-2 text-sm"
           role={completed ? "status" : undefined}
         >
