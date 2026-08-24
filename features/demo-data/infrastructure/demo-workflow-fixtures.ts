@@ -1,5 +1,6 @@
 import type {
   RegistrationStatus,
+  Role,
   TournamentFormat,
   TournamentStatus,
 } from "@/lib/generated/prisma/client"
@@ -59,6 +60,26 @@ export interface DemoRegistrationScenario {
   createdAt: string
   decidedAt: string | null
 }
+
+export interface DemoSeedUser {
+  id: string
+  email: string
+  displayName: string
+  role: Role
+}
+
+export const demoSeedUsers = [
+  { id: "admin-1", email: "admin@courtside.local", displayName: "COURTSIDE Admin", role: "PLATFORM_ADMIN" },
+  { id: "organizer-1", email: "organizer.one@courtside.local", displayName: "ผู้จัดการแข่งขัน 1", role: "TOURNAMENT_ORGANIZER" },
+  { id: "organizer-2", email: "organizer.two@courtside.local", displayName: "ผู้จัดการแข่งขัน 2", role: "TOURNAMENT_ORGANIZER" },
+  { id: "team-manager-1", email: "team.manager@courtside.local", displayName: "COURTSIDE Team Manager", role: "TEAM_MANAGER_COACH" },
+  { id: "coach-1", email: "coach.one@courtside.local", displayName: "COURTSIDE Coach", role: "TEAM_MANAGER_COACH" },
+  { id: "player-1", email: "player.one@courtside.local", displayName: "COURTSIDE Player 1", role: "PLAYER" },
+  { id: "player-2", email: "player.two@courtside.local", displayName: "COURTSIDE Player 2", role: "PLAYER" },
+  { id: "player-3", email: "player.three@courtside.local", displayName: "COURTSIDE Player 3", role: "PLAYER" },
+  { id: "player-4", email: "player.four@courtside.local", displayName: "COURTSIDE Player 4", role: "PLAYER" },
+  { id: "player-5", email: "player.five@courtside.local", displayName: "COURTSIDE Player 5", role: "PLAYER" },
+] as const satisfies readonly DemoSeedUser[]
 
 const tournamentDates = {
   startsAt: "2026-11-15T02:00:00.000Z",
@@ -213,6 +234,10 @@ export const demoSampleTeams = [
   },
   createFiveVFiveTeam("team-manager-1-team", "COURTSIDE Development Team"),
 ] as const satisfies readonly DemoTeamFixture[]
+
+export function getDemoBaseTeams(): readonly DemoTeamFixture[] {
+  return [...demoSampleTeams, ...demoRegistrationScenarios.map(({ team }) => team)]
+}
 
 export function assertDemoEnvironment(environment: NodeJS.ProcessEnv): void {
   if (

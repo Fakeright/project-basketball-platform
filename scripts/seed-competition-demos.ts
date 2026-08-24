@@ -3,9 +3,14 @@ import { config } from "dotenv"
 
 import { createDemoCompetitionFixtures } from "../features/competition/infrastructure/demo-competition-fixtures"
 import {
-  assertDemoEnvironment,
   demoSeedTimestamp,
 } from "../features/demo-data/infrastructure/demo-workflow-fixtures"
+import {
+  assertBaseDemoSeedPreflight,
+  assertCompetitionDemoSeedPreflight,
+  createDemoSeedClient,
+  fixtureBracketDeleteWhere,
+} from "../features/demo-data/infrastructure/demo-seed-safety"
 import {
   Prisma,
   PrismaClient,
@@ -14,15 +19,15 @@ import {
 config({ path: ".env.local" })
 config()
 
-assertDemoEnvironment(process.env)
-
 if (!process.env.DATABASE_URL) {
   throw new Error("DATABASE_URL_NOT_CONFIGURED")
 }
 
-const prisma = new PrismaClient({
-  adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }),
-})
+const prisma = createDemoSeedClient(process.env, () =>
+  new PrismaClient({
+    adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }),
+  }),
+)
 
 const demoOwnerId = "team-manager-1"
 const demoAdminId = "admin-1"
@@ -31,36 +36,42 @@ const demoTimestamp = new Date(demoSeedTimestamp)
 async function main() {
   const fixtures = createDemoCompetitionFixtures()
 
-  for (const fixture of fixtures) {
-    await prisma.$transaction(async (transaction) => {
-      const tournament = await transaction.tournament.findUnique({
-        where: { id: fixture.tournamentId },
-        select: {
-          slug: true,
-          provinceCode: true,
-          format: true,
-          brackets: { select: { id: true } },
-          registrations: { select: { id: true } },
-        },
+  await prisma.$transaction(async (transaction) => {
+    const preflightedFixtures = [] as Array<{
+      fixture: (typeof fixtures)[number]
+      state: Awaited<ReturnType<typeof readCompetitionFixtureState>>
+    }>
+    for (const fixture of fixtures) {
+      preflightedFixtures.push({
+        fixture,
+        state: await readCompetitionFixtureState(transaction, fixture),
       })
+    }
 
-      if (!tournament || tournament.slug !== fixture.tournamentSlug) {
-        throw new Error(`DEMO_TOURNAMENT_NOT_FOUND:${fixture.tournamentId}`)
-      }
-
+    for (const { fixture, state } of preflightedFixtures) {
+      assertBaseDemoSeedPreflight({
+        users: [],
+        tournaments: [{ id: fixture.tournamentId, organizerId: state.tournament.organizerId }],
+        teams: [],
+        players: [],
+        registrations: [],
+      })
+      assertCompetitionDemoSeedPreflight(fixture, state.snapshot)
       assertOnlyDemoRows(
-        tournament.brackets.map(({ id }) => id),
+        state.tournament.brackets.map(({ id }) => id),
         fixture.bracketId,
         fixture.tournamentId,
       )
       assertOnlyDemoRows(
-        tournament.registrations.map(({ id }) => id),
+        state.tournament.registrations.map(({ id }) => id),
         fixture.entries.map(({ registrationId }) => registrationId),
         fixture.tournamentId,
       )
+    }
 
+    for (const { fixture, state } of preflightedFixtures) {
       await transaction.bracket.deleteMany({
-        where: { id: fixture.bracketId },
+        where: fixtureBracketDeleteWhere(fixture),
       })
 
       for (const team of fixture.teams) {
@@ -68,26 +79,34 @@ async function main() {
           where: { id: team.id },
           update: {
             name: team.name,
-            provinceCode: tournament.provinceCode,
-            format: tournament.format,
+            provinceCode: state.tournament.provinceCode,
+            ownerId: demoOwnerId,
+            format: state.tournament.format,
             isActive: true,
             deactivatedAt: null,
+            createdAt: demoTimestamp,
+            updatedAt: demoTimestamp,
           },
           create: {
             id: team.id,
             name: team.name,
-            provinceCode: tournament.provinceCode,
+            provinceCode: state.tournament.provinceCode,
             ownerId: demoOwnerId,
-            format: tournament.format,
+            format: state.tournament.format,
+            createdAt: demoTimestamp,
+            updatedAt: demoTimestamp,
           },
         })
 
         await transaction.registration.upsert({
           where: { id: team.registrationId },
           update: {
+            tournamentId: fixture.tournamentId,
             teamId: team.id,
             status: "APPROVED",
             decisionNote: "ข้อมูลตัวอย่างสำหรับทดสอบสายการแข่งขัน",
+            createdAt: demoTimestamp,
+            updatedAt: demoTimestamp,
             decidedAt: demoTimestamp,
             cancelledAt: null,
             withdrawnAt: null,
@@ -99,6 +118,7 @@ async function main() {
             status: "APPROVED",
             decisionNote: "ข้อมูลตัวอย่างสำหรับทดสอบสายการแข่งขัน",
             createdAt: demoTimestamp,
+            updatedAt: demoTimestamp,
             decidedAt: demoTimestamp,
           },
         })
@@ -113,6 +133,7 @@ async function main() {
           action: "DEMO_COMPETITION_SEEDED",
           entityType: "Bracket",
           entityId: fixture.bracketId,
+          createdAt: demoTimestamp,
           afterJson: {
             teamCount: fixture.teams.length,
             matchCount: fixture.matches.length,
@@ -138,11 +159,13 @@ async function main() {
           createdAt: demoTimestamp,
         },
       })
-    }, {
-      maxWait: 10_000,
-      timeout: 60_000,
-    })
+    }
+  }, {
+    maxWait: 10_000,
+    timeout: 120_000,
+  })
 
+  for (const fixture of fixtures) {
     console.info(`Seeded ${fixture.tournamentSlug}`)
   }
 }
@@ -162,6 +185,8 @@ async function createBracket(
       generationMethod: fixture.generationMethod,
       entriesLockedAt: publishedAt,
       publishedAt,
+      createdAt: demoTimestamp,
+      updatedAt: demoTimestamp,
     },
   })
 
@@ -175,6 +200,7 @@ async function createBracket(
       seed: entry.seed,
       drawPosition: entry.seed,
       startRoundSequence: entry.startRoundSequence,
+      createdAt: demoTimestamp,
     })),
   })
 
@@ -203,6 +229,7 @@ async function createBracket(
       awayScore: match.awayScore,
       status: match.status,
       nextSlot: match.nextSlot,
+      updatedAt: demoTimestamp,
     })),
   })
 
@@ -210,7 +237,7 @@ async function createBracket(
     if (match.nextMatchId) {
       await transaction.match.update({
         where: { id: match.id },
-        data: { nextMatchId: match.nextMatchId },
+        data: { nextMatchId: match.nextMatchId, updatedAt: demoTimestamp },
       })
     }
 
@@ -232,6 +259,68 @@ async function createBracket(
         },
       })
     }
+  }
+}
+
+async function readCompetitionFixtureState(
+  transaction: Prisma.TransactionClient,
+  fixture: ReturnType<typeof createDemoCompetitionFixtures>[number],
+) {
+  const tournament = await transaction.tournament.findUnique({
+    where: { id: fixture.tournamentId },
+    select: {
+      organizerId: true,
+      slug: true,
+      provinceCode: true,
+      format: true,
+      brackets: { select: { id: true } },
+      registrations: { select: { id: true } },
+    },
+  })
+
+  if (!tournament || tournament.slug !== fixture.tournamentSlug) {
+    throw new Error(`DEMO_TOURNAMENT_NOT_FOUND:${fixture.tournamentId}`)
+  }
+
+  const completedResultIds = fixture.matches
+    .filter(({ status }) => status === "COMPLETED")
+    .map(({ id }) => `${id}-result`)
+  const teams = await transaction.team.findMany({
+    where: { id: { in: fixture.teams.map(({ id }) => id) } },
+    select: { id: true, ownerId: true },
+  })
+  const registrations = await transaction.registration.findMany({
+    where: { id: { in: fixture.entries.map(({ registrationId }) => registrationId) } },
+    select: { id: true, tournamentId: true, teamId: true },
+  })
+  const bracket = await transaction.bracket.findUnique({
+    where: { id: fixture.bracketId },
+    select: { id: true, tournamentId: true },
+  })
+  const audit = await transaction.auditLog.findUnique({
+    where: { id: `${fixture.bracketId}-audit` },
+    select: { id: true, actorId: true, tournamentId: true, entityId: true },
+  })
+  const entries = await transaction.bracketEntry.findMany({
+    where: { id: { in: fixture.entries.map(({ entryId }) => entryId) } },
+    select: { id: true, bracketId: true, registrationId: true, teamId: true },
+  })
+  const rounds = await transaction.bracketRound.findMany({
+    where: { id: { in: fixture.rounds.map(({ id }) => id) } },
+    select: { id: true, bracketId: true },
+  })
+  const matches = await transaction.match.findMany({
+    where: { id: { in: fixture.matches.map(({ id }) => id) } },
+    select: { id: true, tournamentId: true, bracketId: true, roundId: true },
+  })
+  const results = await transaction.matchResult.findMany({
+    where: { id: { in: completedResultIds } },
+    select: { id: true, matchId: true },
+  })
+
+  return {
+    tournament,
+    snapshot: { teams, registrations, bracket, audit, entries, rounds, matches, results },
   }
 }
 

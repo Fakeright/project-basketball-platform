@@ -1,117 +1,122 @@
 import { PrismaPg } from "@prisma/adapter-pg"
 import { config } from "dotenv"
 import {
+  Prisma,
   PrismaClient,
-  Role,
 } from "../lib/generated/prisma/client"
 import {
-  assertDemoEnvironment,
   demoRegistrationScenarios,
-  demoSampleTeams,
+  demoSeedUsers,
   demoSeedTimestamp,
   demoWorkflowTournaments,
+  getDemoBaseTeams,
+  type DemoTeamFixture,
 } from "../features/demo-data/infrastructure/demo-workflow-fixtures"
+import {
+  assertBaseDemoSeedPreflight,
+  createDemoSeedClient,
+} from "../features/demo-data/infrastructure/demo-seed-safety"
 import { thaiProvinces } from "../features/provinces/domain/thai-provinces"
 
 config({ path: ".env.local" })
 config()
 
-assertDemoEnvironment(process.env)
-
 if (!process.env.DATABASE_URL) {
   throw new Error("DATABASE_URL_NOT_CONFIGURED")
 }
 
-const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL })
-const prisma = new PrismaClient({ adapter })
+const prisma = createDemoSeedClient(process.env, () =>
+  new PrismaClient({
+    adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }),
+  }),
+)
 
 async function main() {
-  for (const province of thaiProvinces) {
-    await prisma.province.upsert({
-      where: { code: province.code },
-      update: { nameTh: province.nameTh, nameEn: province.nameEn },
-      create: province,
-    })
-  }
+  await prisma.$transaction(async (transaction) => {
+    const teams = getDemoBaseTeams()
+    assertBaseDemoSeedPreflight(await readBaseDemoSeedSnapshot(transaction, teams))
 
-  const users = [
-    { id: "admin-1", email: "admin@courtside.local", displayName: "COURTSIDE Admin", role: Role.PLATFORM_ADMIN },
-    { id: "organizer-1", email: "organizer.one@courtside.local", displayName: "ผู้จัดการแข่งขัน 1", role: Role.TOURNAMENT_ORGANIZER },
-    { id: "organizer-2", email: "organizer.two@courtside.local", displayName: "ผู้จัดการแข่งขัน 2", role: Role.TOURNAMENT_ORGANIZER },
-    { id: "team-manager-1", email: "team.manager@courtside.local", displayName: "COURTSIDE Team Manager", role: Role.TEAM_MANAGER_COACH },
-    { id: "coach-1", email: "coach.one@courtside.local", displayName: "COURTSIDE Coach", role: Role.TEAM_MANAGER_COACH },
-    { id: "player-1", email: "player.one@courtside.local", displayName: "COURTSIDE Player 1", role: Role.PLAYER },
-    { id: "player-2", email: "player.two@courtside.local", displayName: "COURTSIDE Player 2", role: Role.PLAYER },
-    { id: "player-3", email: "player.three@courtside.local", displayName: "COURTSIDE Player 3", role: Role.PLAYER },
-    { id: "player-4", email: "player.four@courtside.local", displayName: "COURTSIDE Player 4", role: Role.PLAYER },
-    { id: "player-5", email: "player.five@courtside.local", displayName: "COURTSIDE Player 5", role: Role.PLAYER },
-  ] as const
+    for (const province of thaiProvinces) {
+      await transaction.province.upsert({
+        where: { code: province.code },
+        update: { nameTh: province.nameTh, nameEn: province.nameEn },
+        create: province,
+      })
+    }
 
-  for (const user of users) {
-    await prisma.user.upsert({
-      where: { id: user.id },
-      update: user,
-      create: { ...user, createdAt: new Date(demoSeedTimestamp) },
-    })
-  }
+    for (const user of demoSeedUsers) {
+      await transaction.user.upsert({
+        where: { id: user.id },
+        update: { ...user, createdAt: fixedTimestamp(), updatedAt: fixedTimestamp() },
+        create: { ...user, createdAt: fixedTimestamp(), updatedAt: fixedTimestamp() },
+      })
+    }
 
-  for (const user of users.filter(
-    (candidate) => candidate.role === Role.TOURNAMENT_ORGANIZER,
-  )) {
-    await prisma.organizerProfile.upsert({
-      where: { userId: user.id },
-      update: { organizationName: user.displayName },
-      create: { userId: user.id, organizationName: user.displayName },
-    })
-  }
+    for (const user of demoSeedUsers.filter(
+      (candidate) => candidate.role === "TOURNAMENT_ORGANIZER",
+    )) {
+      await transaction.organizerProfile.upsert({
+        where: { userId: user.id },
+        update: {
+          organizationName: user.displayName,
+          createdAt: fixedTimestamp(),
+          updatedAt: fixedTimestamp(),
+        },
+        create: {
+          userId: user.id,
+          organizationName: user.displayName,
+          createdAt: fixedTimestamp(),
+          updatedAt: fixedTimestamp(),
+        },
+      })
+    }
 
-  for (const tournament of demoWorkflowTournaments) {
-    await prisma.tournament.upsert({
-      where: { id: tournament.id },
-      update: tournamentData(tournament),
-      create: {
-        ...tournament,
-        ...tournamentData(tournament),
-      },
-    })
-  }
+    for (const tournament of demoWorkflowTournaments) {
+      await transaction.tournament.upsert({
+        where: { id: tournament.id },
+        update: tournamentData(tournament),
+        create: tournamentData(tournament),
+      })
+    }
 
-  for (const team of [
-    ...demoSampleTeams,
-    ...demoRegistrationScenarios.map(({ team }) => team),
-  ]) {
-    await seedTeam(team)
-  }
+    for (const team of teams) {
+      await seedTeam(transaction, team)
+    }
 
-  for (const scenario of demoRegistrationScenarios) {
-    await prisma.registration.upsert({
-      where: { id: scenario.id },
-      update: {
-        tournamentId: scenario.tournamentId,
-        teamId: scenario.team.id,
-        status: scenario.status,
-        decisionNote: scenario.decisionNote,
-        decidedAt: scenario.decidedAt ? new Date(scenario.decidedAt) : null,
-        cancelledAt: null,
-        withdrawnAt: null,
-      },
-      create: {
-        id: scenario.id,
-        tournamentId: scenario.tournamentId,
-        teamId: scenario.team.id,
-        status: scenario.status,
-        decisionNote: scenario.decisionNote,
-        createdAt: new Date(scenario.createdAt),
-        decidedAt: scenario.decidedAt ? new Date(scenario.decidedAt) : null,
-      },
-    })
-  }
+    for (const scenario of demoRegistrationScenarios) {
+      await transaction.registration.upsert({
+        where: { id: scenario.id },
+        update: {
+          tournamentId: scenario.tournamentId,
+          teamId: scenario.team.id,
+          status: scenario.status,
+          decisionNote: scenario.decisionNote,
+          createdAt: fixedTimestamp(),
+          updatedAt: fixedTimestamp(),
+          decidedAt: scenario.decidedAt ? new Date(scenario.decidedAt) : null,
+          cancelledAt: null,
+          withdrawnAt: null,
+        },
+        create: {
+          id: scenario.id,
+          tournamentId: scenario.tournamentId,
+          teamId: scenario.team.id,
+          status: scenario.status,
+          decisionNote: scenario.decisionNote,
+          createdAt: fixedTimestamp(),
+          updatedAt: fixedTimestamp(),
+          decidedAt: scenario.decidedAt ? new Date(scenario.decidedAt) : null,
+        },
+      })
+    }
+  }, { maxWait: 10_000, timeout: 60_000 })
 }
 
 function tournamentData(
   tournament: (typeof demoWorkflowTournaments)[number],
 ) {
   return {
+    id: tournament.id,
     slug: tournament.slug,
     title: tournament.title,
     status: tournament.status,
@@ -126,14 +131,16 @@ function tournamentData(
     capacity: tournament.capacity,
     description: tournament.description,
     rules: tournament.rules,
-    createdAt: new Date(tournament.createdAt),
+    createdAt: fixedTimestamp(),
+    updatedAt: fixedTimestamp(),
   }
 }
 
 async function seedTeam(
-  team: (typeof demoSampleTeams)[number] | (typeof demoRegistrationScenarios)[number]["team"],
+  transaction: Prisma.TransactionClient,
+  team: DemoTeamFixture,
 ) {
-  await prisma.team.upsert({
+  await transaction.team.upsert({
     where: { id: team.id },
     update: {
       name: team.name,
@@ -142,6 +149,8 @@ async function seedTeam(
       format: team.format,
       isActive: true,
       deactivatedAt: null,
+      createdAt: fixedTimestamp(),
+      updatedAt: fixedTimestamp(),
     },
     create: {
       id: team.id,
@@ -149,12 +158,13 @@ async function seedTeam(
       provinceCode: team.provinceCode,
       ownerId: team.ownerId,
       format: team.format,
-      createdAt: new Date(team.createdAt),
+      createdAt: fixedTimestamp(),
+      updatedAt: fixedTimestamp(),
     },
   })
 
   for (const player of team.players) {
-    await prisma.teamPlayer.upsert({
+    await transaction.teamPlayer.upsert({
       where: { id: player.id },
       update: {
         firstName: player.firstName,
@@ -163,6 +173,8 @@ async function seedTeam(
         jerseyNumber: player.jerseyNumber,
         isActive: player.isActive,
         deactivatedAt: null,
+        createdAt: fixedTimestamp(),
+        updatedAt: fixedTimestamp(),
       },
       create: {
         id: player.id,
@@ -172,10 +184,55 @@ async function seedTeam(
         birthDate: new Date(player.birthDate),
         jerseyNumber: player.jerseyNumber,
         isActive: player.isActive,
-        createdAt: new Date(team.createdAt),
+        createdAt: fixedTimestamp(),
+        updatedAt: fixedTimestamp(),
       },
     })
   }
+}
+
+async function readBaseDemoSeedSnapshot(
+  transaction: Prisma.TransactionClient,
+  teams: readonly DemoTeamFixture[],
+) {
+  const playerIds = teams.flatMap(({ players }) => players.map(({ id }) => id))
+
+  const users = await transaction.user.findMany({
+    where: {
+      OR: [
+        { id: { in: demoSeedUsers.map(({ id }) => id) } },
+        { email: { in: demoSeedUsers.map(({ email }) => email) } },
+      ],
+    },
+    select: { id: true, email: true, role: true },
+  })
+  const tournaments = await transaction.tournament.findMany({
+    where: {
+      OR: [
+        { id: { in: demoWorkflowTournaments.map(({ id }) => id) } },
+        { slug: { in: demoWorkflowTournaments.map(({ slug }) => slug) } },
+      ],
+    },
+    select: { id: true, organizerId: true },
+  })
+  const existingTeams = await transaction.team.findMany({
+    where: { id: { in: teams.map(({ id }) => id) } },
+    select: { id: true, ownerId: true },
+  })
+  const players = await transaction.teamPlayer.findMany({
+    where: { id: { in: playerIds } },
+    select: { id: true, teamId: true },
+  })
+  const registrations = await transaction.registration.findMany({
+    where: { id: { in: demoRegistrationScenarios.map(({ id }) => id) } },
+    select: { id: true, tournamentId: true, teamId: true },
+  })
+
+  return { users, tournaments, teams: existingTeams, players, registrations }
+}
+
+function fixedTimestamp() {
+  return new Date(demoSeedTimestamp)
 }
 
 main()
