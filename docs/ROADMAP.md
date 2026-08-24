@@ -35,10 +35,11 @@
 - การสรุป Winner, Runner-up และอันดับ 3 แบบ optional จากประเภทคู่ที่ชัดเจน พร้อมหน้าสาธารณะ `/results`, loading/empty/error states และลิงก์เชื่อมจากรายละเอียด ตาราง และสายการแข่งขัน
 - การกำกับ tournament โดย Platform Admin เท่านั้น: ระงับและเปิดใช้งานต่อโดยรักษาสถานะ lifecycle เดิม, นำออกโดยไม่ลบข้อมูล, archive รายการที่จบหรือยกเลิก, เปิดรับสมัครอีกครั้งภายใต้ bracket guard และลบ draft ว่างแบบยืนยันชื่อตรงกัน พร้อมเหตุผลที่บังคับใช้, optimistic concurrency, audit สำหรับคำสั่งและ admin override, การบล็อก mutation เมื่อ governance ไม่อนุญาต และการกรองรายการ `SUSPENDED`/`REMOVED` ออกจาก public surfaces
 - Prisma migrations, seed/reset tooling และ automated Vitest/RTL coverage
+- Workflow Guidance สำหรับ Organizer, Platform Admin และ Team Manager/Coach พร้อมงานถัดไป blocker ภาษาไทย แถบขั้นตอน Tournament และชุดข้อมูลเดโม 6 checkpoint แบบ idempotent
 
 ## กำลังพัฒนา
 
-- การส่งอีเมลยืนยันและการทำ callback ให้แข็งแรงขึ้น รวมถึง production SMTP และ redirect configuration
+- การส่งอีเมลยืนยันและการทำ callback ให้แข็งแรงขึ้น รวมถึง production SMTP และ redirect configuration (พักไว้ตามลำดับความสำคัญเพื่อให้ workflow หลักและการสาธิตเสร็จก่อน)
 - ประสบการณ์แบบบริการตนเองของบัญชี `PLAYER` ซึ่งยังไม่มี permission/workspace เฉพาะ และไม่ใช่เงื่อนไขสำหรับการอยู่ในรายชื่อทีม
 - การจัดการ profile, การยืนยัน organizer และการบริหาร platform role
 - Admin analytics ซึ่งปัจจุบันมี counts และ audits แต่ยังไม่มี visitor tracking, province popularity, trends หรือ charts
@@ -57,9 +58,9 @@
 
 ## ลำดับการส่งมอบถัดไป
 
-1. **Authentication hardening, email verification และ profile management** — ผู้ใช้ยืนยันอีเมล จัดการ profile ได้ และ auth flow พร้อมสำหรับ production configuration
-2. **Remaining media และ notification delivery** — สื่อที่เหลือและการแจ้งเตือนถูกส่งและจัดการผ่าน workflow ที่ใช้งานได้จริง
-3. **Analytics, monitoring, CI/CD และ deployment** — ระบบมี analytics, observability, pipeline และการ deploy production ที่ตรวจสอบได้
+1. **Final demo UX และข้อมูลนำเสนอ** — ทบทวนข้อความ เส้นทางสาธิต และข้อมูลที่ใช้ในวันนำเสนอ
+2. **Remaining media และ notification delivery** — ทำเฉพาะส่วนที่จำเป็นต่อการส่งมอบหลัง workflow หลักนิ่งแล้ว
+3. **Authentication hardening, monitoring และ deployment** — ทำ email verification, production configuration, observability และลิงก์ออนไลน์ในช่วงเตรียมใช้งานจริง
 
 ## เอกสารประวัติศาสตร์
 
