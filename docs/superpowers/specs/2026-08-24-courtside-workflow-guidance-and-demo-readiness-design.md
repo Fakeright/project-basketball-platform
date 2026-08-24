@@ -1,6 +1,6 @@
 # COURTSIDE Workflow Guidance And Demo Readiness Design
 
-**วันที่:** 24 สิงหาคม 2026  
+**วันที่:** 24 สิงหาคม 2026
 **สถานะ:** อนุมัติแบบออกแบบแล้ว รอตรวจสอบเอกสารก่อนจัดทำ implementation plan
 
 ## เป้าหมาย
