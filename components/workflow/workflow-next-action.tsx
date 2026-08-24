@@ -21,7 +21,7 @@ export function WorkflowNextAction({
         </p>
       ))}
       {guidance.primaryAction ? (
-        <Link className="text-sm font-medium text-foreground underline underline-offset-4" href={guidance.primaryAction.href}>
+        <Link className="inline-flex min-h-6 items-center text-sm font-medium text-foreground underline underline-offset-4" href={guidance.primaryAction.href}>
           {guidance.primaryAction.label}
         </Link>
       ) : null}

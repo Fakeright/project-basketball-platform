@@ -16,8 +16,13 @@ describe("WorkflowNextAction", () => {
 
     expect(screen.getByText("เปิดรับสมัคร")).toBeTruthy()
     expect(screen.getAllByRole("link")).toHaveLength(1)
-    expect(screen.getByRole("link", { name: "ตรวจทีมที่สมัคร" }).getAttribute("href"))
+    const primaryAction = screen.getByRole("link", { name: "ตรวจทีมที่สมัคร" })
+
+    expect(primaryAction.getAttribute("href"))
       .toBe("/organizer/tournaments/t-1/registrations")
+    expect(primaryAction.className).toContain("inline-flex")
+    expect(primaryAction.className).toContain("min-h-6")
+    expect(primaryAction.className).toContain("items-center")
   })
 
   it("shows blockers without an action", () => {
