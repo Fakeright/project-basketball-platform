@@ -68,6 +68,8 @@ export interface OrganizerCompetitionWorkspace {
         winnerTeamId: string | null
         purpose: MatchPurpose
         resultConfirmed: boolean
+        nextMatchId: string | null
+        nextSlot: "HOME" | "AWAY" | null
       }>
     }>
   }

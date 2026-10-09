@@ -17,6 +17,7 @@ export interface TournamentCompetitionLifecycleContext {
   activeBracket: null | {
     id: string
     status: string
+    mode: BracketMode
     entriesLockedAt: string | null
     entryCount: number
     matches: Array<{
@@ -27,6 +28,9 @@ export interface TournamentCompetitionLifecycleContext {
       awayTeamId: string | null
       winnerTeamId: string | null
       resultConfirmed: boolean
+      roundSequence: number
+      nextMatchId: string | null
+      nextSlot: MatchSlot | null
     }>
   }
 }

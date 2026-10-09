@@ -11,6 +11,7 @@ import { scheduleMatch } from "@/features/competition/application/schedule-match
 import { recordMatchScore } from "@/features/competition/application/record-match-score"
 import { confirmMatchResult } from "@/features/competition/application/confirm-match-result"
 import { correctMatchResult } from "@/features/competition/application/correct-match-result"
+import { generateSingleEliminationBracket } from "@/features/competition/domain/bracket-generator"
 import type { CompetitionRepository } from "@/features/competition/application/ports/competition-repository"
 import { createTestActor } from "@/tests/fixtures/actor"
 
@@ -340,6 +341,73 @@ function lockedEntry(id: string, teamId: string, seed: number) {
 }
 
 describe("getOrganizerCompetition", () => {
+  it("shows a generated bracket with future winner slots as ready to start", async () => {
+    const plan = generateSingleEliminationBracket({
+      entries: Array.from({ length: 6 }, (_, index) => ({
+        entryId: `entry-${index + 1}`,
+        teamId: `team-${index + 1}`,
+        seed: index + 1,
+      })),
+    })
+    const workspace = {
+      tournament: {
+        id: "tournament-1",
+        title: "COURTSIDE OPEN",
+        organizerId: organizer.id,
+        tournamentGovernanceStatus: "ACTIVE" as const,
+        status: "REGISTRATION_CLOSED",
+        version: 4,
+      },
+      approvedTeamCount: 6,
+      bracket: {
+        id: "bracket-1",
+        version: 2,
+        status: "PUBLISHED",
+        mode: "SYSTEM_GENERATED" as const,
+        generationMethod: "SEEDED" as const,
+        entriesLockedAt: "2026-08-20T09:00:00.000Z",
+        hasStartedMatch: false,
+        entries: Array.from({ length: 6 }, (_, index) =>
+          lockedEntry(`entry-${index + 1}`, `team-${index + 1}`, index + 1),
+        ),
+        rounds: plan.rounds.map((round) => ({
+          id: `round-${round.sequence}`,
+          name: round.name,
+          sequence: round.sequence,
+          matches: plan.matches
+            .filter((match) => match.roundSequence === round.sequence)
+            .map((match) => ({
+              id: match.key,
+              sequence: match.sequence,
+              homeTeamId: match.homeTeamId,
+              awayTeamId: match.awayTeamId,
+              status: "SCHEDULED",
+              scheduledAt: null,
+              court: null,
+              version: 0,
+              homeScore: null,
+              awayScore: null,
+              winnerTeamId: null,
+              purpose: match.purpose,
+              resultConfirmed: false,
+              nextMatchId: match.nextMatchKey,
+              nextSlot: match.nextSlot,
+            })),
+        })),
+      },
+    }
+    const competitions = {
+      findOrganizerWorkspace: vi.fn(async () => workspace),
+    } as unknown as CompetitionRepository
+
+    const view = await getOrganizerCompetition("tournament-1", organizer, {
+      competitions,
+    })
+
+    expect(view.lifecycle.startIssues).toEqual([])
+    expect(view.lifecycle.completionIssues).toContain("TOURNAMENT_STATUS_INVALID")
+  })
+
   it("returns a view-ready workspace to its organizer", async () => {
     const workspace = {
       tournament: {

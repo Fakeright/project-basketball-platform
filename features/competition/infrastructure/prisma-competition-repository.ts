@@ -134,6 +134,8 @@ export class PrismaCompetitionRepository implements CompetitionRepository {
                     awayScore: true,
                     winnerTeamId: true,
                     purpose: true,
+                    nextMatchId: true,
+                    nextSlot: true,
                     result: { select: { id: true } },
                   },
                 },

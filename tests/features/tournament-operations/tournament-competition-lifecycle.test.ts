@@ -48,11 +48,15 @@ const closedContext: TournamentCompetitionLifecycleContext = {
   activeBracket: {
     id: "bracket-1",
     status: "PUBLISHED",
+    mode: "EXTERNAL_DOCUMENT",
     entriesLockedAt: "2026-08-20T09:00:00.000Z",
     entryCount: 4,
     matches: [
       {
         id: "final",
+        roundSequence: 1,
+        nextMatchId: null,
+        nextSlot: null,
         purpose: "CHAMPIONSHIP",
         status: "SCHEDULED",
         homeTeamId: "team-1",

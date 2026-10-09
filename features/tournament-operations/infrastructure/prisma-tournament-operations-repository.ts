@@ -45,6 +45,7 @@ const tournamentCompetitionLifecycleInclude = {
     select: {
       id: true,
       status: true,
+      mode: true,
       entriesLockedAt: true,
       _count: { select: { entries: true } },
       matches: {
@@ -52,6 +53,9 @@ const tournamentCompetitionLifecycleInclude = {
           id: true,
           purpose: true,
           status: true,
+          round: { select: { sequence: true } },
+          nextMatchId: true,
+          nextSlot: true,
           homeTeamId: true,
           awayTeamId: true,
           winnerTeamId: true,
@@ -650,12 +654,16 @@ function mapCompetitionLifecycleContext(
       ? {
           id: bracket.id,
           status: bracket.status,
+          mode: bracket.mode,
           entriesLockedAt: bracket.entriesLockedAt?.toISOString() ?? null,
           entryCount: bracket._count.entries,
           matches: bracket.matches.map((match) => ({
             id: match.id,
             purpose: match.purpose,
             status: match.status,
+            roundSequence: match.round.sequence,
+            nextMatchId: match.nextMatchId,
+            nextSlot: match.nextSlot,
             homeTeamId: match.homeTeamId,
             awayTeamId: match.awayTeamId,
             winnerTeamId: match.winnerTeamId,

@@ -50,6 +50,7 @@ export async function getOrganizerCompetition(
       ? {
           id: workspace.bracket.id,
           status: workspace.bracket.status,
+          mode: workspace.bracket.mode,
           entriesLockedAt: workspace.bracket.entriesLockedAt,
           entryCount: workspace.bracket.entries.length,
           matches: workspace.bracket.rounds.flatMap((round) =>
@@ -57,6 +58,9 @@ export async function getOrganizerCompetition(
               id: match.id,
               purpose: match.purpose,
               status: match.status,
+              roundSequence: round.sequence,
+              nextMatchId: match.nextMatchId,
+              nextSlot: match.nextSlot,
               homeTeamId: match.homeTeamId,
               awayTeamId: match.awayTeamId,
               winnerTeamId: match.winnerTeamId,

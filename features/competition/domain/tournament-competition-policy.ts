@@ -11,6 +11,7 @@ export type TournamentCompetitionIssueCode =
   | "CHAMPIONSHIP_DUPLICATE"
   | "THIRD_PLACE_DUPLICATE"
   | "PLACEMENT_TEAMS_INCOMPLETE"
+  | "MATCH_TEAMS_INCOMPLETE"
   | "MATCH_RESULT_PENDING"
   | "MATCH_RESULT_INVALID"
 
@@ -27,13 +28,51 @@ export class TournamentCompetitionPolicyError extends Error {
 export function getStartIssues(
   context: TournamentCompetitionLifecycleContext,
 ): TournamentCompetitionIssueCode[] {
-  return getStructureIssues(context, "REGISTRATION_CLOSED")
+  const issues = getStructureIssues(context, "REGISTRATION_CLOSED", false)
+  const bracket = context.activeBracket
+  if (!bracket || bracket.mode !== "SYSTEM_GENERATED") return issues
+
+  for (const match of bracket.matches) {
+    const missingSlots = [
+      !match.homeTeamId ? "HOME" : null,
+      !match.awayTeamId ? "AWAY" : null,
+    ].filter((slot): slot is "HOME" | "AWAY" => slot !== null)
+
+    if (
+      missingSlots.some(
+        (slot) =>
+          bracket.matches.filter(
+            (source) =>
+              source.nextMatchId === match.id &&
+              source.nextSlot === slot &&
+              source.roundSequence !== undefined &&
+              match.roundSequence !== undefined &&
+              source.roundSequence < match.roundSequence,
+          ).length !== 1,
+      )
+    ) {
+      issues.push(
+        match.purpose === "STANDARD"
+          ? "MATCH_TEAMS_INCOMPLETE"
+          : "PLACEMENT_TEAMS_INCOMPLETE",
+      )
+    }
+  }
+
+  if (
+    bracket.matches.length > 0 &&
+    !bracket.matches.some((match) => match.homeTeamId && match.awayTeamId)
+  ) {
+    issues.push("MATCH_TEAMS_INCOMPLETE")
+  }
+
+  return uniqueIssues(issues)
 }
 
 export function getCompletionIssues(
   context: TournamentCompetitionLifecycleContext,
 ): TournamentCompetitionIssueCode[] {
-  const issues = getStructureIssues(context, "IN_PROGRESS")
+  const issues = getStructureIssues(context, "IN_PROGRESS", true)
   const matches = context.activeBracket?.matches ?? []
 
   if (
@@ -77,6 +116,7 @@ export function assertTournamentCanComplete(
 function getStructureIssues(
   context: TournamentCompetitionLifecycleContext,
   expectedStatus: "REGISTRATION_CLOSED" | "IN_PROGRESS",
+  requirePlacementTeams: boolean,
 ): TournamentCompetitionIssueCode[] {
   const issues: TournamentCompetitionIssueCode[] = []
   if (context.status !== expectedStatus) issues.push("TOURNAMENT_STATUS_INVALID")
@@ -99,6 +139,7 @@ function getStructureIssues(
   if (championships.length > 1) issues.push("CHAMPIONSHIP_DUPLICATE")
   if (thirdPlaceMatches.length > 1) issues.push("THIRD_PLACE_DUPLICATE")
   if (
+    (requirePlacementTeams || bracket.mode !== "SYSTEM_GENERATED") &&
     [...championships, ...thirdPlaceMatches].some(
       (match) => !match.homeTeamId || !match.awayTeamId,
     )

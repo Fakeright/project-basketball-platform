@@ -11,6 +11,7 @@ const issueLabels: Record<TournamentCompetitionIssueCode, string> = {
   CHAMPIONSHIP_DUPLICATE: "มีคู่ชิงชนะเลิศมากกว่าหนึ่งคู่",
   THIRD_PLACE_DUPLICATE: "มีคู่ชิงอันดับ 3 มากกว่าหนึ่งคู่",
   PLACEMENT_TEAMS_INCOMPLETE: "คู่จัดอันดับยังมีทีมไม่ครบ",
+  MATCH_TEAMS_INCOMPLETE: "มีคู่ที่ยังไม่มีทีมและไม่มีคู่ต้นทางที่ถูกต้อง",
   MATCH_RESULT_PENDING: "ยังมีคู่แข่งขันที่ไม่ได้ยืนยันผล",
   MATCH_RESULT_INVALID: "มีผลการแข่งขันที่ไม่สมบูรณ์",
 }

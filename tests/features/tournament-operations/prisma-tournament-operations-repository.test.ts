@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from "vitest"
 
 import type { PrismaClient } from "@/lib/generated/prisma/client"
+import { generateSingleEliminationBracket } from "@/features/competition/domain/bracket-generator"
+import { getStartIssues } from "@/features/competition/domain/tournament-competition-policy"
 import { PrismaTournamentOperationsRepository } from "@/features/tournament-operations/infrastructure/prisma-tournament-operations-repository"
 
 const tournamentRow = {
@@ -453,6 +455,85 @@ describe("PrismaTournamentOperationsRepository", () => {
     ).rejects.toThrow("CONFLICT")
   })
 
+  it("starts a generated six-team bracket through the read model and transaction", async () => {
+    const plan = generateSingleEliminationBracket({
+      entries: Array.from({ length: 6 }, (_, index) => ({
+        entryId: `entry-${index + 1}`,
+        teamId: `team-${index + 1}`,
+        seed: index + 1,
+      })),
+    })
+    const closedRow = {
+      ...tournamentRow,
+      status: "REGISTRATION_CLOSED",
+      version: 4,
+      brackets: [{
+        id: "bracket-1",
+        status: "PUBLISHED",
+        mode: "SYSTEM_GENERATED",
+        entriesLockedAt: new Date("2026-08-20T09:00:00.000Z"),
+        _count: { entries: 6 },
+        matches: plan.matches.map((match) => ({
+          id: match.key,
+          purpose: match.purpose,
+          status: "SCHEDULED",
+          round: { sequence: match.roundSequence },
+          nextMatchId: match.nextMatchKey,
+          nextSlot: match.nextSlot,
+          homeTeamId: match.homeTeamId,
+          awayTeamId: match.awayTeamId,
+          winnerTeamId: null,
+          result: null,
+        })),
+      }],
+    }
+    const prisma = createPrismaMock()
+    prisma.tournament.findUnique
+      .mockResolvedValueOnce(closedRow)
+      .mockResolvedValueOnce(closedRow)
+      .mockResolvedValueOnce({ ...tournamentRow, status: "IN_PROGRESS", version: 5 })
+    prisma.tournament.updateMany.mockResolvedValue({ count: 1 })
+    const repository = new PrismaTournamentOperationsRepository(
+      prisma as unknown as PrismaClient,
+    )
+
+    const context = await repository.findCompetitionLifecycleContext("tournament-1")
+    expect(context).not.toBeNull()
+    expect(getStartIssues(context!)).toEqual([])
+    expect(prisma.tournament.findUnique).toHaveBeenNthCalledWith(1, {
+      where: { id: "tournament-1" },
+      include: expect.objectContaining({
+        brackets: expect.objectContaining({
+          select: expect.objectContaining({
+            mode: true,
+            matches: expect.objectContaining({
+              select: expect.objectContaining({
+                round: { select: { sequence: true } },
+                nextMatchId: true,
+                nextSlot: true,
+              }),
+            }),
+          }),
+        }),
+      }),
+    })
+
+    await expect(repository.transitionCompetitionWithVersion({
+      tournamentId: "tournament-1",
+      version: 4,
+      sourceStatus: "REGISTRATION_CLOSED",
+      status: "IN_PROGRESS",
+      actorId: "organizer-1",
+      action: "tournament.started",
+      adminOverride: false,
+      reason: null,
+      at: "2026-08-20T10:00:00.000Z",
+    })).resolves.toMatchObject({ status: "IN_PROGRESS", version: 5 })
+    expect(prisma.auditLog.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ action: "tournament.started" }),
+    })
+  })
+
   it("rechecks competition readiness before transitioning in the transaction", async () => {
     const prisma = createPrismaMock()
     prisma.tournament.findUnique.mockResolvedValue({
@@ -463,6 +544,7 @@ describe("PrismaTournamentOperationsRepository", () => {
         {
           id: "bracket-1",
           status: "PUBLISHED",
+          mode: "EXTERNAL_DOCUMENT",
           entriesLockedAt: new Date("2026-08-20T09:00:00.000Z"),
           _count: { entries: 4 },
           matches: [
@@ -470,6 +552,9 @@ describe("PrismaTournamentOperationsRepository", () => {
               id: "final",
               purpose: "CHAMPIONSHIP",
               status: "IN_PROGRESS",
+              round: { sequence: 1 },
+              nextMatchId: null,
+              nextSlot: null,
               homeTeamId: "team-1",
               awayTeamId: "team-2",
               winnerTeamId: null,
@@ -513,6 +598,7 @@ describe("PrismaTournamentOperationsRepository", () => {
           {
             id: "bracket-1",
             status: "PUBLISHED",
+            mode: "EXTERNAL_DOCUMENT",
             entriesLockedAt: new Date("2026-08-20T09:00:00.000Z"),
             _count: { entries: 4 },
             matches: [
@@ -520,6 +606,9 @@ describe("PrismaTournamentOperationsRepository", () => {
                 id: "final",
                 purpose: "CHAMPIONSHIP",
                 status: "COMPLETED",
+                round: { sequence: 1 },
+                nextMatchId: null,
+                nextSlot: null,
                 homeTeamId: "team-1",
                 awayTeamId: "team-2",
                 winnerTeamId: "team-1",
