@@ -1,9 +1,11 @@
-import { render, screen } from "@testing-library/react"
-import { describe, expect, it } from "vitest"
+import { cleanup, render, screen } from "@testing-library/react"
+import { afterEach, describe, expect, it } from "vitest"
 
 import { TournamentWorkflowProgress } from "@/components/organizer/tournament-workflow-progress"
 
 describe("TournamentWorkflowProgress", () => {
+  afterEach(cleanup)
+
   it("renders five stable links and marks the current section", () => {
     render(
       <TournamentWorkflowProgress
