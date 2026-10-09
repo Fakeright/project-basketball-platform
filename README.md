@@ -9,12 +9,12 @@ COURTSIDE คือแพลตฟอร์มการแข่งขันบ�
 dependencies สำหรับ runtime ที่ติดตั้งมีดังนี้:
 
 - `@base-ui/react` `^1.6.0`
-- `@prisma/adapter-pg` `^7.9.0`, `@prisma/client` `^7.9.0` และ `pg` `^8.22.0`
+- `@prisma/adapter-pg` `7.10.0`, `@prisma/client` `7.10.0` และ `pg` `^8.22.0`
 - `@supabase/ssr` `^0.12.4` และ `@supabase/supabase-js` `^2.110.8`
 - `class-variance-authority` `^0.7.1`, `clsx` `^2.1.1`, `lucide-react` `^1.26.0`, `tailwind-merge` `^3.6.0` และ `zod` `^4.4.3`
-- Next.js `16.2.11` พร้อม App Router, React `19.2.4` และ React DOM `19.2.4`
-- `next-themes` `^0.4.6`, shadcn `^4.14.1`, `tw-animate-css` `^1.4.0`
-- `pdfjs-dist` `^6.2.108` และ `sharp` `^0.35.3` สำหรับตรวจโครงสร้าง PDF และรูปภาพสายการแข่งขันฝั่ง server
+- Next.js `16.4.0` พร้อม App Router, React `19.2.4` และ React DOM `19.2.4`
+- `next-themes` `^0.4.6` และ `tw-animate-css` `^1.4.0`
+- `pdfjs-dist` `^6.2.108` และ `sharp` `0.35.5` สำหรับตรวจโครงสร้าง PDF และรูปภาพสายการแข่งขันฝั่ง server
 
 dependencies สำหรับการพัฒนาที่ติดตั้งมีดังนี้:
 
@@ -22,8 +22,8 @@ dependencies สำหรับการพัฒนาที่ติดตั�
 - `@testing-library/react` `^16.3.2`, `@testing-library/user-event` `^14.6.1` และ JSDOM `^29.1.1`
 - type packages สำหรับ Node, PostgreSQL, React และ React DOM: `@types/node` `^20`, `@types/pg` `^8.20.0`, `@types/react` `^19`, และ `@types/react-dom` `^19`
 - `dotenv` `^17.4.2`, `tsx` `^4.23.1` และ `vite-tsconfig-paths` `^6.1.1`
-- ESLint `^9` พร้อม `eslint-config-next` `16.2.11`
-- Prisma CLI `^7.9.0`, TypeScript `^5` และ Vitest `^4.1.10`
+- ESLint `^9` พร้อม `eslint-config-next` `16.4.0`
+- Prisma CLI `7.10.0`, shadcn CLI `^4.14.1`, TypeScript `^5` และ Vitest `^4.1.10`
 
 สถาปัตยกรรมใช้ทิศทางการพึ่งพาดังนี้:
 
@@ -86,7 +86,7 @@ Audit ใหม่ของ `TeamPlayer` เก็บเฉพาะ player/team
 
 ติดตั้งหรือเตรียมสิ่งต่อไปนี้:
 
-- Node.js 20.9.0 หรือใหม่กว่า
+- Node.js 24
 - npm
 - โครงการ Supabase
 - รายละเอียดการเชื่อมต่อ PostgreSQL
@@ -109,7 +109,7 @@ AUTH_RECOVERY_SECRET=
 รันลำดับการตั้งค่าที่ตรวจสอบแล้วจาก project root:
 
 ```powershell
-npm install
+npm ci
 npm run prisma:generate
 npm run prisma:migrate
 npm run prisma:seed
@@ -130,7 +130,12 @@ npm run build
 
 - `npm run test` รันชุดทดสอบ Vitest
 - `npm run lint` ตรวจสอบโครงการด้วย ESLint
-- `npm run build` สร้าง production build
+- `npm run build` สร้าง Prisma Client ก่อนสร้าง production build โดยอัตโนมัติ
+- `npm run test:ci` จำกัดงานทดสอบพร้อมกันเพื่อให้ CI เสถียร
+- `npm run prisma:deploy` ใช้ migrations ที่มีอยู่เมื่อตั้งค่าฐานข้อมูลเป้าหมายแล้ว; ใช้ `prisma:migrate` สำหรับพัฒนาเท่านั้น
+- `npm run audit:runtime` รายงาน dependency และบล็อกรายการระดับ critical
+
+CI ที่ `.github/workflows/ci.yml` ใช้ Node.js 24 และ PostgreSQL ชั่วคราวสำหรับทดสอบ migrations โดยไม่ใช้ฐาน Supabase ของโครงการ
 
 ## ผังโครงการ
 

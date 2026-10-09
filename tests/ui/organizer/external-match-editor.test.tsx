@@ -41,7 +41,7 @@ describe("ExternalMatchEditor", () => {
     })
     fireEvent.change(screen.getByLabelText("สนาม"), { target: { value: "สนาม A" } })
     await user.click(screen.getByLabelText("ประเภทคู่แข่งขัน"))
-    await user.click(screen.getByRole("option", { name: "ชิงชนะเลิศ" }))
+    await user.click(await screen.findByRole("option", { name: "ชิงชนะเลิศ" }))
     fireEvent.click(screen.getByRole("button", { name: "เพิ่มคู่แข่งขัน" }))
 
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
