@@ -40,7 +40,7 @@ export function ExternalBracketUploader({
       setFile(null)
       setMessage(
         error instanceof Error && error.message === "BRACKET_FILE_TOO_LARGE"
-          ? "PDF ต้องไม่เกิน 20 MB และรูปภาพต้องไม่เกิน 10 MB"
+          ? "ไฟล์สายการแข่งขันต้องไม่เกิน 4 MB"
           : "รองรับเฉพาะ PDF, JPG, PNG หรือ WebP",
       )
     }
@@ -88,7 +88,7 @@ export function ExternalBracketUploader({
         type="file"
       />
       <p className="mt-2 text-xs text-muted-foreground">
-        PDF สูงสุด 20 MB · JPG, PNG หรือ WebP สูงสุด 10 MB
+        PDF, JPG, PNG หรือ WebP สูงสุด 4 MB
       </p>
       {file ? <p className="mt-3 break-all text-sm">{file.name}</p> : null}
       <Button

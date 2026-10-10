@@ -1,4 +1,5 @@
 import type { Actor, CurrentActorProvider } from "@/features/identity/domain/actor"
+import { readRequestBodyWithLimit, RequestBodyTooLargeError } from "@/features/shared/presentation/limited-request-body"
 import {
   unexpectedFailureResponse,
   type SafeHttpDiagnostics,
@@ -8,7 +9,7 @@ import { ObjectStorageError } from "@/features/tournament-media/application/port
 import type { TournamentMediaAsset } from "@/features/tournament-media/domain/media-asset"
 import { tournamentGovernanceFailureResponse } from "@/features/tournament-operations/presentation/tournament-governance-error-response"
 
-const defaultMaximumRequestBytes = 10_500_000
+const defaultMaximumRequestBytes = 4_250_000
 
 interface MediaHandlerDependencies extends SafeHttpDiagnostics {
   actorProvider: CurrentActorProvider
@@ -101,8 +102,7 @@ export async function handleTournamentMediaUpload(
     }
   } catch (error) {
     if (
-      error instanceof MediaRequestBoundaryError &&
-      error.code === "MEDIA_REQUEST_TOO_LARGE"
+      error instanceof RequestBodyTooLargeError
     ) {
       return Response.json(
         { message: "ไฟล์มีขนาดใหญ่เกินกว่าที่กำหนด" },
@@ -136,44 +136,6 @@ export async function handleTournamentMediaDelete(
   } catch (error) {
     return unexpectedFailureResponse(error, "media.delete", dependencies)
   }
-}
-
-export async function readRequestBodyWithLimit(
-  request: Request,
-  maximumBytes: number,
-): Promise<ArrayBuffer | null> {
-  const contentLength = request.headers.get("content-length")
-  if (contentLength) {
-    const declaredBytes = Number(contentLength)
-    if (Number.isFinite(declaredBytes) && declaredBytes > maximumBytes) {
-      throw new MediaRequestBoundaryError("MEDIA_REQUEST_TOO_LARGE")
-    }
-  }
-  if (!request.body) return null
-
-  const reader = request.body.getReader()
-  const chunks: Uint8Array[] = []
-  let totalBytes = 0
-  while (true) {
-    const { done, value } = await reader.read()
-    if (done) break
-    totalBytes += value.byteLength
-    if (totalBytes > maximumBytes) {
-      try {
-        await reader.cancel()
-      } catch {}
-      throw new MediaRequestBoundaryError("MEDIA_REQUEST_TOO_LARGE")
-    }
-    chunks.push(value)
-  }
-
-  const body = new Uint8Array(totalBytes)
-  let offset = 0
-  for (const chunk of chunks) {
-    body.set(chunk, offset)
-    offset += chunk.byteLength
-  }
-  return body.buffer
 }
 
 function isUploadFile(value: FormDataEntryValue | null): value is File {
@@ -243,10 +205,4 @@ function mediaFailureResponse(
   return response
     ? Response.json({ message: response.message }, { status: response.status })
     : null
-}
-
-class MediaRequestBoundaryError extends Error {
-  constructor(readonly code: "MEDIA_REQUEST_TOO_LARGE") {
-    super(code)
-  }
 }

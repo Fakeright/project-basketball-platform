@@ -5,6 +5,7 @@ import type { SelectBracketModeRequest } from "@/features/competition/applicatio
 import type { UploadExternalBracketInput } from "@/features/competition/application/upload-external-bracket"
 import { assertExternalBracketFile } from "@/features/competition/domain/external-bracket-policy"
 import { ObjectStorageError } from "@/features/tournament-media/application/ports/object-storage"
+import { readRequestBodyWithLimit, RequestBodyTooLargeError } from "@/features/shared/presentation/limited-request-body"
 import {
   parseJsonRequest,
   type SafeHttpDiagnostics,
@@ -27,7 +28,7 @@ const uploadFieldsSchema = z.object({
   reason: z.string().trim().min(1).max(500).optional(),
 })
 
-const maximumMultipartBytes = 21_000_000
+const maximumMultipartBytes = 4_250_000
 
 interface BaseDependencies extends SafeHttpDiagnostics {
   actorProvider: CurrentActorProvider
@@ -69,15 +70,20 @@ export async function handleUploadExternalBracket(
     const actor = await requireActor(dependencies.actorProvider)
     if (actor instanceof Response) return actor
 
-    const contentLength = Number(request.headers.get("content-length"))
-    if (Number.isFinite(contentLength) && contentLength > maximumMultipartBytes) {
-      return validationResponse("ไฟล์สายการแข่งขันมีขนาดใหญ่เกินกำหนด")
-    }
-
     let form: FormData
     try {
-      form = await request.formData()
-    } catch {
+      const body = await readRequestBodyWithLimit(request, maximumMultipartBytes)
+      form = body
+        ? await new Request(request.url || "http://localhost/api/bracket", {
+            method: request.method || "POST",
+            headers: request.headers,
+            body,
+          }).formData()
+        : await request.formData()
+    } catch (error) {
+      if (error instanceof RequestBodyTooLargeError) {
+        return Response.json({ message: "ไฟล์สายการแข่งขันมีขนาดใหญ่เกินกำหนด" }, { status: 413 })
+      }
       return validationResponse("ข้อมูลไฟล์สายการแข่งขันไม่ถูกต้อง")
     }
     const file = form.get("file")

@@ -2,11 +2,11 @@ import type { MediaAssetKind, MediaFileDescriptor } from "./media-asset"
 
 const mediaConstraints = {
   POSTER: {
-    maximumBytes: 5_000_000,
+    maximumBytes: 4_000_000,
     contentTypes: ["image/jpeg", "image/png", "image/webp"],
   },
   DOCUMENT: {
-    maximumBytes: 10_000_000,
+    maximumBytes: 4_000_000,
     contentTypes: [
       "application/pdf",
       "application/msword",
@@ -14,7 +14,7 @@ const mediaConstraints = {
     ],
   },
   BRACKET_DOCUMENT: {
-    maximumBytes: 20_000_000,
+    maximumBytes: 4_000_000,
     contentTypes: ["application/pdf", "image/jpeg", "image/png", "image/webp"],
   },
 } as const

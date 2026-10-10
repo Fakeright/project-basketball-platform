@@ -22,14 +22,14 @@ export function assertExternalBracketFile(input: {
   if (
     !Number.isInteger(input.byteSize) ||
     input.byteSize <= 0 ||
-    input.byteSize > getExternalBracketMaximumBytes(input.contentType)
+    input.byteSize > getExternalBracketMaximumBytes()
   ) {
     throw new Error("BRACKET_FILE_TOO_LARGE")
   }
 }
 
-export function getExternalBracketMaximumBytes(contentType: string): number {
-  return contentType === "application/pdf" ? 20_000_000 : 10_000_000
+export function getExternalBracketMaximumBytes(): number {
+  return 4_000_000
 }
 
 export function getExternalBracketFileKind(

@@ -24,6 +24,25 @@ function dependencies() {
 }
 
 describe("handleTournamentMediaUpload", () => {
+  it("rejects a declared body larger than 4.25 MB before parsing", async () => {
+    const services = dependencies()
+    const request = {
+      headers: new Headers({ "content-length": "4250001" }),
+      get body() {
+        throw new Error("body should not be read")
+      },
+    } as unknown as Request
+
+    const response = await handleTournamentMediaUpload(
+      request,
+      "tournament-1",
+      services,
+    )
+
+    expect(response.status).toBe(413)
+    expect(services.upload).not.toHaveBeenCalled()
+  })
+
   it("authorizes tournament ownership before consuming the request body", async () => {
     const bodyAccess = vi.fn()
     const request = {

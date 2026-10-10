@@ -9,10 +9,10 @@ import {
 
 describe("external bracket file policy", () => {
   it.each([
-    ["application/pdf", 20_000_000, "PDF"],
-    ["image/jpeg", 10_000_000, "IMAGE"],
-    ["image/png", 10_000_000, "IMAGE"],
-    ["image/webp", 10_000_000, "IMAGE"],
+    ["application/pdf", 4_000_000, "PDF"],
+    ["image/jpeg", 4_000_000, "IMAGE"],
+    ["image/png", 4_000_000, "IMAGE"],
+    ["image/webp", 4_000_000, "IMAGE"],
   ] as const)("accepts %s at its exact limit", (contentType, byteSize, kind) => {
     expect(() =>
       assertExternalBracketFile({ contentType, byteSize }),
@@ -21,8 +21,8 @@ describe("external bracket file policy", () => {
   })
 
   it.each([
-    ["application/pdf", 20_000_001],
-    ["image/png", 10_000_001],
+    ["application/pdf", 4_000_001],
+    ["image/png", 4_000_001],
   ] as const)("rejects %s above its limit", (contentType, byteSize) => {
     expect(() =>
       assertExternalBracketFile({ contentType, byteSize }),

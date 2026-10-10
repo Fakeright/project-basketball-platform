@@ -93,6 +93,23 @@ describe("BracketModeControl", () => {
 })
 
 describe("ExternalBracketUploader", () => {
+  it("rejects a PDF above 4 MB before uploading", () => {
+    const fetchMock = vi.fn()
+    vi.stubGlobal("fetch", fetchMock)
+    render(<ExternalBracketUploader expectedVersion={3} tournamentId="tournament-1" />)
+
+    fireEvent.change(screen.getByLabelText("ไฟล์สายการแข่งขัน"), {
+      target: {
+        files: [new File([new Uint8Array(4_000_001)], "bracket.pdf", {
+          type: "application/pdf",
+        })],
+      },
+    })
+
+    expect(screen.getByText("ไฟล์สายการแข่งขันต้องไม่เกิน 4 MB")).toBeTruthy()
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
   it("offers only the supported file types and rejects DOCX locally", async () => {
     const fetchMock = vi.fn()
     vi.stubGlobal("fetch", fetchMock)

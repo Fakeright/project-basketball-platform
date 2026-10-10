@@ -50,7 +50,7 @@ infrastructure -> application/domain contracts
 ผู้จัดเลือกรูปแบบได้หลังล็อกรายชื่อทีมและก่อนเริ่มแข่งขัน:
 
 - `สร้างอัตโนมัติ` สร้างสายแพ้คัดออกแบบกำหนด Seed หรือสุ่ม ระบบเลื่อนผู้ชนะไปคู่ถัดไปเมื่อยืนยันผล
-- `ใช้ไฟล์ภายนอก` อัปโหลด PDF สูงสุด 20 MB หรือ JPG/PNG/WebP สูงสุด 10 MB ระบบตรวจ MIME, ขนาด และโครงสร้างไฟล์ฝั่ง server
+- `ใช้ไฟล์ภายนอก` อัปโหลด PDF หรือ JPG/PNG/WebP สูงสุด 4 MB ต่อไฟล์ ระบบตรวจ MIME, ขนาด และโครงสร้างไฟล์ฝั่ง server
 
 ไฟล์ภายนอกเก็บเป็น revision และยังไม่เปลี่ยนหน้าสาธารณะจนผู้จัดกดเผยแพร่ revision ที่เลือก ไฟล์อยู่ใน private bucket `tournament-brackets` และเปิดผ่าน signed URL อายุ 10 นาที Revision เดิมยังอยู่ในประวัติเมื่อเผยแพร่ฉบับใหม่
 
@@ -116,7 +116,7 @@ npm run prisma:seed
 npm run dev
 ```
 
-สร้าง bucket `tournament-brackets` ใน Supabase Storage เป็น private bucket โดยอนุญาตเฉพาะ `application/pdf`, `image/jpeg`, `image/png` และ `image/webp` ขนาดสูงสุด 20 MB ห้ามสร้าง anonymous write policy สำหรับ bucket นี้
+สร้าง bucket `tournament-brackets` ใน Supabase Storage เป็น private bucket โดยอนุญาตเฉพาะ `application/pdf`, `image/jpeg`, `image/png` และ `image/webp` ขนาดสูงสุด 4 MB ห้ามสร้าง anonymous write policy สำหรับ bucket นี้ หาก bucket เดิมตั้งไว้ 20 MB แอปยังจำกัดที่ 4 MB แต่ควรปรับ bucket ให้ตรงกันก่อนเปิดใช้งานจริง
 
 `npm run reset:development` เป็นคำสั่งทำลายข้อมูล ใช้ได้กับฐานข้อมูล development ที่ยืนยันชัดเจนเท่านั้น
 

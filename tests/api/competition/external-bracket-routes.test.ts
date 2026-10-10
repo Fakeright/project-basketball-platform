@@ -80,14 +80,38 @@ describe("external bracket HTTP handlers", () => {
 
   it("rejects multipart requests above the absolute body limit before formData parsing", async () => {
     const request = {
-      headers: new Headers({ "content-length": "21000001" }),
+      headers: new Headers({ "content-length": "4250001" }),
       formData: vi.fn(),
     } as unknown as Request
     const response = await handleUploadExternalBracket("t-1", request, {
       actorProvider: actorProvider(), upload: vi.fn(),
     })
-    expect(response.status).toBe(422)
+    expect(response.status).toBe(413)
     expect(request.formData).not.toHaveBeenCalled()
+  })
+
+  it("stops an oversized body even without Content-Length", async () => {
+    const request = {
+      body: new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.enqueue(new Uint8Array(4_250_001))
+          controller.close()
+        },
+      }),
+      headers: new Headers({ "content-type": "multipart/form-data; boundary=test" }),
+      method: "POST",
+      url: "http://localhost/api/bracket",
+      formData: vi.fn(),
+    } as unknown as Request
+    const upload = vi.fn()
+
+    const response = await handleUploadExternalBracket("t-1", request, {
+      actorProvider: actorProvider(), upload,
+    })
+
+    expect(response.status).toBe(413)
+    expect(request.formData).not.toHaveBeenCalled()
+    expect(upload).not.toHaveBeenCalled()
   })
 
   it("rejects a missing multipart file", async () => {
@@ -100,8 +124,8 @@ describe("external bracket HTTP handlers", () => {
   })
 
   it.each([
-    ["application/pdf", 20_000_000],
-    ["image/png", 10_000_000],
+    ["application/pdf", 4_000_000],
+    ["image/png", 4_000_000],
   ])("accepts the exact %s file boundary", async (contentType, size) => {
     const upload = vi.fn(async () => ({ id: "revision-1" }))
     const response = await handleUploadExternalBracket(

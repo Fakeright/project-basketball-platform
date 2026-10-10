@@ -34,7 +34,7 @@ export function TournamentMediaManager({
   async function upload(kind: "POSTER" | "DOCUMENT", file: File) {
     const limit = getMediaMaximumBytes(kind)
     if (file.size > limit) {
-      setMessage(kind === "POSTER" ? "รูปโปสเตอร์ต้องมีขนาดไม่เกิน 5 MB" : "เอกสารต้องมีขนาดไม่เกิน 10 MB")
+      setMessage(kind === "POSTER" ? "รูปโปสเตอร์ต้องมีขนาดไม่เกิน 4 MB" : "เอกสารต้องมีขนาดไม่เกิน 4 MB")
       return
     }
     setPending(true)
@@ -95,7 +95,7 @@ export function TournamentMediaManager({
       <div className="max-w-2xl">
         <p className="text-xs font-semibold text-court">MEDIA</p>
         <h2 className="mt-2 text-xl font-semibold" id="tournament-media-heading">สื่อและเอกสาร</h2>
-        <p className="mt-2 text-sm text-muted-foreground">โปสเตอร์ใช้ JPG, PNG หรือ WebP ไม่เกิน 5 MB และเอกสารใช้ PDF, DOC หรือ DOCX ไม่เกิน 10 MB</p>
+        <p className="mt-2 text-sm text-muted-foreground">โปสเตอร์ใช้ JPG, PNG หรือ WebP และเอกสารใช้ PDF, DOC หรือ DOCX ขนาดไฟล์ไม่เกิน 4 MB</p>
       </div>
 
       <div className="mt-5 grid gap-8 lg:grid-cols-[12rem_minmax(0,1fr)]">

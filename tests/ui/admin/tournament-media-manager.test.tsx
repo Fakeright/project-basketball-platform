@@ -19,12 +19,12 @@ describe("TournamentMediaManager", () => {
 
     await user.upload(
       screen.getByLabelText("โปสเตอร์การแข่งขัน"),
-      new File([new Uint8Array(5_000_001)], "poster.webp", {
+      new File([new Uint8Array(4_000_001)], "poster.webp", {
         type: "image/webp",
       }),
     )
 
-    expect(await screen.findByText("รูปโปสเตอร์ต้องมีขนาดไม่เกิน 5 MB")).toBeTruthy()
+    expect(await screen.findByText("รูปโปสเตอร์ต้องมีขนาดไม่เกิน 4 MB")).toBeTruthy()
     expect(fetchMock).not.toHaveBeenCalled()
   })
 })
