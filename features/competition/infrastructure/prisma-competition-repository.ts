@@ -30,6 +30,7 @@ import type {
   UpdatedExternalMatchPurpose,
 } from "@/features/competition/application/ports/competition-repository"
 import { lockActiveTournamentForMutation } from "@/features/tournament-operations/infrastructure/prisma-tournament-governance-lock"
+import { MAX_TOURNAMENT_CAPACITY } from "@/features/tournament-operations/domain/tournament-capacity"
 
 type CompetitionDatabaseClient = Pick<
   PrismaClient,
@@ -514,6 +515,10 @@ class PrismaCompetitionOperations implements CompetitionRepositoryTransaction {
 
     await this.prisma.bracketRound.deleteMany({
       where: { bracketId: input.bracketId },
+    })
+    await this.prisma.bracketEntry.updateMany({
+      where: { bracketId: input.bracketId },
+      data: { seed: { increment: MAX_TOURNAMENT_CAPACITY } },
     })
     await Promise.all(
       input.entries.map((entry) =>

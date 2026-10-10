@@ -7,7 +7,7 @@ import { PrismaCompetitionRepository } from "@/features/competition/infrastructu
 function createPrismaMock() {
   const prisma = {
     bracket: { create: vi.fn(), updateMany: vi.fn() },
-    bracketEntry: { createMany: vi.fn(), update: vi.fn() },
+    bracketEntry: { createMany: vi.fn(), update: vi.fn(), updateMany: vi.fn() },
     bracketRound: { createMany: vi.fn(), deleteMany: vi.fn() },
     match: {
       createMany: vi.fn(),
@@ -555,6 +555,67 @@ describe("PrismaCompetitionRepository", () => {
         entityId: "bracket-1",
       }),
     })
+  })
+
+  it("reassigns randomized seeds without transient unique conflicts", async () => {
+    const prisma = createPrismaMock()
+    const currentSeeds = new Map([
+      ["entry-1", 1],
+      ["entry-2", 2],
+    ])
+    prisma.bracket.updateMany.mockResolvedValue({ count: 1 })
+    prisma.bracketRound.deleteMany.mockResolvedValue({ count: 0 })
+    prisma.bracketRound.createMany.mockResolvedValue({ count: 1 })
+    prisma.match.createMany.mockResolvedValue({ count: 1 })
+    prisma.auditLog.create.mockResolvedValue({})
+    prisma.bracketEntry.updateMany.mockImplementation(async ({ data }) => {
+      for (const [id, seed] of currentSeeds) {
+        currentSeeds.set(id, seed + data.seed.increment)
+      }
+      return { count: currentSeeds.size }
+    })
+    prisma.bracketEntry.update.mockImplementation(async ({ where, data }) => {
+      if (
+        [...currentSeeds].some(
+          ([id, seed]) => id !== where.id && seed === data.seed,
+        )
+      ) {
+        throw new Error("UNIQUE_SEED")
+      }
+      currentSeeds.set(where.id, data.seed)
+      return {}
+    })
+    const repository = new PrismaCompetitionRepository(
+      prisma as unknown as PrismaClient,
+    )
+    const entries = [
+      { id: "entry-1", teamId: "team-1", seed: 2, drawPosition: 2, startRoundSequence: 1 },
+      { id: "entry-2", teamId: "team-2", seed: 1, drawPosition: 1, startRoundSequence: 1 },
+    ]
+
+    await repository.persistGeneratedPlan({
+      tournamentId: "tournament-1",
+      bracketId: "bracket-1",
+      expectedVersion: 0,
+      generationMethod: "RANDOM",
+      drawToken: "draw-token",
+      entries,
+      plan: generateSingleEliminationBracket({
+        entries: entries.map(({ id, teamId, seed }) => ({
+          entryId: id,
+          teamId,
+          seed,
+        })),
+      }),
+      actorId: "organizer-1",
+      adminOverride: false,
+      at: "2026-10-10T00:00:00.000Z",
+    })
+
+    expect([...currentSeeds]).toEqual([
+      ["entry-1", 2],
+      ["entry-2", 1],
+    ])
   })
 
   it("rejects a stale bracket generation without replacing rounds", async () => {
