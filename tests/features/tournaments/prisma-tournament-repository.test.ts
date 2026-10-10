@@ -119,11 +119,34 @@ function createRepository(
     repository: new PrismaTournamentRepository(
       prisma as unknown as PrismaClient,
       storage,
+      () => new Date("2026-10-10T00:00:00.000Z"),
     ),
   }
 }
 
 describe("PrismaTournamentRepository", () => {
+  it("does not advertise an expired published tournament as open", async () => {
+    const expiredRow = {
+      ...publicTournamentRow,
+      registrationDeadline: new Date("2026-10-09T00:00:00.000Z"),
+    }
+    const { prisma, repository } = createRepository([expiredRow])
+
+    await expect(repository.list({ status: "OPEN" })).resolves.toEqual([])
+    await expect(repository.list({ status: "CLOSED" })).resolves.toEqual([
+      expect.objectContaining({ id: expiredRow.id, status: "CLOSED" }),
+    ])
+    await expect(repository.findBySlug(expiredRow.slug)).resolves.toEqual(
+      expect.objectContaining({ id: expiredRow.id, status: "CLOSED" }),
+    )
+    expect(prisma.tournament.findMany).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        where: expect.objectContaining({ status: { in: ["PUBLISHED", "REGISTRATION_CLOSED"] } }),
+      }),
+    )
+  })
+
   it("filters public tournaments by the exact province code", async () => {
     const { prisma, repository } = createRepository([])
 
@@ -399,7 +422,7 @@ describe("PrismaTournamentRepository", () => {
     expect(prisma.tournament.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: expect.objectContaining({
-          status: { in: ["REGISTRATION_CLOSED"] },
+          status: { in: ["PUBLISHED", "REGISTRATION_CLOSED"] },
           provinceCode: "50",
           format: "THREE_V_THREE",
           ageGroup: { equals: "u18", mode: "insensitive" },

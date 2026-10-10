@@ -43,9 +43,13 @@ export default async function HomePage() {
           </Link>
         </div>
         <div>
-          {openTournaments.map((tournament) => (
-            <TournamentRow key={tournament.slug} tournament={tournament} />
-          ))}
+          {openTournaments.length > 0 ? (
+            openTournaments.map((tournament) => (
+              <TournamentRow key={tournament.slug} tournament={tournament} />
+            ))
+          ) : (
+            <p className="py-8 text-sm text-muted-foreground">ยังไม่มีรายการที่เปิดรับสมัครในขณะนี้</p>
+          )}
         </div>
       </section>
     </div>

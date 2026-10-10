@@ -1,5 +1,6 @@
 import type { Tournament, TournamentSearchFilters } from "@/features/tournaments/domain/tournament"
 import { toBangkokCalendarDate } from "@/features/tournaments/domain/tournament-calendar"
+import { resolvePublicTournamentStatus } from "@/features/tournaments/domain/public-tournament-status"
 import type { TournamentRepository } from "@/features/tournaments/infrastructure/tournament-repository"
 import { mockTournamentData } from "@/features/tournaments/infrastructure/mock-tournament-data"
 
@@ -16,6 +17,8 @@ function matchesExactText(value: string, filter: string): boolean {
 }
 
 export class MockTournamentRepository implements TournamentRepository {
+  constructor(private readonly now: () => Date = () => new Date()) {}
+
   async list(filters: TournamentSearchFilters): Promise<Tournament[]> {
     return mockTournamentData
       .filter((tournament) => {
@@ -37,21 +40,37 @@ export class MockTournamentRepository implements TournamentRepository {
           (!filters.ageGroup || matchesExactText(tournament.ageGroup, filters.ageGroup)) &&
           (!filters.venue || matchesText(tournament.venue, filters.venue)) &&
           (!filters.date ||
-            toBangkokCalendarDate(tournament.startsAt) === filters.date) &&
-          (!filters.status || tournament.status === filters.status)
+            toBangkokCalendarDate(tournament.startsAt) === filters.date)
         )
       })
+      .map((tournament) => ({
+        ...tournament,
+        status: resolvePublicTournamentStatus(
+          tournament.status,
+          tournament.registrationDeadline,
+          this.now(),
+        ),
+      }))
+      .filter((tournament) => !filters.status || tournament.status === filters.status)
       .sort((left, right) => right.startsAt.localeCompare(left.startsAt))
   }
 
   async findBySlug(slug: string): Promise<Tournament | null> {
-    return (
-      mockTournamentData.find(
-        (tournament) =>
-          tournament.governanceStatus === "ACTIVE" &&
-          tournament.slug === slug,
-      ) ?? null
+    const tournament = mockTournamentData.find(
+      (tournament) =>
+        tournament.governanceStatus === "ACTIVE" &&
+        tournament.slug === slug,
     )
+    return tournament
+      ? {
+          ...tournament,
+          status: resolvePublicTournamentStatus(
+            tournament.status,
+            tournament.registrationDeadline,
+            this.now(),
+          ),
+        }
+      : null
   }
 
   async findCompetitionBySlug(slug: string): Promise<Tournament | null> {

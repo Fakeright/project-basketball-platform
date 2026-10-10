@@ -3,7 +3,7 @@ import { MockTournamentRepository } from "@/features/tournaments/infrastructure/
 import { mockTournamentData } from "@/features/tournaments/infrastructure/mock-tournament-data"
 import { expect, test } from "vitest"
 
-const repository = new MockTournamentRepository()
+const repository = new MockTournamentRepository(() => new Date("2026-10-10T00:00:00.000Z"))
 
 test("returns tournaments in a selected province", async () => {
   await expect(searchTournaments(repository, { provinceCode: "10" })).resolves.toHaveLength(1)
@@ -53,6 +53,15 @@ test("filters tournaments by status", async () => {
   await expect(repository.list({ status: "ONGOING" })).resolves.toEqual([
     expect.objectContaining({ slug: "chonburi-coast-cup" }),
   ])
+})
+
+test("hides expired open tournaments from open search in development data", async () => {
+  const futureRepository = new MockTournamentRepository(() => new Date("2026-12-01T00:00:00.000Z"))
+
+  await expect(futureRepository.list({ status: "OPEN" })).resolves.toEqual([])
+  await expect(futureRepository.findBySlug("bangkok-open-2026")).resolves.toEqual(
+    expect.objectContaining({ status: "CLOSED" }),
+  )
 })
 
 test("combines populated filters with AND semantics", async () => {

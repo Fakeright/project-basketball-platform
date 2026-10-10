@@ -6,6 +6,7 @@ import type {
   TournamentStatus,
 } from "@/features/tournaments/domain/tournament"
 import { getBangkokCalendarDayUtcRange } from "@/features/tournaments/domain/tournament-calendar"
+import { resolvePublicTournamentStatus } from "@/features/tournaments/domain/public-tournament-status"
 
 import type { TournamentRepository } from "./tournament-repository"
 
@@ -99,7 +100,7 @@ const statusMap = {
 
 const databaseStatusesByPublicStatus = {
   OPEN: ["PUBLISHED"],
-  CLOSED: ["REGISTRATION_CLOSED"],
+  CLOSED: ["PUBLISHED", "REGISTRATION_CLOSED"],
   ONGOING: ["IN_PROGRESS"],
   COMPLETED: ["COMPLETED", "ARCHIVED"],
 } as const satisfies Record<TournamentStatus, readonly (typeof publicStatuses)[number][]>
@@ -108,6 +109,7 @@ export class PrismaTournamentRepository implements TournamentRepository {
   constructor(
     private readonly prisma: PrismaClient,
     private readonly storage: ObjectStorage,
+    private readonly now: () => Date = () => new Date(),
   ) {}
 
   async list(filters: TournamentSearchFilters): Promise<Tournament[]> {
@@ -117,7 +119,10 @@ export class PrismaTournamentRepository implements TournamentRepository {
       orderBy: { startsAt: "desc" },
     })
 
-    return rows.map((row) => this.mapDiscoveryTournament(row))
+    const now = this.now()
+    return rows
+      .map((row) => this.mapDiscoveryTournament(row, now))
+      .filter((tournament) => !filters.status || tournament.status === filters.status)
   }
 
   async findBySlug(slug: string): Promise<Tournament | null> {
@@ -130,7 +135,7 @@ export class PrismaTournamentRepository implements TournamentRepository {
       include: publicDetailInclude,
     })
 
-    return row ? this.mapDetailTournament(row) : null
+    return row ? this.mapDetailTournament(row, this.now()) : null
   }
 
   async findCompetitionBySlug(slug: string): Promise<Tournament | null> {
@@ -143,17 +148,18 @@ export class PrismaTournamentRepository implements TournamentRepository {
       include: publicCompetitionInclude,
     })
 
-    return row ? this.mapCompetitionTournament(row) : null
+    return row ? this.mapCompetitionTournament(row, this.now()) : null
   }
 
-  private mapDiscoveryTournament(row: PublicDiscoveryRow): Tournament {
+  private mapDiscoveryTournament(row: PublicDiscoveryRow, now: Date): Tournament {
     return mapTournamentBase(row, {
       posterUrl: getPosterUrl(row.mediaAssets, this.storage),
-    })
+    }, now)
   }
 
   private mapCompetitionTournament(
     row: PublicCompetitionRow | PublicDetailRow,
+    now: Date,
   ): Tournament {
     const publishedMatches = row.matches
       .filter((match) => match.bracket.status === "PUBLISHED")
@@ -200,11 +206,11 @@ export class PrismaTournamentRepository implements TournamentRepository {
           winnerTeamId: match.winnerTeamId,
         }
       }),
-    })
+    }, now)
   }
 
-  private async mapDetailTournament(row: PublicDetailRow): Promise<Tournament> {
-    const tournament = this.mapCompetitionTournament(row)
+  private async mapDetailTournament(row: PublicDetailRow, now: Date): Promise<Tournament> {
+    const tournament = this.mapCompetitionTournament(row, now)
     const documents = await Promise.all(
       row.mediaAssets
         .filter((asset) => asset.kind === "DOCUMENT")
@@ -301,6 +307,7 @@ function mapTournamentBase(
       | "bracketEntries"
     >
   >,
+  now: Date,
 ): Tournament {
   return {
     id: row.id,
@@ -311,7 +318,11 @@ function mapTournamentBase(
     venue: row.venue,
     format: row.format,
     ageGroup: row.ageGroup,
-    status: mapPublicStatus(row.status),
+    status: resolvePublicTournamentStatus(
+      mapPublicStatus(row.status),
+      row.registrationDeadline.toISOString(),
+      now,
+    ),
     startsAt: row.startsAt.toISOString(),
     endsAt: row.endsAt.toISOString(),
     registrationDeadline: row.registrationDeadline.toISOString(),
