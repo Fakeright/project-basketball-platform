@@ -1,0 +1,273 @@
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react"
+import userEvent from "@testing-library/user-event"
+import { afterEach, describe, expect, it, vi } from "vitest"
+
+import {
+  TournamentEditor,
+  type EditableTournament,
+} from "@/components/admin/tournament-editor"
+
+const router = vi.hoisted(() => ({
+  replace: vi.fn(),
+  refresh: vi.fn(),
+}))
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => router,
+}))
+
+const editableTournament: EditableTournament = {
+  id: "tournament-1",
+  title: "Chiang Rai Cup",
+  description: "การแข่งขันระดับชุมชน",
+  provinceCode: "57",
+  venue: "สนามกีฬากลาง",
+  format: "FIVE_V_FIVE",
+  ageGroup: "Open",
+  startsAt: "2026-12-10T09:00",
+  endsAt: "2026-12-11T18:00",
+  registrationDeadline: "2026-12-01T23:59",
+  capacity: 16,
+  rules: "ใช้กติกามาตรฐาน",
+  version: 1,
+}
+
+afterEach(() => {
+  cleanup()
+  vi.clearAllMocks()
+  vi.unstubAllGlobals()
+})
+
+describe("TournamentEditor", () => {
+  it("requires a canonical age group for a new tournament", () => {
+    render(<TournamentEditor initialTournament={null} />)
+
+    const select = screen.getByLabelText("รุ่นอายุ") as HTMLSelectElement
+    expect(select.tagName).toBe("SELECT")
+    expect(select.value).toBe("")
+    expect(
+      Array.from(select.options).map((option) => option.textContent),
+    ).toEqual([
+      "เลือกรุ่นอายุ",
+      "U12",
+      "U14",
+      "U16",
+      "U18",
+      "U23",
+      "Open",
+    ])
+  })
+
+  it("selects a supported edit value", () => {
+    render(
+      <TournamentEditor
+        initialTournament={{ ...editableTournament, ageGroup: "U23" }}
+      />,
+    )
+
+    expect((screen.getByLabelText("รุ่นอายุ") as HTMLSelectElement).value).toBe(
+      "U23",
+    )
+  })
+
+  it("does not silently map a legacy edit value", () => {
+    render(
+      <TournamentEditor
+        initialTournament={{ ...editableTournament, ageGroup: "U20" }}
+      />,
+    )
+
+    expect((screen.getByLabelText("รุ่นอายุ") as HTMLSelectElement).value).toBe(
+      "",
+    )
+  })
+
+  it("saves a valid tournament draft", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          tournament: {
+            id: "tournament-4",
+            version: 0,
+            status: "DRAFT",
+          },
+        }),
+        { status: 201 },
+      ),
+    )
+    vi.stubGlobal("fetch", fetchMock)
+    const user = userEvent.setup()
+
+    render(<TournamentEditor initialTournament={null} />)
+
+    await fillValidTournament(user)
+    await user.click(screen.getByRole("button", { name: "บันทึกฉบับร่าง" }))
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/admin/tournaments",
+      expect.objectContaining({ method: "POST" }),
+    )
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toMatchObject({
+      startsAt: "2026-12-10T02:00:00.000Z",
+      endsAt: "2026-12-11T11:00:00.000Z",
+      registrationDeadline: "2026-12-01T16:59:00.000Z",
+      capacity: 16,
+    })
+    expect(await screen.findByText("บันทึกฉบับร่างแล้ว")).toBeTruthy()
+    expect(router.replace).toHaveBeenCalledWith(
+      "/organizer/tournaments/tournament-4",
+    )
+  })
+
+  it("adopts the returned id and version for sequential saves", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            tournament: {
+              id: "tournament-4",
+              version: 0,
+              status: "DRAFT",
+            },
+          }),
+          { status: 201 },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            tournament: {
+              id: "tournament-4",
+              version: 1,
+              status: "DRAFT",
+            },
+          }),
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            tournament: {
+              id: "tournament-4",
+              version: 2,
+              status: "DRAFT",
+            },
+          }),
+        ),
+      )
+    vi.stubGlobal("fetch", fetchMock)
+    const user = userEvent.setup()
+
+    render(<TournamentEditor initialTournament={null} />)
+    await fillValidTournament(user)
+
+    await user.click(screen.getByRole("button", { name: "บันทึกฉบับร่าง" }))
+    await screen.findByText("บันทึกฉบับร่างแล้ว")
+    await user.click(screen.getByRole("button", { name: "บันทึกฉบับร่าง" }))
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2))
+    expect(fetchMock.mock.calls[1][0]).toBe(
+      "/api/admin/tournaments/tournament-4",
+    )
+    expect(fetchMock.mock.calls[1][1]).toMatchObject({ method: "PUT" })
+    expect(JSON.parse(fetchMock.mock.calls[1][1].body)).toMatchObject({
+      version: 0,
+    })
+
+    const saveButton = screen.getByRole("button", {
+      name: "บันทึกฉบับร่าง",
+    })
+    await waitFor(() => expect(saveButton.hasAttribute("disabled")).toBe(false))
+    await user.click(saveButton)
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3))
+    expect(JSON.parse(fetchMock.mock.calls[2][1].body)).toMatchObject({
+      version: 1,
+    })
+  })
+
+  it("saves a valid custom even capacity", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          tournament: {
+            id: "tournament-10",
+            version: 0,
+            status: "DRAFT",
+          },
+        }),
+        { status: 201 },
+      ),
+    )
+    vi.stubGlobal("fetch", fetchMock)
+    const user = userEvent.setup()
+
+    render(<TournamentEditor initialTournament={null} />)
+    await fillValidTournament(user)
+    await user.selectOptions(
+      screen.getByLabelText("จำนวนทีมสูงสุด"),
+      "CUSTOM",
+    )
+    await user.type(screen.getByLabelText("ระบุจำนวนทีม"), "10")
+    await user.click(screen.getByRole("button", { name: "บันทึกฉบับร่าง" }))
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledOnce())
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toMatchObject({
+      capacity: 10,
+    })
+  })
+
+  it("blocks an odd custom capacity before sending a request", async () => {
+    const fetchMock = vi.fn()
+    vi.stubGlobal("fetch", fetchMock)
+    const user = userEvent.setup()
+
+    render(<TournamentEditor initialTournament={null} />)
+    await fillValidTournament(user)
+    await user.selectOptions(
+      screen.getByLabelText("จำนวนทีมสูงสุด"),
+      "CUSTOM",
+    )
+    await user.type(screen.getByLabelText("ระบุจำนวนทีม"), "7")
+    await user.click(screen.getByRole("button", { name: "บันทึกฉบับร่าง" }))
+
+    expect(
+      await screen.findByText(
+        "จำนวนทีมต้องเป็นเลขคู่ตั้งแต่ 6 ถึง 32 ทีม",
+      ),
+    ).toBeTruthy()
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it("shows a deadline error before submitting", async () => {
+    const user = userEvent.setup()
+
+    render(
+      <TournamentEditor
+        initialTournament={{ ...editableTournament, registrationDeadline: "" }}
+      />,
+    )
+
+    await user.click(screen.getByRole("button", { name: "ส่งตรวจสอบ" }))
+
+    expect(await screen.findByText("กรุณาระบุวันปิดรับสมัคร")).toBeTruthy()
+  })
+})
+
+async function fillValidTournament(
+  user: ReturnType<typeof userEvent.setup>,
+) {
+  fireEvent.change(screen.getByLabelText("ชื่อรายการ"), { target: { value: "Chiang Rai Cup" } })
+  fireEvent.change(screen.getByLabelText("รายละเอียด"), { target: { value: "การแข่งขันระดับชุมชน" } })
+  const province = screen.getByLabelText("จังหวัด")
+  await user.click(province)
+  fireEvent.change(province, { target: { value: "Chiang Rai" } })
+  await user.click(await screen.findByRole("option", { name: /เชียงราย.*Chiang Rai/i }))
+  fireEvent.change(screen.getByLabelText("สถานที่"), { target: { value: "สนามกีฬากลาง" } })
+  fireEvent.change(screen.getByLabelText("รุ่นอายุ"), { target: { value: "Open" } })
+  fireEvent.change(screen.getByLabelText("วันเริ่มแข่งขัน"), { target: { value: "2026-12-10T09:00" } })
+  fireEvent.change(screen.getByLabelText("วันสิ้นสุดการแข่งขัน"), { target: { value: "2026-12-11T18:00" } })
+  fireEvent.change(screen.getByLabelText("วันปิดรับสมัคร"), { target: { value: "2026-12-01T23:59" } })
+  fireEvent.change(screen.getByLabelText("กติกา"), { target: { value: "ใช้กติกามาตรฐาน" } })
+}
