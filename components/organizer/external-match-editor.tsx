@@ -98,17 +98,17 @@ export function ExternalMatchEditor({
         <h2 className="mt-1 text-base font-semibold">เพิ่มคู่แข่งขันจากไฟล์</h2>
       </div>
       <form
-        className="grid gap-4 md:grid-cols-2 xl:grid-cols-[minmax(8rem,1fr)_5rem_minmax(10rem,1fr)_minmax(10rem,1fr)_10rem_11rem_8rem_auto] xl:items-end"
+        className="grid gap-4 md:grid-cols-2 xl:grid-cols-4 xl:items-end"
         onSubmit={(event) => {
           event.preventDefault()
           void submit(event.currentTarget)
         }}
       >
-        <label className="grid gap-1.5 text-xs font-medium">
+        <label className="grid min-w-0 gap-1.5 text-xs font-medium">
           ชื่อรอบ
           <Input maxLength={80} name="roundName" required />
         </label>
-        <label className="grid gap-1.5 text-xs font-medium">
+        <label className="grid min-w-0 gap-1.5 text-xs font-medium">
           ลำดับคู่
           <Input max={99} min={1} name="sequence" required type="number" />
         </label>
@@ -124,11 +124,11 @@ export function ExternalMatchEditor({
           teams={teams}
           value={awayTeam}
         />
-        <label className="grid gap-1.5 text-xs font-medium">
+        <label className="grid min-w-0 gap-1.5 text-xs font-medium">
           วันและเวลา
           <Input name="scheduledAt" required type="datetime-local" />
         </label>
-        <label className="grid gap-1.5 text-xs font-medium">
+        <label className="grid min-w-0 gap-1.5 text-xs font-medium">
           สนาม
           <Input maxLength={120} name="court" required />
         </label>
@@ -185,7 +185,7 @@ function TeamCombobox({
   onValueChange: (team: TeamOption | null) => void
 }) {
   return (
-    <div className="grid gap-1.5">
+    <div className="grid min-w-0 gap-1.5">
       <label className="text-xs font-medium" htmlFor={`team-${label}`}>
         {label}
       </label>

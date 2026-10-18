@@ -25,6 +25,15 @@ describe("ExternalMatchEditor", () => {
     expect(screen.getByRole("button", { name: "เพิ่มคู่แข่งขัน" })).toBeTruthy()
   })
 
+  it("limits the form to four columns on wide screens", () => {
+    renderEditor()
+
+    const form = screen.getByRole("button", { name: "เพิ่มคู่แข่งขัน" }).closest("form")
+    expect(form?.className).toContain("md:grid-cols-2")
+    expect(form?.className).toContain("xl:grid-cols-4")
+    expect(form?.className).not.toContain("xl:grid-cols-[")
+  })
+
   it("submits selected locked teams to the external match endpoint", async () => {
     const fetchMock = vi
       .spyOn(globalThis, "fetch")
