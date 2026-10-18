@@ -3,10 +3,31 @@ import { describe, expect, it } from "vitest"
 import {
   assertBracketStructureMutable,
   assertEntriesCanBeLocked,
+  assertSystemBracketEntryCount,
+  validateOrderedPositions,
   validateSeeds,
 } from "@/features/competition/domain/bracket-policy"
 
 describe("competition bracket policy", () => {
+  it.each([8, 16, 32])("accepts %i entries for system generation", (count) => {
+    expect(() => assertSystemBracketEntryCount(count)).not.toThrow()
+  })
+
+  it.each([2, 6, 10, 12, 14, 24])("rejects %i entries for system generation", (count) => {
+    expect(() => assertSystemBracketEntryCount(count)).toThrow("BRACKET_ENTRY_COUNT_UNSUPPORTED")
+  })
+
+  it("rejects duplicate, missing, and out-of-range ordered positions", () => {
+    const entries = Array.from({ length: 8 }, (_, index) => ({
+      entryId: `entry-${index + 1}`,
+      position: index + 1,
+    }))
+    expect(() => validateOrderedPositions(entries)).not.toThrow()
+    expect(() => validateOrderedPositions([{ ...entries[0], position: 2 }, ...entries.slice(1)])).toThrow("BRACKET_ORDER_INVALID")
+    expect(() => validateOrderedPositions([{ ...entries[0], position: 9 }, ...entries.slice(1)])).toThrow("BRACKET_ORDER_INVALID")
+    expect(() => validateOrderedPositions([{ ...entries[0], entryId: "entry-2" }, ...entries.slice(1)])).toThrow("BRACKET_ORDER_INVALID")
+  })
+
   it("allows locking 2-32 approved teams after registration closes", () => {
     expect(() =>
       assertEntriesCanBeLocked({

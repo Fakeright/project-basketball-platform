@@ -21,7 +21,7 @@ export function BracketWorkspace({
   const router = useRouter()
   const bracket = workspace.bracket
   const [method, setMethod] = useState<"SEEDED" | "RANDOM">(
-    bracket?.generationMethod ?? "SEEDED",
+    bracket?.generationMethod === "RANDOM" ? "RANDOM" : "SEEDED",
   )
   const [seeds, setSeeds] = useState<Record<string, number>>(() =>
     Object.fromEntries(bracket?.entries.map((entry) => [entry.id, entry.seed]) ?? []),

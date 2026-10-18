@@ -19,6 +19,8 @@ describe("competition persistence schema", () => {
     expect(BracketGenerationMethod).toMatchObject({
       SEEDED: "SEEDED",
       RANDOM: "RANDOM",
+      ORDERED: "ORDERED",
+      RANDOM_ORDERED: "RANDOM_ORDERED",
     })
     expect(MatchSlot).toMatchObject({ HOME: "HOME", AWAY: "AWAY" })
     expect(MatchPurpose).toMatchObject({

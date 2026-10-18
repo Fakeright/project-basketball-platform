@@ -31,6 +31,27 @@ export function assertBracketStructureMutable(input: {
   }
 }
 
+export function assertSystemBracketEntryCount(count: number): void {
+  if (count !== 8 && count !== 16 && count !== 32) {
+    throw new Error("BRACKET_ENTRY_COUNT_UNSUPPORTED")
+  }
+}
+
+export function validateOrderedPositions(
+  entries: readonly { entryId: string; position: number }[],
+): void {
+  const positions = entries.map((entry) => entry.position)
+  if (
+    new Set(entries.map((entry) => entry.entryId)).size !== entries.length ||
+    new Set(positions).size !== entries.length ||
+    positions.some((position) =>
+      !Number.isInteger(position) || position < 1 || position > entries.length
+    )
+  ) {
+    throw new Error("BRACKET_ORDER_INVALID")
+  }
+}
+
 export function validateSeeds(
   entries: readonly { entryId: string; seed: number }[],
 ): void {

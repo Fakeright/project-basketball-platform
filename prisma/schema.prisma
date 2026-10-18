@@ -85,6 +85,8 @@ enum BracketMode {
 enum BracketGenerationMethod {
   SEEDED
   RANDOM
+  ORDERED
+  RANDOM_ORDERED
 }
 
 enum MatchSlot {

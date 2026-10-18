@@ -1,10 +1,20 @@
-import { validateSeeds } from "./bracket-policy"
+import {
+  assertSystemBracketEntryCount,
+  validateOrderedPositions,
+  validateSeeds,
+} from "./bracket-policy"
 import type { MatchPurpose, MatchSlot } from "./competition"
 
 export interface BracketGenerationEntry {
   entryId: string
   teamId: string
   seed: number
+}
+
+export interface OrderedBracketEntry {
+  entryId: string
+  teamId: string
+  position: number
 }
 
 export interface GeneratedMatchPlan {
@@ -53,15 +63,44 @@ export function generateSingleEliminationBracket(input: {
   const entriesBySeed = new Map(
     input.entries.map((entry) => [entry.seed, entry]),
   )
-  const entryStarts = new Map<string, number>()
-  const matches: GeneratedMatchPlan[] = []
-  const matchesByKey = new Map<string, GeneratedMatchPlan>()
-  let currentSources: BracketSource[] = mirroredSeedOrder(bracketSize).map((seed) => {
+  const sources: BracketSource[] = mirroredSeedOrder(bracketSize).map((seed) => {
     const entry = entriesBySeed.get(seed)
     return entry
       ? { kind: "ENTRY" as const, entryId: entry.entryId, teamId: entry.teamId }
       : null
   })
+
+  return buildBracketPlan(input.entries, bracketSize, sources)
+}
+
+export function generateOrderedSingleEliminationBracket(input: {
+  entries: readonly OrderedBracketEntry[]
+}): GeneratedBracketPlan {
+  assertSystemBracketEntryCount(input.entries.length)
+  validateOrderedPositions(input.entries)
+
+  const byPosition = new Map(input.entries.map((entry) => [entry.position, entry]))
+  const sources: BracketSource[] = Array.from(
+    { length: input.entries.length },
+    (_, index) => {
+      const entry = byPosition.get(index + 1)
+      if (!entry) throw new Error("BRACKET_ORDER_INVALID")
+      return { kind: "ENTRY", entryId: entry.entryId, teamId: entry.teamId }
+    },
+  )
+
+  return buildBracketPlan(input.entries, input.entries.length, sources)
+}
+
+function buildBracketPlan(
+  entries: readonly { entryId: string }[],
+  bracketSize: number,
+  initialSources: BracketSource[],
+): GeneratedBracketPlan {
+  const entryStarts = new Map<string, number>()
+  const matches: GeneratedMatchPlan[] = []
+  const matchesByKey = new Map<string, GeneratedMatchPlan>()
+  let currentSources = initialSources
 
   const roundCount = Math.log2(bracketSize)
   const rounds = Array.from({ length: roundCount }, (_, index) => ({
@@ -121,13 +160,13 @@ export function generateSingleEliminationBracket(input: {
     bracketSize,
     rounds,
     matches,
-    entryStarts: input.entries.map((entry) => ({
+    entryStarts: entries.map((entry) => ({
       entryId: entry.entryId,
       roundSequence: entryStarts.get(entry.entryId) ?? 0,
     })),
   }
 
-  assertPlanIntegrity(plan, input.entries.length)
+  assertPlanIntegrity(plan, entries.length)
   return plan
 }
 

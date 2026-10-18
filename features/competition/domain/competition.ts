@@ -2,7 +2,7 @@ import type { TournamentGovernanceStatus } from "@/features/tournament-operation
 
 export type BracketMode = "SYSTEM_GENERATED" | "EXTERNAL_DOCUMENT"
 
-export type BracketGenerationMethod = "SEEDED" | "RANDOM"
+export type BracketGenerationMethod = "SEEDED" | "RANDOM" | "ORDERED" | "RANDOM_ORDERED"
 
 export type MatchSlot = "HOME" | "AWAY"
 

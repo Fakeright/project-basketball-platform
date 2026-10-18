@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest"
 
 import {
   generateSingleEliminationBracket,
+  generateOrderedSingleEliminationBracket,
   mirroredSeedOrder,
 } from "@/features/competition/domain/bracket-generator"
 
@@ -14,6 +15,45 @@ function seededEntries(count: number) {
 }
 
 describe("single elimination generator", () => {
+  it("pairs adjacent ordered teams and links their winners", () => {
+    const plan = generateOrderedSingleEliminationBracket({
+      entries: Array.from({ length: 8 }, (_, index) => ({
+        entryId: `entry-${index + 1}`,
+        teamId: `team-${index + 1}`,
+        position: index + 1,
+      })),
+    })
+
+    expect(plan.matches.filter((match) => match.roundSequence === 1).map((match) => [
+      match.homeTeamId,
+      match.awayTeamId,
+      match.nextMatchKey,
+    ])).toEqual([
+      ["team-1", "team-2", "round-2-match-1"],
+      ["team-3", "team-4", "round-2-match-1"],
+      ["team-5", "team-6", "round-2-match-2"],
+      ["team-7", "team-8", "round-2-match-2"],
+    ])
+    expect(plan.matches.filter((match) => match.roundSequence === 2).map((match) => match.nextMatchKey)).toEqual([
+      "round-3-match-1",
+      "round-3-match-1",
+    ])
+    expect(plan.entryStarts.every((entry) => entry.roundSequence === 1)).toBe(true)
+  })
+
+  it.each([8, 16, 32])("creates %i-team ordered brackets without byes", (count) => {
+    const plan = generateOrderedSingleEliminationBracket({
+      entries: Array.from({ length: count }, (_, index) => ({
+        entryId: `entry-${index + 1}`,
+        teamId: `team-${index + 1}`,
+        position: index + 1,
+      })),
+    })
+
+    expect(plan.matches).toHaveLength(count - 1)
+    expect(plan.matches.filter((match) => match.purpose === "CHAMPIONSHIP")).toHaveLength(1)
+  })
+
   it.each([
     [2, [1, 2]],
     [4, [1, 4, 2, 3]],
