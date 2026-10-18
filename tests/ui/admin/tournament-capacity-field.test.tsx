@@ -14,37 +14,31 @@ describe("TournamentCapacityField", () => {
       "จำนวนทีมสูงสุด",
     ) as HTMLSelectElement
     expect(select.value).toBe("16")
-    for (const capacity of [6, 8, 12, 16, 24, 32]) {
+    for (const capacity of [8, 16, 32]) {
       expect(
         screen.getByRole("option", { name: `${capacity} ทีม` }),
       ).toBeTruthy()
     }
-    expect(screen.getByRole("option", { name: "กำหนดเอง" })).toBeTruthy()
+    expect(screen.queryByRole("option", { name: "กำหนดเอง" })).toBeNull()
+    expect(screen.getAllByRole("option")).toHaveLength(3)
   })
 
-  it("reveals one custom capacity form value", async () => {
+  it("submits one capacity value when selection changes", async () => {
     const user = userEvent.setup()
     const { container } = render(<TournamentCapacityField />)
 
-    await user.selectOptions(
-      screen.getByLabelText("จำนวนทีมสูงสุด"),
-      "CUSTOM",
-    )
-    const customInput = screen.getByLabelText("ระบุจำนวนทีม")
-    await user.type(customInput, "10")
+    await user.selectOptions(screen.getByLabelText("จำนวนทีมสูงสุด"), "8")
 
-    expect((customInput as HTMLInputElement).value).toBe("10")
+    expect((screen.getByLabelText("จำนวนทีมสูงสุด") as HTMLSelectElement).value).toBe("8")
     expect(container.querySelectorAll('[name="capacity"]')).toHaveLength(1)
   })
 
-  it("opens custom mode for a non-standard edit value", () => {
-    render(<TournamentCapacityField defaultValue={10} />)
+  it("shows an existing legacy value without making it a new-tournament choice", () => {
+    render(<TournamentCapacityField defaultValue={6} />)
 
     expect(
       (screen.getByLabelText("จำนวนทีมสูงสุด") as HTMLSelectElement).value,
-    ).toBe("CUSTOM")
-    expect(
-      (screen.getByLabelText("ระบุจำนวนทีม") as HTMLInputElement).value,
-    ).toBe("10")
+    ).toBe("6")
+    expect(screen.getAllByRole("option")).toHaveLength(4)
   })
 })

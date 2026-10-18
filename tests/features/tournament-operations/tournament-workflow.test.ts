@@ -5,6 +5,7 @@ import {
   submitTournament,
   updateTournament,
 } from "@/features/tournament-operations/application/create-tournament"
+import { assertCanPublish } from "@/features/tournament-operations/domain/tournament-workflow"
 import { reviewTournament } from "@/features/tournament-operations/application/review-tournament"
 import { InMemoryTournamentOperationsRepository } from "@/features/tournament-operations/infrastructure/in-memory-tournament-operations-repository"
 import { createTestActor } from "@/tests/fixtures/actor"
@@ -61,7 +62,7 @@ describe("tournament workflow", () => {
     })
   })
 
-  it.each([6, 10, 32])("accepts an even capacity of %i", async (capacity) => {
+  it.each([8, 16, 32])("accepts a full bracket capacity of %i", async (capacity) => {
     const repository = new InMemoryTournamentOperationsRepository()
 
     await expect(
@@ -69,7 +70,7 @@ describe("tournament workflow", () => {
     ).resolves.toMatchObject({ capacity })
   })
 
-  it.each([5, 7, 10.5, 33])(
+  it.each([5, 6, 7, 10, 10.5, 12, 14, 24, 33])(
     "rejects an invalid capacity of %s",
     async (capacity) => {
       const repository = new InMemoryTournamentOperationsRepository()
@@ -79,6 +80,32 @@ describe("tournament workflow", () => {
       ).rejects.toThrow("CAPACITY_INVALID")
     },
   )
+
+  it("retains a legacy capacity on an unrelated edit and publication", async () => {
+    const repository = new InMemoryTournamentOperationsRepository()
+    const legacy = await repository.create({ ...validInput, capacity: 6, organizerId: organizer.id })
+
+    const updated = await updateTournament(
+      repository,
+      legacy.id,
+      { ...validInput, title: "Renamed Cup", capacity: 6, version: legacy.version },
+      organizer,
+    )
+    expect(updated).toMatchObject({ title: "Renamed Cup", capacity: 6 })
+    expect(() => assertCanPublish({ ...updated, status: "APPROVED" }, new Date("2026-10-01"))).not.toThrow()
+  })
+
+  it("rejects changing a legacy capacity to a different unsupported value", async () => {
+    const repository = new InMemoryTournamentOperationsRepository()
+    const legacy = await repository.create({ ...validInput, capacity: 6, organizerId: organizer.id })
+
+    await expect(updateTournament(
+      repository,
+      legacy.id,
+      { ...validInput, capacity: 10, version: legacy.version },
+      organizer,
+    )).rejects.toThrow("CAPACITY_INVALID")
+  })
 
   it.each(["U12", "U14", "U16", "U18", "U23", "Open"])(
     "accepts the canonical age group %s",

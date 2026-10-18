@@ -5,7 +5,7 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 
 import {
-  tournamentEditorSchema,
+  tournamentEditorSchemaForMode,
   type TournamentEditorInput,
 } from "@/features/admin/presentation/tournament-editor-schema"
 import {
@@ -52,7 +52,7 @@ export function TournamentEditor({
 
     const form = event.currentTarget
     const formData = new FormData(form)
-    const parsed = tournamentEditorSchema.safeParse({
+    const parsed = tournamentEditorSchemaForMode(Boolean(tournament)).safeParse({
       title: formData.get("title"),
       description: formData.get("description"),
       provinceCode: formData.get("provinceCode"),

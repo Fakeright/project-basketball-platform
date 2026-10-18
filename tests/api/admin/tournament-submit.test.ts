@@ -96,19 +96,19 @@ describe("saveTournamentHandler", () => {
     expect(response.status).toBe(422)
   })
 
-  it("returns 422 with an actionable message for an odd capacity", async () => {
+  it("returns 422 with an actionable message for a capacity outside 8, 16, or 32", async () => {
     const response = await saveTournamentHandler({
       actor: organizer,
       request: new Request("http://localhost/api/admin/tournaments", {
         method: "POST",
-        body: JSON.stringify({ ...validTournament, capacity: 7 }),
+        body: JSON.stringify({ ...validTournament, capacity: 12 }),
       }),
       repository: new InMemoryTournamentOperationsRepository(),
     })
 
     expect(response.status).toBe(422)
     await expect(response.json()).resolves.toEqual({
-      message: "จำนวนทีมต้องเป็นเลขคู่ตั้งแต่ 6 ถึง 32 ทีม",
+      message: "จำนวนทีมต้องเป็น 8, 16 หรือ 32 ทีม",
     })
   })
 

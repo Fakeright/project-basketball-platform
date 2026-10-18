@@ -11,7 +11,7 @@ import {
 import type { TournamentOperationsRepository } from "@/features/tournament-operations/infrastructure/tournament-operations-repository"
 import { tournamentGovernanceFailureResponse } from "@/features/tournament-operations/presentation/tournament-governance-error-response"
 
-import { tournamentEditorSchema } from "./tournament-editor-schema"
+import { tournamentEditorSchemaForMode } from "./tournament-editor-schema"
 
 interface SaveTournamentHandlerInput extends SafeHttpDiagnostics {
   actor: Actor | null
@@ -34,7 +34,7 @@ export async function saveTournamentHandler(
       return Response.json({ message: "ข้อมูลไม่ถูกต้อง" }, { status: 422 })
     }
 
-    const parsed = tournamentEditorSchema.safeParse(payload.value)
+    const parsed = tournamentEditorSchemaForMode(Boolean(id)).safeParse(payload.value)
     if (!parsed.success) {
       return Response.json(
         { message: parsed.error.issues[0]?.message ?? "ข้อมูลไม่ถูกต้อง" },
@@ -82,6 +82,8 @@ function saveTournamentFailureResponse(error: unknown): Response | null {
       message:
         status === 409
           ? "ข้อมูลถูกแก้ไขจากอีกหน้าต่าง กรุณาโหลดใหม่"
+          : code === "CAPACITY_INVALID"
+            ? "จำนวนทีมต้องเป็น 8, 16 หรือ 32 ทีม"
           : "ไม่สามารถบันทึกรายการได้",
     },
     { status },

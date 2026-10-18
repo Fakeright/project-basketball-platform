@@ -1,19 +1,25 @@
 import type { TournamentOperation, TournamentOperationInput, TournamentOperationStatus } from "./tournament-operation"
 import { isTournamentAgeGroup } from "./tournament-age-group"
-import { isValidTournamentCapacity } from "./tournament-capacity"
+import { isLegacyTournamentCapacity, isValidTournamentCapacity } from "./tournament-capacity"
 
 const requiredFields: Array<keyof TournamentOperationInput> = [
   "title", "description", "rules", "provinceCode", "venue", "startsAt", "endsAt", "registrationDeadline",
 ]
 
-export function validateTournamentInput(input: TournamentOperationInput): void {
+export function validateTournamentInput(
+  input: TournamentOperationInput,
+  options: { existingCapacity?: number } = {},
+): void {
   for (const field of requiredFields) {
     if (!String(input[field]).trim()) throw new Error(`FIELD_REQUIRED:${field}`)
   }
   if (!isTournamentAgeGroup(input.ageGroup)) {
     throw new Error("AGE_GROUP_INVALID")
   }
-  if (!isValidTournamentCapacity(input.capacity)) {
+  const unchangedLegacyCapacity =
+    input.capacity === options.existingCapacity &&
+    isLegacyTournamentCapacity(input.capacity)
+  if (!isValidTournamentCapacity(input.capacity) && !unchangedLegacyCapacity) {
     throw new Error("CAPACITY_INVALID")
   }
   const startsAt = Date.parse(input.startsAt)
@@ -40,7 +46,7 @@ export function assertCanPublish(
   if (tournament.status !== "APPROVED") {
     throw new Error("INVALID_PUBLISH_STATUS")
   }
-  validateTournamentInput(tournament)
+  validateTournamentInput(tournament, { existingCapacity: tournament.capacity })
   if (Date.parse(tournament.registrationDeadline) <= now.getTime()) {
     throw new Error("REGISTRATION_WINDOW_CLOSED")
   }

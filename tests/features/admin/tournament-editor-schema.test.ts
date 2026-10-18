@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest"
 
-import { tournamentEditorSchema } from "@/features/admin/presentation/tournament-editor-schema"
+import {
+  tournamentEditorSchema,
+  tournamentEditorSchemaForMode,
+} from "@/features/admin/presentation/tournament-editor-schema"
 
 const validInput = {
   title: "Capacity Cup",
@@ -16,7 +19,7 @@ const validInput = {
 }
 
 describe("tournamentEditorSchema capacity", () => {
-  it.each([6, 10, 32])("accepts %i teams", (capacity) => {
+  it.each([8, 16, 32])("accepts %i teams", (capacity) => {
     const result = tournamentEditorSchema.safeParse({
       ...validInput,
       capacity: String(capacity),
@@ -26,7 +29,7 @@ describe("tournamentEditorSchema capacity", () => {
     if (result.success) expect(result.data.capacity).toBe(capacity)
   })
 
-  it.each(["", "abc", "5", "7", "10.5", "33"])(
+  it.each(["", "abc", "5", "6", "7", "10", "12", "24", "10.5", "33"])(
     "rejects %s teams",
     (capacity) => {
       const result = tournamentEditorSchema.safeParse({
@@ -37,11 +40,21 @@ describe("tournamentEditorSchema capacity", () => {
       expect(result.success).toBe(false)
       if (!result.success) {
         expect(result.error.issues[0]?.message).toBe(
-          "จำนวนทีมต้องเป็นเลขคู่ตั้งแต่ 6 ถึง 32 ทีม",
+          "จำนวนทีมต้องเป็น 8, 16 หรือ 32 ทีม",
         )
       }
     },
   )
+
+  it("parses a legacy capacity in edit mode for authoritative update validation", () => {
+    const result = tournamentEditorSchemaForMode(true).safeParse({
+      ...validInput,
+      capacity: "6",
+    })
+
+    expect(result.success).toBe(true)
+    if (result.success) expect(result.data.capacity).toBe(6)
+  })
 })
 
 describe("tournamentEditorSchema age group", () => {

@@ -36,7 +36,7 @@ export async function updateTournament(
   if (tournament.status !== "DRAFT" && tournament.status !== "CHANGES_REQUESTED") {
     throw new Error("INVALID_UPDATE_STATUS")
   }
-  validateTournamentInput(input)
+  validateTournamentInput(input, { existingCapacity: tournament.capacity })
   const { version, ...changes } = input
   return repository.updateWithVersion(id, version, changes, {
     actorId: actor.id,

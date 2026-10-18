@@ -3,11 +3,13 @@ import { z } from "zod"
 import { tournamentDateTimeToUtc } from "./tournament-editor-time"
 import { assertProvinceCode } from "@/features/provinces/application/assert-province-code"
 import { isTournamentAgeGroup } from "@/features/tournament-operations/domain/tournament-age-group"
-import { isValidTournamentCapacity } from "@/features/tournament-operations/domain/tournament-capacity"
+import {
+  isLegacyTournamentCapacity,
+  isValidTournamentCapacity,
+} from "@/features/tournament-operations/domain/tournament-capacity"
 
 const requiredText = (message: string) => z.string().trim().min(1, message)
-const tournamentCapacityMessage =
-  "จำนวนทีมต้องเป็นเลขคู่ตั้งแต่ 6 ถึง 32 ทีม"
+const tournamentCapacityMessage = "จำนวนทีมต้องเป็น 8, 16 หรือ 32 ทีม"
 const dateTime = (requiredMessage: string) =>
   requiredText(requiredMessage).transform((value, context) => {
     try {
@@ -21,7 +23,7 @@ const dateTime = (requiredMessage: string) =>
     }
   })
 
-export const tournamentEditorSchema = z
+export const tournamentEditorSchemaForMode = (allowLegacyCapacity: boolean) => z
   .object({
     title: requiredText("กรุณาระบุชื่อรายการ"),
     description: requiredText("กรุณาระบุรายละเอียด"),
@@ -49,12 +51,16 @@ export const tournamentEditorSchema = z
     registrationDeadline: dateTime("กรุณาระบุวันปิดรับสมัคร"),
     capacity: z.coerce
       .number({ error: tournamentCapacityMessage })
-      .refine(isValidTournamentCapacity, {
+      .refine((capacity) =>
+        isValidTournamentCapacity(capacity) ||
+        (allowLegacyCapacity && isLegacyTournamentCapacity(capacity)), {
         message: tournamentCapacityMessage,
       }),
     rules: requiredText("กรุณาระบุกติกา"),
     version: z.coerce.number().int().nonnegative().optional(),
   })
+
+export const tournamentEditorSchema = tournamentEditorSchemaForMode(false)
   .superRefine((value, context) => {
     const startsAt = Date.parse(value.startsAt)
     const endsAt = Date.parse(value.endsAt)

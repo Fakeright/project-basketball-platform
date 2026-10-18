@@ -187,7 +187,7 @@ describe("TournamentEditor", () => {
     })
   })
 
-  it("saves a valid custom even capacity", async () => {
+  it("saves a selected full-bracket capacity", async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       new Response(
         JSON.stringify({
@@ -207,37 +207,32 @@ describe("TournamentEditor", () => {
     await fillValidTournament(user)
     await user.selectOptions(
       screen.getByLabelText("จำนวนทีมสูงสุด"),
-      "CUSTOM",
+      "8",
     )
-    await user.type(screen.getByLabelText("ระบุจำนวนทีม"), "10")
     await user.click(screen.getByRole("button", { name: "บันทึกฉบับร่าง" }))
 
     await waitFor(() => expect(fetchMock).toHaveBeenCalledOnce())
     expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toMatchObject({
-      capacity: 10,
+      capacity: 8,
     })
   })
 
-  it("blocks an odd custom capacity before sending a request", async () => {
-    const fetchMock = vi.fn()
+  it("retains a legacy capacity when editing another field", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      Response.json({ tournament: { id: "tournament-1", version: 2, status: "DRAFT" } }),
+    )
     vi.stubGlobal("fetch", fetchMock)
     const user = userEvent.setup()
 
-    render(<TournamentEditor initialTournament={null} />)
-    await fillValidTournament(user)
-    await user.selectOptions(
-      screen.getByLabelText("จำนวนทีมสูงสุด"),
-      "CUSTOM",
-    )
-    await user.type(screen.getByLabelText("ระบุจำนวนทีม"), "7")
+    render(<TournamentEditor initialTournament={{ ...editableTournament, capacity: 6 }} />)
+    fireEvent.change(screen.getByLabelText("ชื่อรายการ"), { target: { value: "Renamed Cup" } })
     await user.click(screen.getByRole("button", { name: "บันทึกฉบับร่าง" }))
 
-    expect(
-      await screen.findByText(
-        "จำนวนทีมต้องเป็นเลขคู่ตั้งแต่ 6 ถึง 32 ทีม",
-      ),
-    ).toBeTruthy()
-    expect(fetchMock).not.toHaveBeenCalled()
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledOnce())
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toMatchObject({
+      title: "Renamed Cup",
+      capacity: 6,
+    })
   })
 
   it("shows a deadline error before submitting", async () => {
