@@ -1,6 +1,6 @@
 import "server-only"
 
-import { getDocument } from "pdfjs-dist/legacy/build/pdf.mjs"
+import { PDFDocument } from "pdf-lib"
 import sharp from "sharp"
 
 import {
@@ -26,19 +26,14 @@ export async function probeBracketFile(input: {
 }
 
 async function probePdf(data: Uint8Array): Promise<BracketFileProbeResult> {
-  const loadingTask = getDocument({
-    data: Uint8Array.from(data),
-    useWorkerFetch: false,
+  const document = await PDFDocument.load(data, {
+    throwOnInvalidObject: true,
+    updateMetadata: false,
   })
-
-  try {
-    const document = await loadingTask.promise
-    if (document.numPages < 1) throw new Error("BRACKET_FILE_UNREADABLE")
-    await document.getPage(1)
-    return { kind: "PDF", pageCount: document.numPages }
-  } finally {
-    await loadingTask.destroy()
-  }
+  const pageCount = document.getPageCount()
+  if (pageCount < 1) throw new Error("BRACKET_FILE_UNREADABLE")
+  document.getPage(0)
+  return { kind: "PDF", pageCount }
 }
 
 async function probeImage(data: Uint8Array): Promise<BracketFileProbeResult> {
