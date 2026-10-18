@@ -29,6 +29,33 @@ function createPrismaMock() {
 }
 
 describe("PrismaCompetitionRepository", () => {
+  it("reports scheduled matches when loading generation context", async () => {
+    const prisma = createPrismaMock()
+    prisma.tournament.findUnique.mockResolvedValue({
+      id: "tournament-1",
+      organizerId: "organizer-1",
+      governanceStatus: "ACTIVE",
+      brackets: [{
+        id: "bracket-1",
+        version: 2,
+        status: "DRAFT",
+        mode: "SYSTEM_GENERATED",
+        generationMethod: "ORDERED",
+        drawToken: null,
+        entries: [],
+        matches: [{ status: "SCHEDULED", scheduledAt: new Date("2026-11-15T09:00:00Z") }],
+      }],
+    })
+    const repository = new PrismaCompetitionRepository(prisma as unknown as PrismaClient)
+
+    await expect(repository.findGenerationContext("tournament-1")).resolves.toMatchObject({
+      bracketStatus: "DRAFT",
+      bracketMode: "SYSTEM_GENERATED",
+      hasStartedMatch: false,
+      hasScheduledMatch: true,
+    })
+  })
+
   it.each([
     {
       operation: "lock bracket entries",
@@ -522,6 +549,11 @@ describe("PrismaCompetitionRepository", () => {
         tournamentId: "tournament-1",
         version: 2,
         status: "DRAFT",
+        mode: "SYSTEM_GENERATED",
+        matches: { none: { OR: [
+          { scheduledAt: { not: null } },
+          { status: { in: ["IN_PROGRESS", "COMPLETED"] } },
+        ] } },
         entriesLockedAt: { not: null },
       },
       data: {

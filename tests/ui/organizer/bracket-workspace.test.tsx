@@ -15,6 +15,7 @@ const unlocked: OrganizerCompetitionWorkspace = {
     id: "tournament-1",
     title: "COURTSIDE OPEN",
     organizerId: "organizer-1",
+    tournamentGovernanceStatus: "ACTIVE",
     status: "REGISTRATION_CLOSED",
     version: 4,
   },
@@ -24,14 +25,21 @@ const unlocked: OrganizerCompetitionWorkspace = {
 
 const locked: OrganizerCompetitionWorkspace = {
   ...unlocked,
+  approvedTeamCount: 8,
   bracket: {
     id: "bracket-1",
     version: 2,
     status: "DRAFT",
+    mode: "SYSTEM_GENERATED",
     generationMethod: null,
     entriesLockedAt: "2026-08-19T05:00:00.000Z",
     hasStartedMatch: false,
-    entries: [entry("entry-1", "team-1", "Bangkok Five", 1), entry("entry-2", "team-2", "Chiang Mai Hoops", 2)],
+    entries: Array.from({ length: 8 }, (_, index) => entry(
+      `entry-${index + 1}`,
+      `team-${index + 1}`,
+      index === 0 ? "Bangkok Five" : index === 1 ? "Chiang Mai Hoops" : `Team ${index + 1}`,
+      index + 1,
+    )),
     rounds: [],
   },
 }
@@ -65,20 +73,58 @@ describe("BracketWorkspace", () => {
     await waitFor(() => expect(refresh).toHaveBeenCalled())
   })
 
-  it("renders seed controls for every locked team", () => {
+  it("moves a team up and submits the visible order", async () => {
+    const fetchMock = vi.fn(async () => Response.json({ bracket: {} }))
+    vi.stubGlobal("fetch", fetchMock)
+    const user = userEvent.setup()
     render(<BracketWorkspace workspace={locked} />)
 
     expect(
-      (screen.getByRole("radio", { name: "กำหนด Seed" }) as HTMLInputElement)
+      (screen.getByRole("radio", { name: "เรียงทีมเอง" }) as HTMLInputElement)
         .checked,
     ).toBe(true)
-    expect(
-      (screen.getByLabelText("Seed Bangkok Five") as HTMLInputElement).value,
-    ).toBe("1")
-    expect(
-      (screen.getByLabelText("Seed Chiang Mai Hoops") as HTMLInputElement).value,
-    ).toBe("2")
+    expect(screen.getByRole("button", { name: "เลื่อน Bangkok Five ขึ้น" }).hasAttribute("disabled")).toBe(true)
+    await user.click(screen.getByRole("button", { name: "เลื่อน Chiang Mai Hoops ขึ้น" }))
+    await user.click(screen.getByRole("button", { name: "สร้างตัวอย่างสาย" }))
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/organizer/tournaments/tournament-1/bracket/generate",
+      expect.objectContaining({
+        body: JSON.stringify({
+          method: "ORDERED",
+          expectedVersion: 2,
+          positions: [
+            { entryId: "entry-2", position: 1 },
+            { entryId: "entry-1", position: 2 },
+            ...locked.bracket!.entries.slice(2).map((entry, index) => ({
+              entryId: entry.id,
+              position: index + 3,
+            })),
+          ],
+        }),
+      }),
+    )
     expect(screen.getByText("ล็อกแล้ว")).toBeTruthy()
+  })
+
+  it("moves teams with the keyboard and resets to server order after a new version", async () => {
+    const user = userEvent.setup()
+    const { rerender } = render(<BracketWorkspace workspace={locked} />)
+
+    const moveUp = screen.getByRole("button", { name: "เลื่อน Chiang Mai Hoops ขึ้น" })
+    moveUp.focus()
+    await user.keyboard("{Enter}")
+    expect(screen.getByRole("button", { name: "เลื่อน Chiang Mai Hoops ขึ้น" }).hasAttribute("disabled")).toBe(true)
+
+    rerender(<BracketWorkspace workspace={{
+      ...locked,
+      bracket: {
+        ...locked.bracket!,
+        version: 3,
+        entries: locked.bracket!.entries,
+      },
+    }} />)
+    expect(screen.getByRole("button", { name: "เลื่อน Chiang Mai Hoops ขึ้น" }).hasAttribute("disabled")).toBe(false)
   })
 
   it("submits random generation with the current bracket version", async () => {
@@ -95,13 +141,49 @@ describe("BracketWorkspace", () => {
       expect.objectContaining({
         method: "POST",
         body: JSON.stringify({
-          method: "RANDOM",
+          method: "RANDOM_ORDERED",
           expectedVersion: 2,
           redraw: false,
         }),
       }),
     )
     await waitFor(() => expect(refresh).toHaveBeenCalled())
+  })
+
+  it("requires confirmation before drawing a new random order", async () => {
+    const fetchMock = vi.fn(async () => Response.json({ bracket: {} }))
+    vi.stubGlobal("fetch", fetchMock)
+    const confirm = vi.spyOn(window, "confirm").mockReturnValueOnce(false).mockReturnValueOnce(true)
+    const user = userEvent.setup()
+    render(<BracketWorkspace workspace={{ ...locked, bracket: { ...locked.bracket!, generationMethod: "RANDOM_ORDERED" } }} />)
+
+    await user.click(screen.getByRole("button", { name: "สุ่มใหม่" }))
+    expect(fetchMock).not.toHaveBeenCalled()
+    await user.click(screen.getByRole("button", { name: "สุ่มใหม่" }))
+    expect(confirm).toHaveBeenCalled()
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/organizer/tournaments/tournament-1/bracket/generate",
+      expect.objectContaining({ body: JSON.stringify({ method: "RANDOM_ORDERED", expectedVersion: 2, redraw: true }) }),
+    )
+    confirm.mockRestore()
+  })
+
+  it("keeps external mode available when twelve entries cannot generate a system bracket", () => {
+    render(<BracketWorkspace
+      workspace={{
+        ...locked,
+        approvedTeamCount: 12,
+        bracket: {
+          ...locked.bracket!,
+          entries: Array.from({ length: 12 }, (_, index) => entry(`entry-${index + 1}`, `team-${index + 1}`, `Team ${index + 1}`, index + 1)),
+        },
+      }}
+      modeContext={{ tournamentId: "tournament-1", organizerId: "organizer-1", tournamentGovernanceStatus: "ACTIVE", bracketId: "bracket-1", bracketVersion: 2, bracketStatus: "DRAFT", bracketMode: "SYSTEM_GENERATED", hasStartedMatch: false }}
+    />)
+
+    expect(screen.getByText("สายที่ระบบสร้างต้องมีทีมที่อนุมัติ 8, 16 หรือ 32 ทีม")).toBeTruthy()
+    expect(screen.getByRole("button", { name: "สร้างตัวอย่างสาย" }).hasAttribute("disabled")).toBe(true)
+    expect(screen.getByRole("radio", { name: "ใช้ไฟล์ภายนอก" })).toBeTruthy()
   })
 
   it("publishes a generated draft", async () => {

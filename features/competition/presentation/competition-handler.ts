@@ -29,20 +29,20 @@ const lockEntriesSchema = z.object({
 
 const generateBracketSchema = z.discriminatedUnion("method", [
   z.object({
-    method: z.literal("SEEDED"),
+    method: z.literal("ORDERED"),
     expectedVersion: z.number().int().nonnegative(),
-    seeds: z
+    positions: z
       .array(
         z.object({
           entryId: z.string().trim().min(1),
-          seed: z.number().int().positive(),
+          position: z.number().int().positive(),
         }),
       )
-      .min(2)
+      .min(8)
       .max(32),
   }),
   z.object({
-    method: z.literal("RANDOM"),
+    method: z.literal("RANDOM_ORDERED"),
     expectedVersion: z.number().int().nonnegative(),
     redraw: z.boolean().default(false),
   }),
@@ -592,11 +592,19 @@ function generationFailureResponse(error: unknown) {
     },
     BRACKET_STRUCTURE_LOCKED: {
       status: 409,
-      message: "ไม่สามารถสร้างสายใหม่หลังเริ่มแข่งขันแล้ว",
+      message: "ไม่สามารถสร้างสายใหม่เมื่อมีการกำหนดเวลาหรือเริ่มแข่งขันแล้ว",
     },
-    BRACKET_SEED_INVALID: {
+    BRACKET_ORDER_INVALID: {
       status: 422,
-      message: "กรุณากำหนด Seed ให้ครบและไม่ซ้ำกัน",
+      message: "กรุณาเรียงทีมให้ครบและไม่ซ้ำกัน",
+    },
+    BRACKET_ENTRY_COUNT_UNSUPPORTED: {
+      status: 422,
+      message: "สายที่ระบบสร้างต้องมีทีมที่อนุมัติ 8, 16 หรือ 32 ทีม",
+    },
+    BRACKET_GENERATION_UNAVAILABLE: {
+      status: 409,
+      message: "ไม่สามารถจัดสายใหม่ในรูปแบบหรือสถานะนี้ได้",
     },
     BRACKET_RANDOM_INVALID: {
       status: 422,

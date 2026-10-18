@@ -2,12 +2,11 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { Globe2, LockKeyhole, Shuffle } from "lucide-react"
+import { ArrowDown, ArrowUp, Globe2, LockKeyhole, Shuffle } from "lucide-react"
 
 import { BracketPreview } from "@/components/organizer/bracket-preview"
 import { BracketModeControl } from "@/components/organizer/bracket-mode-control"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import type { BracketModeSelectionContext } from "@/features/competition/application/ports/external-bracket-repository"
 import type { OrganizerCompetitionWorkspace } from "@/features/competition/application/ports/competition-repository"
 
@@ -20,14 +19,31 @@ export function BracketWorkspace({
 }) {
   const router = useRouter()
   const bracket = workspace.bracket
-  const [method, setMethod] = useState<"SEEDED" | "RANDOM">(
-    bracket?.generationMethod === "RANDOM" ? "RANDOM" : "SEEDED",
+  const [method, setMethod] = useState<"ORDERED" | "RANDOM_ORDERED">(
+    bracket?.generationMethod === "RANDOM_ORDERED" ? "RANDOM_ORDERED" : "ORDERED",
   )
-  const [seeds, setSeeds] = useState<Record<string, number>>(() =>
-    Object.fromEntries(bracket?.entries.map((entry) => [entry.id, entry.seed]) ?? []),
-  )
+  const [editedOrder, setEditedOrder] = useState<{
+    bracketKey: string
+    entryIds: string[]
+  } | null>(null)
   const [pending, setPending] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
+  const bracketKey = `${bracket?.id ?? "none"}:${bracket?.version ?? 0}`
+  const orderedEntryIds = editedOrder?.bracketKey === bracketKey
+    ? editedOrder.entryIds
+    : [...(bracket?.entries ?? [])]
+        .sort((first, second) => first.drawPosition - second.drawPosition)
+        .map((entry) => entry.id)
+  const entryById = new Map(bracket?.entries.map((entry) => [entry.id, entry]) ?? [])
+  const systemCountSupported = bracket ? [8, 16, 32].includes(bracket.entries.length) : false
+  const generationLocked = bracket
+    ? bracket.status !== "DRAFT" ||
+      bracket.mode !== "SYSTEM_GENERATED" ||
+      bracket.hasStartedMatch ||
+      bracket.rounds.some((round) =>
+        round.matches.some((match) => match.scheduledAt !== null),
+      )
+    : true
 
   async function mutate(url: string, body: unknown) {
     setPending(true)
@@ -58,19 +74,30 @@ export function BracketWorkspace({
     )
   }
 
-  function generateBracket() {
+  function moveEntry(index: number, direction: -1 | 1) {
+    const next = [...orderedEntryIds]
+    const adjacentIndex = index + direction
+    if (adjacentIndex < 0 || adjacentIndex >= next.length) return
+    const movedEntryId = next[index]
+    next[index] = next[adjacentIndex]
+    next[adjacentIndex] = movedEntryId
+    setEditedOrder({ bracketKey, entryIds: next })
+  }
+
+  function generateBracket(redraw = false) {
     if (!bracket) return
+    if (redraw && !window.confirm("สุ่มลำดับทีมใหม่และแทนตัวอย่างสายเดิม?")) return
     const body =
-      method === "SEEDED"
+      method === "ORDERED"
         ? {
             method,
             expectedVersion: bracket.version,
-            seeds: bracket.entries.map((entry) => ({
-              entryId: entry.id,
-              seed: seeds[entry.id],
+            positions: orderedEntryIds.map((entryId, index) => ({
+              entryId,
+              position: index + 1,
             })),
           }
-        : { method, expectedVersion: bracket.version, redraw: false }
+        : { method, expectedVersion: bracket.version, redraw }
     void mutate(
       `/api/organizer/tournaments/${workspace.tournament.id}/bracket/generate`,
       body,
@@ -132,55 +159,73 @@ export function BracketWorkspace({
         </section>
       ) : null}
 
-      <section className="grid gap-5 py-7 lg:grid-cols-[12rem_1fr]">
+      <section className="grid gap-5 py-7 lg:grid-cols-[12rem_minmax(0,1fr)]">
         <StepNumber number={modeContext ? "03" : "02"} title="เลือกวิธีจัดสาย" />
-        {bracket ? (
-          <div className="space-y-5">
+        {bracket?.mode === "EXTERNAL_DOCUMENT" ? (
+          <p className="text-sm text-muted-foreground">ใช้ไฟล์สายการแข่งขันภายนอก</p>
+        ) : bracket ? (
+          <div className="min-w-0 space-y-5">
             <fieldset className="flex flex-wrap gap-5">
               <legend className="sr-only">วิธีจัดสายการแข่งขัน</legend>
               <label className="flex min-h-10 items-center gap-2 text-sm font-medium">
                 <input
-                  checked={method === "SEEDED"}
+                  checked={method === "ORDERED"}
                   name="generation-method"
-                  onChange={() => setMethod("SEEDED")}
+                  onChange={() => setMethod("ORDERED")}
                   type="radio"
                 />
-                กำหนด Seed
+                เรียงทีมเอง
               </label>
               <label className="flex min-h-10 items-center gap-2 text-sm font-medium">
                 <input
-                  checked={method === "RANDOM"}
+                  checked={method === "RANDOM_ORDERED"}
                   name="generation-method"
-                  onChange={() => setMethod("RANDOM")}
+                  onChange={() => setMethod("RANDOM_ORDERED")}
                   type="radio"
                 />
                 สุ่มอัตโนมัติ
               </label>
             </fieldset>
 
-            {method === "SEEDED" ? (
+            {method === "ORDERED" ? (
               <div className="divide-y divide-border border-y border-border">
-                {bracket.entries.map((entry) => (
-                  <label
-                    className="grid min-h-12 grid-cols-[1fr_5rem] items-center gap-4 py-2 text-sm"
-                    key={entry.id}
-                  >
-                    <span className="min-w-0 break-words">{entry.teamNameSnapshot}</span>
-                    <Input
-                      aria-label={`Seed ${entry.teamNameSnapshot}`}
-                      max={bracket.entries.length}
-                      min={1}
-                      onChange={(event) =>
-                        setSeeds((current) => ({
-                          ...current,
-                          [entry.id]: Number(event.target.value),
-                        }))
-                      }
-                      type="number"
-                      value={seeds[entry.id] ?? ""}
-                    />
-                  </label>
-                ))}
+                {orderedEntryIds.map((entryId, index) => {
+                  const entry = entryById.get(entryId)
+                  if (!entry) return null
+                  return (
+                    <div
+                      className="grid min-h-14 grid-cols-[2rem_minmax(0,1fr)_auto] items-center gap-3 py-2 text-sm"
+                      key={entry.id}
+                    >
+                      <span className="text-muted-foreground">{index + 1}</span>
+                      <span className="min-w-0 break-words">{entry.teamNameSnapshot}</span>
+                      <div className="flex gap-1">
+                        <Button
+                          aria-label={`เลื่อน ${entry.teamNameSnapshot} ขึ้น`}
+                          disabled={index === 0 || pending || generationLocked}
+                          onClick={() => moveEntry(index, -1)}
+                          size="icon"
+                          title={`เลื่อน ${entry.teamNameSnapshot} ขึ้น`}
+                          type="button"
+                          variant="outline"
+                        >
+                          <ArrowUp aria-hidden="true" />
+                        </Button>
+                        <Button
+                          aria-label={`เลื่อน ${entry.teamNameSnapshot} ลง`}
+                          disabled={index === orderedEntryIds.length - 1 || pending || generationLocked}
+                          onClick={() => moveEntry(index, 1)}
+                          size="icon"
+                          title={`เลื่อน ${entry.teamNameSnapshot} ลง`}
+                          type="button"
+                          variant="outline"
+                        >
+                          <ArrowDown aria-hidden="true" />
+                        </Button>
+                      </div>
+                    </div>
+                  )
+                })}
               </div>
             ) : (
               <p className="text-sm text-muted-foreground">
@@ -188,10 +233,21 @@ export function BracketWorkspace({
               </p>
             )}
 
-            <Button disabled={pending || bracket.hasStartedMatch} onClick={generateBracket} size="lg">
-              <Shuffle aria-hidden="true" />
-              {pending ? "กำลังสร้าง" : "สร้างตัวอย่างสาย"}
-            </Button>
+            {!systemCountSupported ? (
+              <p className="text-sm text-destructive">สายที่ระบบสร้างต้องมีทีมที่อนุมัติ 8, 16 หรือ 32 ทีม</p>
+            ) : null}
+            <div className="flex flex-wrap gap-2">
+              <Button disabled={pending || generationLocked || !systemCountSupported} onClick={() => generateBracket()} size="lg">
+                <Shuffle aria-hidden="true" />
+                {pending ? "กำลังสร้าง" : "สร้างตัวอย่างสาย"}
+              </Button>
+              {method === "RANDOM_ORDERED" && bracket.generationMethod === "RANDOM_ORDERED" ? (
+                <Button disabled={pending || generationLocked || !systemCountSupported} onClick={() => generateBracket(true)} size="lg" variant="outline">
+                  <Shuffle aria-hidden="true" />
+                  สุ่มใหม่
+                </Button>
+              ) : null}
+            </div>
           </div>
         ) : (
           <p className="text-sm text-muted-foreground">ล็อกรายชื่อทีมก่อนเลือกวิธีจัดสาย</p>

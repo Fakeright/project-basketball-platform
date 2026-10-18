@@ -167,11 +167,23 @@ describe("bracket generation route handler", () => {
     const generate = vi.fn()
     const response = await handleGenerateBracket(
       "tournament-1",
-      request({ method: "SEEDED", expectedVersion: 2, seeds: [] }),
+      request({ method: "ORDERED", expectedVersion: 2, positions: [] }),
       {
         actorProvider: { getCurrentActor: vi.fn(async () => organizer) },
         generate,
       },
+    )
+
+    expect(response.status).toBe(422)
+    expect(generate).not.toHaveBeenCalled()
+  })
+
+  it("rejects legacy seed generation requests", async () => {
+    const generate = vi.fn()
+    const response = await handleGenerateBracket(
+      "tournament-1",
+      request({ method: "SEEDED", expectedVersion: 2, seeds: [] }),
+      { actorProvider: { getCurrentActor: vi.fn(async () => organizer) }, generate },
     )
 
     expect(response.status).toBe(422)
@@ -183,7 +195,7 @@ describe("bracket generation route handler", () => {
     const generate = vi.fn(async () => bracket)
     const response = await handleGenerateBracket(
       "tournament-1",
-      request({ method: "RANDOM", expectedVersion: 2, redraw: false }),
+      request({ method: "RANDOM_ORDERED", expectedVersion: 2, redraw: false }),
       {
         actorProvider: { getCurrentActor: vi.fn(async () => organizer) },
         generate,
@@ -195,7 +207,7 @@ describe("bracket generation route handler", () => {
     expect(generate).toHaveBeenCalledWith(
       {
         tournamentId: "tournament-1",
-        method: "RANDOM",
+        method: "RANDOM_ORDERED",
         expectedVersion: 2,
         redraw: false,
       },
@@ -204,13 +216,16 @@ describe("bracket generation route handler", () => {
   })
 
   it.each([
-    ["BRACKET_SEED_INVALID", 422, "กรุณากำหนด Seed ให้ครบและไม่ซ้ำกัน"],
+    ["BRACKET_ORDER_INVALID", 422, "กรุณาเรียงทีมให้ครบและไม่ซ้ำกัน"],
+    ["BRACKET_ENTRY_COUNT_UNSUPPORTED", 422, "สายที่ระบบสร้างต้องมีทีมที่อนุมัติ 8, 16 หรือ 32 ทีม"],
+    ["BRACKET_GENERATION_UNAVAILABLE", 409, "ไม่สามารถจัดสายใหม่ในรูปแบบหรือสถานะนี้ได้"],
+    ["BRACKET_STRUCTURE_LOCKED", 409, "ไม่สามารถสร้างสายใหม่เมื่อมีการกำหนดเวลาหรือเริ่มแข่งขันแล้ว"],
     ["BRACKET_RANDOM_INVALID", 422, "ไม่สามารถสุ่มลำดับทีมได้"],
     ["CONFLICT", 409, "ข้อมูลสายการแข่งขันมีการเปลี่ยนแปลง กรุณาลองใหม่"],
   ])("maps generation error %s", async (code, status, message) => {
     const response = await handleGenerateBracket(
       "tournament-1",
-      request({ method: "RANDOM", expectedVersion: 2, redraw: false }),
+      request({ method: "RANDOM_ORDERED", expectedVersion: 2, redraw: false }),
       {
         actorProvider: { getCurrentActor: vi.fn(async () => organizer) },
         generate: vi.fn(async () => {

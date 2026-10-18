@@ -366,12 +366,13 @@ class PrismaCompetitionOperations implements CompetitionRepositoryTransaction {
           select: {
             id: true,
             version: true,
+            status: true,
+            mode: true,
             generationMethod: true,
             drawToken: true,
             entries: { orderBy: { drawPosition: "asc" } },
             matches: {
-              where: { status: { in: ["IN_PROGRESS", "COMPLETED"] } },
-              select: { id: true },
+              select: { status: true, scheduledAt: true },
             },
           },
         },
@@ -386,9 +387,14 @@ class PrismaCompetitionOperations implements CompetitionRepositoryTransaction {
       tournamentGovernanceStatus: tournament.governanceStatus,
       bracketId: bracket.id,
       bracketVersion: bracket.version,
+      bracketStatus: bracket.status,
+      bracketMode: bracket.mode,
       generationMethod: bracket.generationMethod,
       drawToken: bracket.drawToken,
-      hasStartedMatch: bracket.matches.length > 0,
+      hasStartedMatch: bracket.matches.some((match) =>
+        match.status === "IN_PROGRESS" || match.status === "COMPLETED"
+      ),
+      hasScheduledMatch: bracket.matches.some((match) => match.scheduledAt !== null),
       entries: bracket.entries,
     }
   }
@@ -503,6 +509,11 @@ class PrismaCompetitionOperations implements CompetitionRepositoryTransaction {
         tournamentId: input.tournamentId,
         version: input.expectedVersion,
         status: "DRAFT",
+        mode: "SYSTEM_GENERATED",
+        matches: { none: { OR: [
+          { scheduledAt: { not: null } },
+          { status: { in: ["IN_PROGRESS", "COMPLETED"] } },
+        ] } },
         entriesLockedAt: { not: null },
       },
       data: {

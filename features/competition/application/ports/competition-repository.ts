@@ -25,9 +25,12 @@ export interface BracketGenerationContext {
   tournamentGovernanceStatus: TournamentGovernanceStatus
   bracketId: string
   bracketVersion: number
+  bracketStatus: string
+  bracketMode: "SYSTEM_GENERATED" | "EXTERNAL_DOCUMENT"
   generationMethod: BracketGenerationMethod | null
   drawToken: string | null
   hasStartedMatch: boolean
+  hasScheduledMatch: boolean
   entries: LockedBracketEntry[]
 }
 

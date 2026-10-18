@@ -1,7 +1,11 @@
 import { authorize } from "@/features/identity/application/authorize"
 import type { Actor } from "@/features/identity/domain/actor"
-import { generateSingleEliminationBracket } from "@/features/competition/domain/bracket-generator"
-import { assertBracketStructureMutable } from "@/features/competition/domain/bracket-policy"
+import { generateOrderedSingleEliminationBracket } from "@/features/competition/domain/bracket-generator"
+import {
+  assertBracketStructureMutable,
+  assertSystemBracketEntryCount,
+  validateOrderedPositions,
+} from "@/features/competition/domain/bracket-policy"
 import type { LockedBracketEntry } from "@/features/competition/domain/competition"
 import { assertTournamentGovernanceAllowsOperation } from "@/features/tournament-operations/domain/tournament-governance-policy"
 
@@ -14,13 +18,13 @@ export type GenerateBracketDraftInput =
   | {
       tournamentId: string
       expectedVersion: number
-      method: "SEEDED"
-      seeds: Array<{ entryId: string; seed: number }>
+      method: "ORDERED"
+      positions: Array<{ entryId: string; position: number }>
     }
   | {
       tournamentId: string
       expectedVersion: number
-      method: "RANDOM"
+      method: "RANDOM_ORDERED"
       redraw: boolean
     }
 
@@ -56,13 +60,18 @@ export async function generateBracketDraft(
       context.tournamentGovernanceStatus,
     )
     assertBracketStructureMutable({ hasStartedMatch: context.hasStartedMatch })
+    if (context.bracketStatus !== "DRAFT" || context.bracketMode !== "SYSTEM_GENERATED") {
+      throw new Error("BRACKET_GENERATION_UNAVAILABLE")
+    }
+    if (context.hasScheduledMatch) throw new Error("BRACKET_STRUCTURE_LOCKED")
+    assertSystemBracketEntryCount(context.entries.length)
 
     const { entries, drawToken } = prepareEntries(input, context.entries, context)
-    const plan = generateSingleEliminationBracket({
+    const plan = generateOrderedSingleEliminationBracket({
       entries: entries.map((entry) => ({
         entryId: entry.id,
         teamId: entry.teamId,
-        seed: entry.seed,
+        position: entry.drawPosition,
       })),
     })
     const startRounds = new Map(
@@ -91,31 +100,32 @@ export async function generateBracketDraft(
     lockedEntries: readonly LockedBracketEntry[],
     context: { generationMethod: string | null; drawToken: string | null },
   ): { entries: LockedBracketEntry[]; drawToken: string | null } {
-    if (generationInput.method === "SEEDED") {
-      const seedsByEntry = new Map(
-        generationInput.seeds.map(({ entryId, seed }) => [entryId, seed]),
+    if (generationInput.method === "ORDERED") {
+      const positionsByEntry = new Map(
+        generationInput.positions.map(({ entryId, position }) => [entryId, position]),
       )
       if (
-        generationInput.seeds.length !== lockedEntries.length ||
-        seedsByEntry.size !== lockedEntries.length ||
-        lockedEntries.some((entry) => !seedsByEntry.has(entry.id))
+        generationInput.positions.length !== lockedEntries.length ||
+        positionsByEntry.size !== lockedEntries.length ||
+        lockedEntries.some((entry) => !positionsByEntry.has(entry.id))
       ) {
-        throw new Error("BRACKET_SEED_INVALID")
+        throw new Error("BRACKET_ORDER_INVALID")
       }
+      validateOrderedPositions(generationInput.positions)
 
       return {
         drawToken: null,
         entries: lockedEntries.map((entry) => ({
           ...entry,
-          seed: seedsByEntry.get(entry.id) ?? 0,
-          drawPosition: seedsByEntry.get(entry.id) ?? 0,
+          seed: positionsByEntry.get(entry.id) ?? 0,
+          drawPosition: positionsByEntry.get(entry.id) ?? 0,
         })),
       }
     }
 
     if (
       !generationInput.redraw &&
-      context.generationMethod === "RANDOM" &&
+      context.generationMethod === "RANDOM_ORDERED" &&
       context.drawToken
     ) {
       return { entries: [...lockedEntries], drawToken: context.drawToken }
@@ -125,20 +135,21 @@ export async function generateBracketDraft(
     const shuffled = dependencies.shuffle(lockedEntries, drawToken)
     if (
       shuffled.length !== lockedEntries.length ||
-      new Set(shuffled.map((entry) => entry.id)).size !== lockedEntries.length
+      new Set(shuffled.map((entry) => entry.id)).size !== lockedEntries.length ||
+      shuffled.some((entry) => !lockedEntries.some((locked) => locked.id === entry.id))
     ) {
       throw new Error("BRACKET_RANDOM_INVALID")
     }
 
-    const seedsByEntry = new Map(
+    const positionsByEntry = new Map(
       shuffled.map((entry, index) => [entry.id, index + 1]),
     )
     return {
       drawToken,
       entries: lockedEntries.map((entry) => ({
         ...entry,
-        seed: seedsByEntry.get(entry.id) ?? 0,
-        drawPosition: seedsByEntry.get(entry.id) ?? 0,
+        seed: positionsByEntry.get(entry.id) ?? 0,
+        drawPosition: positionsByEntry.get(entry.id) ?? 0,
       })),
     }
   }

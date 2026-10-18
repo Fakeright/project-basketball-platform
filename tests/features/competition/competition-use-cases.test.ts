@@ -131,7 +131,7 @@ describe("lockBracketEntries", () => {
 })
 
 describe("generateBracketDraft", () => {
-  function generationRepository() {
+  function generationRepository(entryCount = 8) {
     const transaction = {
       findLockContext: vi.fn(),
       lockEntries: vi.fn(),
@@ -141,13 +141,15 @@ describe("generateBracketDraft", () => {
         tournamentGovernanceStatus: "ACTIVE",
         bracketId: "bracket-1",
         bracketVersion: 2,
+        bracketStatus: "DRAFT",
+        bracketMode: "SYSTEM_GENERATED",
         drawToken: null,
         generationMethod: null,
         hasStartedMatch: false,
-        entries: [
-          lockedEntry("entry-1", "team-1", 1),
-          lockedEntry("entry-2", "team-2", 2),
-        ],
+        hasScheduledMatch: false,
+        entries: Array.from({ length: entryCount }, (_, index) =>
+          lockedEntry(`entry-${index + 1}`, `team-${index + 1}`, index + 1),
+        ),
       })),
       persistGeneratedPlan: vi.fn(async () => ({
         id: "bracket-1",
@@ -167,18 +169,18 @@ describe("generateBracketDraft", () => {
     }
   }
 
-  it("generates and persists a complete seeded draft", async () => {
+  it("generates and persists a complete manually ordered draft", async () => {
     const { repository, transaction } = generationRepository()
 
     const result = await generateBracketDraft(
       {
         tournamentId: "tournament-1",
         expectedVersion: 2,
-        method: "SEEDED",
-        seeds: [
-          { entryId: "entry-1", seed: 2 },
-          { entryId: "entry-2", seed: 1 },
-        ],
+        method: "ORDERED",
+        positions: Array.from({ length: 8 }, (_, index) => ({
+          entryId: `entry-${index + 1}`,
+          position: index === 0 ? 2 : index === 1 ? 1 : index + 1,
+        })),
       },
       organizer,
       {
@@ -194,17 +196,21 @@ describe("generateBracketDraft", () => {
       expect.objectContaining({
         bracketId: "bracket-1",
         expectedVersion: 2,
-        generationMethod: "SEEDED",
+        generationMethod: "ORDERED",
         drawToken: null,
-        entries: [
-          expect.objectContaining({ id: "entry-1", seed: 2 }),
-          expect.objectContaining({ id: "entry-2", seed: 1 }),
-        ],
       }),
+    )
+    const [persisted] = transaction.persistGeneratedPlan.mock.calls[0]
+    expect(persisted.entries).toHaveLength(8)
+    expect(persisted.entries).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: "entry-1", seed: 2, drawPosition: 2 }),
+        expect.objectContaining({ id: "entry-2", seed: 1, drawPosition: 1 }),
+      ]),
     )
   })
 
-  it("rejects an incomplete seed list", async () => {
+  it("rejects an incomplete ordered position list", async () => {
     const { repository, transaction } = generationRepository()
 
     await expect(
@@ -212,8 +218,8 @@ describe("generateBracketDraft", () => {
         {
           tournamentId: "tournament-1",
           expectedVersion: 2,
-          method: "SEEDED",
-          seeds: [{ entryId: "entry-1", seed: 1 }],
+          method: "ORDERED",
+          positions: [{ entryId: "entry-1", position: 1 }],
         },
         organizer,
         {
@@ -223,7 +229,34 @@ describe("generateBracketDraft", () => {
           shuffle: vi.fn(),
         },
       ),
-    ).rejects.toThrow("BRACKET_SEED_INVALID")
+    ).rejects.toThrow("BRACKET_ORDER_INVALID")
+    expect(transaction.persistGeneratedPlan).not.toHaveBeenCalled()
+  })
+
+  it("rejects duplicate or foreign entry IDs without replacing the current draft", async () => {
+    const { repository, transaction } = generationRepository()
+    const dependencies = {
+      competitions: repository,
+      now: () => new Date(),
+      createDrawToken: () => "unused-token",
+      shuffle: vi.fn(),
+    }
+
+    for (const entryIds of [
+      ["entry-1", "entry-1", "entry-3", "entry-4", "entry-5", "entry-6", "entry-7", "entry-8"],
+      ["entry-1", "foreign-entry", "entry-3", "entry-4", "entry-5", "entry-6", "entry-7", "entry-8"],
+    ]) {
+      await expect(generateBracketDraft(
+        {
+          tournamentId: "tournament-1",
+          expectedVersion: 2,
+          method: "ORDERED",
+          positions: entryIds.map((entryId, index) => ({ entryId, position: index + 1 })),
+        },
+        organizer,
+        dependencies,
+      )).rejects.toThrow("BRACKET_ORDER_INVALID")
+    }
     expect(transaction.persistGeneratedPlan).not.toHaveBeenCalled()
   })
 
@@ -235,7 +268,7 @@ describe("generateBracketDraft", () => {
       {
         tournamentId: "tournament-1",
         expectedVersion: 2,
-        method: "RANDOM",
+        method: "RANDOM_ORDERED",
         redraw: false,
       },
       organizer,
@@ -251,12 +284,81 @@ describe("generateBracketDraft", () => {
     expect(transaction.persistGeneratedPlan).toHaveBeenCalledWith(
       expect.objectContaining({
         drawToken: "draw-token-1",
-        entries: [
-          expect.objectContaining({ id: "entry-1", seed: 2 }),
-          expect.objectContaining({ id: "entry-2", seed: 1 }),
-        ],
       }),
     )
+    const [persisted] = transaction.persistGeneratedPlan.mock.calls[0]
+    expect(persisted.entries).toHaveLength(8)
+    expect(persisted.entries).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: "entry-1", seed: 8 }),
+        expect.objectContaining({ id: "entry-8", seed: 1 }),
+      ]),
+    )
+  })
+
+  it("keeps a previous random draw unless redraw is explicitly requested", async () => {
+    const { repository, transaction } = generationRepository()
+    const current = await transaction.findGenerationContext()
+    transaction.findGenerationContext.mockResolvedValue({
+      ...current,
+      generationMethod: "RANDOM_ORDERED",
+      drawToken: "previous-token",
+    })
+    const shuffle = vi.fn((entries: readonly { id: string }[]) => [...entries].reverse())
+    const dependencies = {
+      competitions: repository,
+      now: () => new Date(),
+      createDrawToken: () => "new-token",
+      shuffle,
+    }
+
+    await generateBracketDraft(
+      { tournamentId: "tournament-1", expectedVersion: 2, method: "RANDOM_ORDERED", redraw: false },
+      organizer,
+      dependencies,
+    )
+    expect(shuffle).not.toHaveBeenCalled()
+    expect(transaction.persistGeneratedPlan).toHaveBeenCalledWith(
+      expect.objectContaining({ drawToken: "previous-token" }),
+    )
+
+    await generateBracketDraft(
+      { tournamentId: "tournament-1", expectedVersion: 2, method: "RANDOM_ORDERED", redraw: true },
+      organizer,
+      dependencies,
+    )
+    expect(shuffle).toHaveBeenCalledWith(expect.any(Array), "new-token")
+    expect(transaction.persistGeneratedPlan).toHaveBeenLastCalledWith(
+      expect.objectContaining({ drawToken: "new-token" }),
+    )
+  })
+
+  it("blocks system generation for twelve approved teams without discarding the lock", async () => {
+    const { repository, transaction } = generationRepository(12)
+
+    await expect(generateBracketDraft(
+      { tournamentId: "tournament-1", expectedVersion: 2, method: "RANDOM_ORDERED", redraw: false },
+      organizer,
+      { competitions: repository, now: () => new Date(), createDrawToken: () => "token", shuffle: (entries) => [...entries] },
+    )).rejects.toThrow("BRACKET_ENTRY_COUNT_UNSUPPORTED")
+    expect(transaction.persistGeneratedPlan).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    ["published", { bracketStatus: "PUBLISHED" }, "BRACKET_GENERATION_UNAVAILABLE"],
+    ["external", { bracketMode: "EXTERNAL_DOCUMENT" }, "BRACKET_GENERATION_UNAVAILABLE"],
+    ["scheduled", { hasScheduledMatch: true }, "BRACKET_STRUCTURE_LOCKED"],
+  ])("blocks %s bracket regeneration", async (_label, override, errorCode) => {
+    const { repository, transaction } = generationRepository()
+    const current = await transaction.findGenerationContext()
+    transaction.findGenerationContext.mockResolvedValueOnce({ ...current, ...override })
+
+    await expect(generateBracketDraft(
+      { tournamentId: "tournament-1", expectedVersion: 2, method: "RANDOM_ORDERED", redraw: false },
+      organizer,
+      { competitions: repository, now: () => new Date(), createDrawToken: () => "token", shuffle: (entries) => [...entries] },
+    )).rejects.toThrow(errorCode)
+    expect(transaction.persistGeneratedPlan).not.toHaveBeenCalled()
   })
 
   it("rejects regeneration after a match has started", async () => {
@@ -269,8 +371,11 @@ describe("generateBracketDraft", () => {
       bracketVersion: 2,
       drawToken: null,
       generationMethod: null,
+      bracketStatus: "DRAFT",
+      bracketMode: "SYSTEM_GENERATED",
       hasStartedMatch: true,
-      entries: [lockedEntry("entry-1", "team-1", 1), lockedEntry("entry-2", "team-2", 2)],
+      hasScheduledMatch: false,
+      entries: Array.from({ length: 8 }, (_, index) => lockedEntry(`entry-${index + 1}`, `team-${index + 1}`, index + 1)),
     })
 
     await expect(
@@ -278,7 +383,7 @@ describe("generateBracketDraft", () => {
         {
           tournamentId: "tournament-1",
           expectedVersion: 2,
-          method: "RANDOM",
+          method: "RANDOM_ORDERED",
           redraw: false,
         },
         organizer,
@@ -302,8 +407,11 @@ describe("generateBracketDraft", () => {
       bracketVersion: 2,
       drawToken: null,
       generationMethod: null,
+      bracketStatus: "DRAFT",
+      bracketMode: "SYSTEM_GENERATED",
       hasStartedMatch: false,
-      entries: [lockedEntry("entry-1", "team-1", 1), lockedEntry("entry-2", "team-2", 2)],
+      hasScheduledMatch: false,
+      entries: Array.from({ length: 8 }, (_, index) => lockedEntry(`entry-${index + 1}`, `team-${index + 1}`, index + 1)),
     })
 
     await expect(
@@ -311,7 +419,7 @@ describe("generateBracketDraft", () => {
         {
           tournamentId: "tournament-1",
           expectedVersion: 2,
-          method: "RANDOM",
+          method: "RANDOM_ORDERED",
           redraw: false,
         },
         organizer,
