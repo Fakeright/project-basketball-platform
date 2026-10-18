@@ -367,6 +367,10 @@ function teamFailureResponse(error: unknown): Response | null {
     PLAYER_ALREADY_EXISTS: { status: 409, message: "ผู้เล่นอยู่ในทีมแล้ว" },
     JERSEY_ALREADY_IN_USE: { status: 409, message: "เบอร์เสื้อนี้ถูกใช้แล้ว" },
     PLAYER_BATCH_INVALID: { status: 422, message: "รายชื่อผู้เล่นไม่ถูกต้อง" },
+    PLAYER_LIMIT_EXCEEDED: {
+      status: 422,
+      message: "จำนวนผู้เล่นเกินกำหนด ทีม 5v5 มีได้สูงสุด 15 คน และทีม 3v3 มีได้สูงสุด 4 คน",
+    },
     TEAM_INACTIVE: { status: 409, message: "ทีมนี้ปิดใช้งานแล้ว" },
     TEAM_NAME_CONFIRMATION_MISMATCH: {
       status: 422,

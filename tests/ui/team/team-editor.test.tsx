@@ -60,6 +60,21 @@ const reusablePlayers: readonly ReusableTeamPlayer[] = [
 ]
 
 describe("TeamEditor", () => {
+  it("warns when switching a draft roster from 5v5 to 3v3 over four players", async () => {
+    const user = userEvent.setup()
+    const fetchMock = vi.fn()
+    vi.stubGlobal("fetch", fetchMock)
+    render(<TeamEditor initialTeam={null} />)
+
+    for (let index = 0; index < 5; index += 1) {
+      await user.click(screen.getByRole("button", { name: "เพิ่มผู้เล่นใหม่" }))
+    }
+    await user.selectOptions(screen.getByLabelText("รูปแบบทีม"), "THREE_V_THREE")
+
+    expect(screen.getByRole("alert").textContent).toContain("สูงสุด 4 คน")
+    await user.click(screen.getByRole("button", { name: "บันทึกทีม" }))
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
   it("shows an Admin Override notice to platform admins editing a team", () => {
     render(
       <TeamEditor

@@ -1,5 +1,6 @@
 import type { Actor } from "@/features/identity/domain/actor"
 import type { TeamSummary } from "@/features/team-management/domain/team"
+import { getMaximumTeamPlayerCount } from "@/features/team-management/domain/team-player-batch-policy"
 import { assertProvinceCode } from "@/features/provinces/application/assert-province-code"
 
 import type { CreateTeamInput } from "./create-team"
@@ -30,6 +31,13 @@ export async function updateTeam(
       (await teams.hasActiveRegistration(team.id))
     ) {
       throw new Error("TEAM_FORMAT_CHANGE_BLOCKED")
+    }
+
+    if (team.format !== input.format) {
+      const activePlayers = await teams.listActivePlayers(team.id)
+      if (activePlayers.length > getMaximumTeamPlayerCount(input.format)) {
+        throw new Error("PLAYER_LIMIT_EXCEEDED")
+      }
     }
 
     const updated = await teams.update(team.id, {

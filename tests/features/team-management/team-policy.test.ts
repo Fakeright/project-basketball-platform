@@ -6,6 +6,7 @@ import type {
 } from "@/features/team-management/domain/team"
 import {
   assertTeamPlayerBatch,
+  getMaximumTeamPlayerCount,
   maximumTeamPlayerBatchSize,
 } from "@/features/team-management/domain/team-player-batch-policy"
 import {
@@ -83,12 +84,14 @@ describe("assertTeamPlayerBatch", () => {
     )
   })
 
-  it("accepts at most 30 players", () => {
-    expect(maximumTeamPlayerBatchSize).toBe(30)
+  it("caps 5v5 at 15 active players and 3v3 at 4", () => {
+    expect(maximumTeamPlayerBatchSize).toBe(15)
+    expect(getMaximumTeamPlayerCount("FIVE_V_FIVE")).toBe(15)
+    expect(getMaximumTeamPlayerCount("THREE_V_THREE")).toBe(4)
     expect(() =>
       assertTeamPlayerBatch(
         Array.from({ length: maximumTeamPlayerBatchSize }, (_, index) => draft(index + 1)),
-        { allowEmpty: true },
+        { allowEmpty: true, format: "FIVE_V_FIVE" },
       ),
     ).not.toThrow()
     expect(() =>
@@ -96,9 +99,22 @@ describe("assertTeamPlayerBatch", () => {
         Array.from({ length: maximumTeamPlayerBatchSize + 1 }, (_, index) =>
           draft(index + 1),
         ),
-        { allowEmpty: true },
+        { allowEmpty: true, format: "FIVE_V_FIVE" },
       ),
-    ).toThrow("PLAYER_BATCH_INVALID")
+    ).toThrow("PLAYER_LIMIT_EXCEEDED")
+    expect(() => assertTeamPlayerBatch(
+      Array.from({ length: 4 }, (_, index) => draft(index + 1)),
+      { allowEmpty: true, format: "THREE_V_THREE" },
+    )).not.toThrow()
+    expect(() => assertTeamPlayerBatch(
+      Array.from({ length: 5 }, (_, index) => draft(index + 1)),
+      { allowEmpty: true, format: "THREE_V_THREE" },
+    )).toThrow("PLAYER_LIMIT_EXCEEDED")
+    expect(() => assertTeamPlayerBatch([draft(5), draft(6)], {
+      allowEmpty: false,
+      format: "THREE_V_THREE",
+      existingActiveCount: 3,
+    })).toThrow("PLAYER_LIMIT_EXCEEDED")
   })
 
   it("rejects duplicate normalized player identities", () => {

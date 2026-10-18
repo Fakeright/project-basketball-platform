@@ -242,14 +242,14 @@ describe("team route handlers", () => {
     expect(response.status).toBe(422)
   })
 
-  it("returns 422 when an initial roster exceeds 30 rows", async () => {
+  it("returns 422 when an initial roster exceeds 15 rows", async () => {
     const create = vi.fn()
     const response = await handleCreateTeam(
       jsonRequest({
         name: "Bangkok Ballers",
         provinceCode: "10",
         format: "THREE_V_THREE",
-        players: Array.from({ length: 31 }, (_, index) => ({
+        players: Array.from({ length: 16 }, (_, index) => ({
           ...validPlayer,
           firstName: `Player ${index}`,
           jerseyNumber: index + 1,
@@ -557,11 +557,11 @@ describe("team route handlers", () => {
     expect(response.status).toBe(422)
   })
 
-  it("returns 422 when a player batch exceeds 30 rows", async () => {
+  it("returns 422 when a player batch exceeds 15 rows", async () => {
     const response = await handleAddTeamPlayers(
       "team-1",
       jsonRequest({
-        players: Array.from({ length: 31 }, (_, index) => ({
+        players: Array.from({ length: 16 }, (_, index) => ({
           ...validPlayer,
           firstName: `Player ${index}`,
           jerseyNumber: index + 1,
@@ -574,6 +574,24 @@ describe("team route handlers", () => {
     )
 
     expect(response.status).toBe(422)
+  })
+
+  it("explains the format limit when adding players would overfill the team", async () => {
+    const response = await handleAddTeamPlayers(
+      "team-1",
+      jsonRequest({ players: [validPlayer] }),
+      {
+        actorProvider: { getCurrentActor: vi.fn(async () => teamManager) },
+        addPlayers: vi.fn(async () => {
+          throw new Error("PLAYER_LIMIT_EXCEEDED")
+        }),
+      },
+    )
+
+    expect(response.status).toBe(422)
+    await expect(response.json()).resolves.toMatchObject({
+      message: expect.stringContaining("3v3 มีได้สูงสุด 4 คน"),
+    })
   })
 
   it("returns indexed field issues for an invalid player row", async () => {

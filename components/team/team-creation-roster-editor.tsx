@@ -15,6 +15,8 @@ import {
   validatePlayerValues,
 } from "@/components/team/team-player-fields"
 import { Button } from "@/components/ui/button"
+import type { TeamFormat } from "@/features/team-management/domain/team"
+import { getMaximumTeamPlayerCount } from "@/features/team-management/domain/team-player-batch-policy"
 import type { ReusableTeamPlayer } from "@/features/team-management/domain/team-player-history"
 
 export interface TeamCreationPlayerRow {
@@ -24,21 +26,22 @@ export interface TeamCreationPlayerRow {
   errors: TeamPlayerFieldErrors
 }
 
-const maximumPlayerCount = 30
-
 export function TeamCreationRosterEditor({
   disabled = false,
   focusRequestId = 0,
+  format,
   onRowsChange,
   reusablePlayers,
   rows,
 }: {
   disabled?: boolean
   focusRequestId?: number
+  format: TeamFormat
   onRowsChange: (rows: TeamCreationPlayerRow[]) => void
   reusablePlayers: readonly ReusableTeamPlayer[]
   rows: readonly TeamCreationPlayerRow[]
 }) {
+  const maximumPlayerCount = getMaximumTeamPlayerCount(format)
   const idPrefix = useId()
   const nextManualRowNumber = useRef(0)
   const historicalRowIds = useRef(new Map<string, string>())
@@ -126,6 +129,12 @@ export function TeamCreationRosterEditor({
         </div>
         <p className="text-sm font-medium">{rows.length} / {maximumPlayerCount} คน</p>
       </div>
+
+      {rows.length > maximumPlayerCount ? (
+        <p className="mt-3 text-sm text-destructive" role="alert">
+          รูปแบบนี้มีผู้เล่นได้สูงสุด {maximumPlayerCount} คน กรุณานำผู้เล่นออกก่อนบันทึกทีม
+        </p>
+      ) : null}
 
       <div className="mt-4 flex flex-wrap gap-3">
         {reusablePlayers.length > 0 ? (

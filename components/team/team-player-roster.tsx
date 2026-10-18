@@ -19,6 +19,7 @@ import type {
   TeamFormat,
   TeamPlayer,
 } from "@/features/team-management/domain/team"
+import { getMaximumTeamPlayerCount } from "@/features/team-management/domain/team-player-batch-policy"
 
 interface PlayerFieldIssue {
   field: string
@@ -44,6 +45,7 @@ export function TeamPlayerRoster({
   const [message, setMessage] = useState<string | null>(null)
 
   const minimumPlayers = format === "FIVE_V_FIVE" ? 5 : 3
+  const maximumPlayers = getMaximumTeamPlayerCount(format)
   const formatLabel = format === "FIVE_V_FIVE" ? "5v5" : "3v3"
 
   function startEditing(player: TeamPlayer) {
@@ -146,7 +148,7 @@ export function TeamPlayerRoster({
           <p className="text-xs font-semibold text-court">ROSTER</p>
           <h2 className="mt-2 text-xl font-semibold">รายชื่อผู้เล่น</h2>
         </div>
-        <p className="text-sm font-medium">ผู้เล่นที่ใช้งาน {players.length} คน</p>
+        <p className="text-sm font-medium">ผู้เล่นที่ใช้งาน {players.length} / {maximumPlayers} คน</p>
       </div>
 
       {!readOnly && players.length < minimumPlayers ? (
@@ -155,11 +157,20 @@ export function TeamPlayerRoster({
         </p>
       ) : null}
 
-      {!readOnly ? (
+      {!readOnly && players.length < maximumPlayers ? (
         <TeamPlayerBatchForm
+          key={format}
+          activePlayerCount={players.length}
+          format={format}
           onPlayersAdded={(addedPlayers) => setPlayers((current) => [...current, ...addedPlayers])}
           teamId={teamId}
         />
+      ) : null}
+
+      {!readOnly && players.length >= maximumPlayers ? (
+        <p className="mt-4 border-l-4 border-border px-3 py-2 text-sm text-muted-foreground">
+          รายชื่อทีมเต็มแล้ว สูงสุด {maximumPlayers} คนสำหรับ {formatLabel}
+        </p>
       ) : null}
 
       <p aria-live="polite" className="min-h-10 py-3 text-sm text-muted-foreground">

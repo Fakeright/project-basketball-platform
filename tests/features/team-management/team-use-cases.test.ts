@@ -481,14 +481,31 @@ describe("team use cases", () => {
       addTeamPlayers(
         {
           teamId: team.id,
-          players: Array.from({ length: 31 }, (_, index) =>
+          players: Array.from({ length: 16 }, (_, index) =>
             draftPlayer(`player-${index}`, index + 1),
           ),
         },
         teamManager,
         { teams: repository },
       ),
-    ).rejects.toThrow("PLAYER_BATCH_INVALID")
+    ).rejects.toThrow("PLAYER_LIMIT_EXCEEDED")
+  })
+
+  it("rejects adding players when the active roster would exceed the format limit", async () => {
+    const repository = createRepository({
+      findByIdForUpdate: vi.fn(async () => ({ ...team, format: "THREE_V_THREE" })),
+      listActivePlayers: vi.fn(async () =>
+        [1, 2, 3].map((index) => playerFromDraft(draftPlayer(`existing-${index}`, index))),
+      ),
+    })
+
+    await expect(addTeamPlayers(
+      { teamId: team.id, players: [draftPlayer("new-1", 4), draftPlayer("new-2", 5)] },
+      teamManager,
+      { teams: repository },
+    )).rejects.toThrow("PLAYER_LIMIT_EXCEEDED")
+    expect(repository.addPlayers).not.toHaveBeenCalled()
+    expect(repository.listActivePlayers).toHaveBeenCalledWith(team.id)
   })
 
   it("rejects a non-owner from managing a player roster", async () => {
@@ -796,11 +813,11 @@ describe("team use cases", () => {
 
   it.each([
     {
-      name: "more than 30 initial players",
-      players: Array.from({ length: 31 }, (_, index) =>
+      name: "more than 15 initial players",
+      players: Array.from({ length: 16 }, (_, index) =>
         draftPlayer(`player-${index}`, index + 1),
       ),
-      code: "PLAYER_BATCH_INVALID",
+      code: "PLAYER_LIMIT_EXCEEDED",
     },
     {
       name: "duplicate player identities",
@@ -944,6 +961,23 @@ describe("team use cases", () => {
         { teams: repository },
       ),
     ).rejects.toThrow("TEAM_FORMAT_CHANGE_BLOCKED")
+    expect(repository.update).not.toHaveBeenCalled()
+  })
+
+  it("blocks switching to 3v3 when the roster has more than four active players", async () => {
+    const repository = createRepository({
+      listActivePlayers: vi.fn(async () =>
+        [1, 2, 3, 4, 5].map((index) => playerFromDraft(draftPlayer(`existing-${index}`, index))),
+      ),
+    })
+
+    await expect(updateTeam({
+      teamId: team.id,
+      name: team.name,
+      provinceCode: team.provinceCode,
+      format: "THREE_V_THREE",
+      expectedVersion: team.version,
+    }, teamManager, { teams: repository })).rejects.toThrow("PLAYER_LIMIT_EXCEEDED")
     expect(repository.update).not.toHaveBeenCalled()
   })
 

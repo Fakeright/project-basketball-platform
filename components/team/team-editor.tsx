@@ -17,6 +17,8 @@ import {
   type TeamPlayerField,
   type TeamPlayerFieldErrors,
 } from "@/components/team/team-player-fields"
+import type { TeamFormat } from "@/features/team-management/domain/team"
+import { getMaximumTeamPlayerCount } from "@/features/team-management/domain/team-player-batch-policy"
 import type { ReusableTeamPlayer } from "@/features/team-management/domain/team-player-history"
 
 export interface EditableTeam {
@@ -50,6 +52,9 @@ export function TeamEditor({
   const [uncertainCreate, setUncertainCreate] = useState(false)
   const [rosterFocusRequestId, setRosterFocusRequestId] = useState(0)
   const [rosterRows, setRosterRows] = useState<TeamCreationPlayerRow[]>([])
+  const [selectedFormat, setSelectedFormat] = useState<TeamFormat>(
+    initialTeam?.format ?? "FIVE_V_FIVE",
+  )
   const [version, setVersion] = useState(initialTeam?.version ?? 0)
 
   if (readOnly && initialTeam) {
@@ -87,7 +92,7 @@ export function TeamEditor({
     const formData = new FormData(event.currentTarget)
     const name = String(formData.get("name") ?? "").trim()
     const provinceCode = String(formData.get("provinceCode") ?? "").trim()
-    const format = String(formData.get("format") ?? "")
+    const format = selectedFormat
     if (name.length < 2 || provinceCode.length !== 2) {
       setMessage("กรุณากรอกชื่อทีมและจังหวัดอย่างน้อย 2 ตัวอักษร")
       return
@@ -96,6 +101,12 @@ export function TeamEditor({
     const submittedRosterRows = initialTeam
       ? []
       : getSubmittableTeamCreationPlayerRows(rosterRows)
+    if (!initialTeam && rosterRows.length > getMaximumTeamPlayerCount(format)) {
+      setMessage(
+        `ทีม ${format === "FIVE_V_FIVE" ? "5v5" : "3v3"} มีผู้เล่นได้สูงสุด ${getMaximumTeamPlayerCount(format)} คน กรุณานำผู้เล่นออกก่อน`,
+      )
+      return
+    }
     if (!initialTeam) {
       const validatedRows = validateTeamCreationPlayerRows(rosterRows)
       setRosterRows(validatedRows)
@@ -202,8 +213,9 @@ export function TeamEditor({
             <span>รูปแบบทีม</span>
             <select
               className={fieldClassName}
-              defaultValue={initialTeam?.format ?? "FIVE_V_FIVE"}
+              value={selectedFormat}
               name="format"
+              onChange={(event) => setSelectedFormat(event.target.value as TeamFormat)}
               required
             >
               <option value="FIVE_V_FIVE">5v5</option>
@@ -216,6 +228,7 @@ export function TeamEditor({
           <TeamCreationRosterEditor
             disabled={pending}
             focusRequestId={rosterFocusRequestId}
+            format={selectedFormat}
             onRowsChange={setRosterRows}
             reusablePlayers={reusablePlayers}
             rows={rosterRows}

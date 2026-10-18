@@ -35,7 +35,7 @@ export async function createTeam(
   assertProvinceCode(input.provinceCode)
   authorize(actor, "team.create", { organizerId: actor.id })
   const initialPlayers = input.players ?? []
-  assertTeamPlayerBatch(initialPlayers, { allowEmpty: true })
+  assertTeamPlayerBatch(initialPlayers, { allowEmpty: true, format: input.format })
 
   return dependencies.teams.inTransaction(async (teams) => {
     const team = await teams.create({

@@ -27,6 +27,18 @@ afterEach(() => {
 })
 
 describe("TeamPlayerRoster", () => {
+  it("shows the full roster message and hides the add form at the 3v3 limit", () => {
+    const fullRoster = [1, 2, 3, 4].map((number) => ({
+      ...player,
+      id: `player-${number}`,
+      jerseyNumber: number,
+    }))
+    render(<TeamPlayerRoster format="THREE_V_THREE" initialPlayers={fullRoster} teamId="team-1" />)
+
+    expect(screen.getByText("ผู้เล่นที่ใช้งาน 4 / 4 คน")).toBeTruthy()
+    expect(screen.getByText("รายชื่อทีมเต็มแล้ว สูงสุด 4 คนสำหรับ 3v3")).toBeTruthy()
+    expect(screen.queryByRole("button", { name: "เพิ่มแถว" })).toBeNull()
+  })
   it("shows phone details in editable and read-only rows without overflowing the roster grid", () => {
     const editableRender = render(
       <TeamPlayerRoster
@@ -68,7 +80,7 @@ describe("TeamPlayerRoster", () => {
       <TeamPlayerRoster format="FIVE_V_FIVE" initialPlayers={[]} teamId="team-1" />,
     )
 
-    expect(screen.getByText("ผู้เล่นที่ใช้งาน 0 คน")).toBeTruthy()
+    expect(screen.getByText("ผู้เล่นที่ใช้งาน 0 / 15 คน")).toBeTruthy()
     expect(screen.getByText("ยังไม่มีผู้เล่นในทีม")).toBeTruthy()
     expect(screen.getByText("ทีม 5v5 ต้องมีผู้เล่นอย่างน้อย 5 คนก่อนสมัครแข่งขัน")).toBeTruthy()
     expect(screen.queryByLabelText("สมาชิก")).toBeNull()
@@ -256,7 +268,7 @@ describe("TeamPlayerRoster", () => {
       "/api/teams/team-1/players/player-1",
       expect.objectContaining({ method: "DELETE" }),
     )
-    expect(await screen.findByText("ผู้เล่นที่ใช้งาน 0 คน")).toBeTruthy()
+    expect(await screen.findByText("ผู้เล่นที่ใช้งาน 0 / 4 คน")).toBeTruthy()
     expect(screen.getByText("ยังไม่มีผู้เล่นในทีม")).toBeTruthy()
   })
 })

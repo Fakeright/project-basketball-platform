@@ -11,6 +11,12 @@ afterEach(() => {
 })
 
 describe("TeamPlayerBatchForm", () => {
+  it("shows only the remaining 3v3 slot", () => {
+    render(<TeamPlayerBatchForm activePlayerCount={3} format="THREE_V_THREE" onPlayersAdded={vi.fn()} teamId="team-1" />)
+
+    expect(screen.getAllByRole("group", { name: /ผู้เล่นคนที่/ })).toHaveLength(1)
+    expect((screen.getByRole("button", { name: "เพิ่มแถว" }) as HTMLButtonElement).disabled).toBe(true)
+  })
   it("accepts today's birth date according to Bangkok time", () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date("2026-08-11T18:00:00.000Z"))
@@ -32,7 +38,7 @@ describe("TeamPlayerBatchForm", () => {
 
   it("starts with five labelled player rows and supports adding and removing rows", async () => {
     const user = userEvent.setup()
-    render(<TeamPlayerBatchForm onPlayersAdded={vi.fn()} teamId="team-1" />)
+    render(<TeamPlayerBatchForm activePlayerCount={0} format="FIVE_V_FIVE" onPlayersAdded={vi.fn()} teamId="team-1" />)
 
     const rows = screen.getAllByRole("group", { name: /ผู้เล่นคนที่/ })
     expect(rows).toHaveLength(5)
@@ -77,7 +83,7 @@ describe("TeamPlayerBatchForm", () => {
     )
     vi.stubGlobal("fetch", fetchMock)
     const user = userEvent.setup()
-    render(<TeamPlayerBatchForm onPlayersAdded={vi.fn()} teamId="team-1" />)
+    render(<TeamPlayerBatchForm activePlayerCount={0} format="FIVE_V_FIVE" onPlayersAdded={vi.fn()} teamId="team-1" />)
 
     const rows = screen.getAllByRole("group", { name: /ผู้เล่นคนที่/ })
     fillRequiredFields(rows[0], "สมชาย", "ใจดี", "2010-02-03")
@@ -124,7 +130,7 @@ describe("TeamPlayerBatchForm", () => {
     const fetchMock = vi.fn()
     vi.stubGlobal("fetch", fetchMock)
     const user = userEvent.setup()
-    render(<TeamPlayerBatchForm onPlayersAdded={vi.fn()} teamId="team-1" />)
+    render(<TeamPlayerBatchForm activePlayerCount={0} format="FIVE_V_FIVE" onPlayersAdded={vi.fn()} teamId="team-1" />)
 
     const firstRow = screen.getAllByRole("group", { name: /ผู้เล่นคนที่/ })[0]
     await user.type(within(firstRow).getByLabelText("ชื่อ"), "สมชาย")
@@ -149,7 +155,7 @@ describe("TeamPlayerBatchForm", () => {
     )
     vi.stubGlobal("fetch", fetchMock)
     const user = userEvent.setup()
-    render(<TeamPlayerBatchForm onPlayersAdded={vi.fn()} teamId="team-1" />)
+    render(<TeamPlayerBatchForm activePlayerCount={0} format="FIVE_V_FIVE" onPlayersAdded={vi.fn()} teamId="team-1" />)
 
     const rows = screen.getAllByRole("group", { name: /ผู้เล่นคนที่/ })
     fillRequiredFields(rows[0], "สมชาย", "ใจดี", "2010-02-03")
@@ -173,7 +179,7 @@ describe("TeamPlayerBatchForm", () => {
     )
     vi.stubGlobal("fetch", fetchMock)
     const user = userEvent.setup()
-    render(<TeamPlayerBatchForm onPlayersAdded={vi.fn()} teamId="team-1" />)
+    render(<TeamPlayerBatchForm activePlayerCount={0} format="FIVE_V_FIVE" onPlayersAdded={vi.fn()} teamId="team-1" />)
 
     const firstRow = screen.getAllByRole("group", { name: /ผู้เล่นคนที่/ })[0]
     fillRequiredFields(firstRow, "สมชาย", "ใจดี", "2010-02-03")

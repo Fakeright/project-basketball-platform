@@ -11,6 +11,7 @@ import {
   validateTeamCreationPlayerRows,
 } from "@/components/team/team-creation-roster-editor"
 import type { ReusableTeamPlayer } from "@/features/team-management/domain/team-player-history"
+import type { TeamFormat } from "@/features/team-management/domain/team"
 
 afterEach(cleanup)
 
@@ -146,6 +147,7 @@ describe("TeamCreationRosterEditor", () => {
   it("keeps desktop column headers and mobile field labels without a fixed-width wrapper", () => {
     render(
       <TeamCreationRosterEditor
+        format="FIVE_V_FIVE"
         onRowsChange={() => undefined}
         reusablePlayers={[]}
         rows={[createManualTeamCreationPlayerRow("manual-1")]}
@@ -155,11 +157,25 @@ describe("TeamCreationRosterEditor", () => {
     expect(screen.getAllByText("เบอร์โทรศัพท์", { selector: "span" })).toHaveLength(2)
     expect(screen.getByRole("region", { name: "รายชื่อที่จะเพิ่ม" }).className).toContain("min-w-0")
   })
+
+  it("limits a new 3v3 roster to four rows", async () => {
+    const user = userEvent.setup()
+    render(<RosterHarness format="THREE_V_THREE" reusablePlayers={[]} />)
+
+    const addButton = screen.getByRole("button", { name: "เพิ่มผู้เล่นใหม่" }) as HTMLButtonElement
+    for (let index = 0; index < 4; index += 1) await user.click(addButton)
+
+    expect(screen.getAllByRole("group", { name: /ผู้เล่นคนที่/ })).toHaveLength(4)
+    expect(addButton.disabled).toBe(true)
+    expect(screen.getByText("4 / 4 คน")).toBeTruthy()
+  })
 })
 
 function RosterHarness({
+  format = "FIVE_V_FIVE",
   reusablePlayers,
 }: {
+  format?: TeamFormat
   reusablePlayers: readonly ReusableTeamPlayer[]
 }) {
   const [rows, setRows] = useState<TeamCreationPlayerRow[]>([])
@@ -169,6 +185,7 @@ function RosterHarness({
     <>
       <TeamCreationRosterEditor
         focusRequestId={focusRequestId}
+        format={format}
         onRowsChange={setRows}
         reusablePlayers={reusablePlayers}
         rows={rows}

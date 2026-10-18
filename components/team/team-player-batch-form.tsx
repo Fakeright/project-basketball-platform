@@ -14,7 +14,8 @@ import {
   validatePlayerValues,
 } from "@/components/team/team-player-fields"
 import { Button } from "@/components/ui/button"
-import type { TeamPlayer } from "@/features/team-management/domain/team"
+import type { TeamFormat, TeamPlayer } from "@/features/team-management/domain/team"
+import { getMaximumTeamPlayerCount } from "@/features/team-management/domain/team-player-batch-policy"
 
 interface PlayerRow {
   id: string
@@ -29,18 +30,23 @@ interface PlayerIssue {
 }
 
 const initialRowCount = 5
-const maximumRowCount = 30
 
 export function TeamPlayerBatchForm({
+  activePlayerCount,
+  format,
   onPlayersAdded,
   teamId,
 }: {
+  activePlayerCount: number
+  format: TeamFormat
   onPlayersAdded: (players: TeamPlayer[]) => void
   teamId: string
 }) {
+  const maximumRowCount = Math.max(0, getMaximumTeamPlayerCount(format) - activePlayerCount)
   const idPrefix = useId()
-  const [nextRowNumber, setNextRowNumber] = useState(initialRowCount)
-  const [rows, setRows] = useState(() => createRows(initialRowCount, idPrefix, 0))
+  const startingRowCount = Math.min(initialRowCount, maximumRowCount)
+  const [nextRowNumber, setNextRowNumber] = useState(startingRowCount)
+  const [rows, setRows] = useState(() => createRows(startingRowCount, idPrefix, 0))
   const [pending, setPending] = useState(false)
   const [summary, setSummary] = useState<string | null>(null)
   const [status, setStatus] = useState<string | null>(null)
@@ -128,8 +134,10 @@ export function TeamPlayerBatchForm({
       }
 
       onPlayersAdded(result.players)
-      setRows(createRows(initialRowCount, idPrefix, nextRowNumber))
-      setNextRowNumber((current) => current + initialRowCount)
+      const remainingSlots = Math.max(0, maximumRowCount - result.players.length)
+      const resetRowCount = Math.min(initialRowCount, remainingSlots)
+      setRows(createRows(resetRowCount, idPrefix, nextRowNumber))
+      setNextRowNumber((current) => current + resetRowCount)
       setStatus("บันทึกผู้เล่นแล้ว")
     } catch {
       showError("ไม่สามารถเชื่อมต่อระบบได้ กรุณาลองอีกครั้ง")

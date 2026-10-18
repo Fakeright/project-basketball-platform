@@ -1,20 +1,29 @@
-import type { TeamPlayerDraft } from "./team"
+import type { TeamFormat, TeamPlayerDraft } from "./team"
 
-export const maximumTeamPlayerBatchSize = 30
+export const maximumTeamPlayerBatchSize = 15
+
+export function getMaximumTeamPlayerCount(format: TeamFormat): number {
+  return format === "FIVE_V_FIVE" ? 15 : 4
+}
 
 export interface TeamPlayerBatchOptions {
   allowEmpty: boolean
+  format?: TeamFormat
+  existingActiveCount?: number
 }
 
 export function assertTeamPlayerBatch(
   players: readonly TeamPlayerDraft[],
   options: TeamPlayerBatchOptions,
 ): void {
-  if (
-    players.length > maximumTeamPlayerBatchSize ||
-    (!options.allowEmpty && players.length === 0)
-  ) {
+  if (!options.allowEmpty && players.length === 0) {
     throw new Error("PLAYER_BATCH_INVALID")
+  }
+  const exceedsBatchLimit = players.length > maximumTeamPlayerBatchSize
+  const exceedsRosterLimit = options.format !== undefined &&
+    (options.existingActiveCount ?? 0) + players.length > getMaximumTeamPlayerCount(options.format)
+  if (exceedsBatchLimit || exceedsRosterLimit) {
+    throw new Error("PLAYER_LIMIT_EXCEEDED")
   }
 
   const identities = new Set<string>()

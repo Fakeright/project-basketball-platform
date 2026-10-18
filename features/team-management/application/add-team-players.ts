@@ -25,6 +25,13 @@ export async function addTeamPlayers(
     const isOverride = authorizePlayerRosterAccess(actor, team.ownerId)
     if (!team.isActive) throw new Error("TEAM_INACTIVE")
 
+    const activePlayers = await teams.listActivePlayers(team.id)
+    assertTeamPlayerBatch(input.players, {
+      allowEmpty: false,
+      format: team.format,
+      existingActiveCount: activePlayers.length,
+    })
+
     const existingPlayers = await teams.findExistingPlayersByIdentities(
       team.id,
       input.players,
