@@ -125,6 +125,26 @@ function createRepository(
 }
 
 describe("PrismaTournamentRepository", () => {
+  it("loads the latest open competition in one query without selecting an expired registration", async () => {
+    const { prisma, repository } = createRepository()
+
+    const tournament = await repository.findFirstCompetitionByStatus("OPEN")
+
+    expect(tournament?.slug).toBe("published-bangkok-open")
+    expect(prisma.tournament.findFirst).toHaveBeenCalledTimes(1)
+    expect(prisma.tournament.findMany).not.toHaveBeenCalled()
+    expect(prisma.tournament.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          governanceStatus: "ACTIVE",
+          status: { in: ["PUBLISHED"] },
+          registrationDeadline: { gte: new Date("2026-10-10T00:00:00.000Z") },
+        }),
+        orderBy: { startsAt: "desc" },
+      }),
+    )
+  })
+
   it("does not advertise an expired published tournament as open", async () => {
     const expiredRow = {
       ...publicTournamentRow,

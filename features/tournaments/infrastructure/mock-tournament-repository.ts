@@ -1,7 +1,7 @@
 import type { Tournament, TournamentSearchFilters } from "@/features/tournaments/domain/tournament"
 import { toBangkokCalendarDate } from "@/features/tournaments/domain/tournament-calendar"
 import { resolvePublicTournamentStatus } from "@/features/tournaments/domain/public-tournament-status"
-import type { TournamentRepository } from "@/features/tournaments/infrastructure/tournament-repository"
+import type { DefaultCompetitionStatus, TournamentRepository } from "@/features/tournaments/infrastructure/tournament-repository"
 import { mockTournamentData } from "@/features/tournaments/infrastructure/mock-tournament-data"
 
 function normalize(value: string): string {
@@ -76,5 +76,10 @@ export class MockTournamentRepository implements TournamentRepository {
   async findCompetitionBySlug(slug: string): Promise<Tournament | null> {
     const tournament = await this.findBySlug(slug)
     return tournament ? { ...tournament, documents: [] } : null
+  }
+
+  async findFirstCompetitionByStatus(status: DefaultCompetitionStatus): Promise<Tournament | null> {
+    const tournament = (await this.list({ status }))[0]
+    return tournament ? this.findCompetitionBySlug(tournament.slug) : null
   }
 }

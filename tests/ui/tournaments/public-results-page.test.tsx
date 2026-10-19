@@ -7,6 +7,7 @@ import type { Tournament } from "@/features/tournaments/domain/tournament"
 const repository = vi.hoisted(() => ({
   list: vi.fn(),
   findCompetitionBySlug: vi.fn(),
+  findFirstCompetitionByStatus: vi.fn(),
 }))
 
 vi.mock(
@@ -19,6 +20,7 @@ beforeEach(() => {
   vi.clearAllMocks()
   repository.list.mockResolvedValue([])
   repository.findCompetitionBySlug.mockResolvedValue(null)
+  repository.findFirstCompetitionByStatus.mockResolvedValue(null)
 })
 
 describe("public ResultsPage", () => {
@@ -27,8 +29,7 @@ describe("public ResultsPage", () => {
       confirmedMatch("semi", "STANDARD", "รอบรองชนะเลิศ"),
       pendingMatch("final", "CHAMPIONSHIP", "รอบชิงชนะเลิศ"),
     ])
-    repository.list.mockResolvedValueOnce([ongoing])
-    repository.findCompetitionBySlug.mockResolvedValueOnce(ongoing)
+    repository.findFirstCompetitionByStatus.mockResolvedValueOnce(ongoing)
 
     render(await renderPage())
 
@@ -49,10 +50,9 @@ describe("public ResultsPage", () => {
         winnerTeamId: "team-3",
       },
     ])
-    repository.list
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([completed])
-    repository.findCompetitionBySlug.mockResolvedValueOnce(completed)
+    repository.findFirstCompetitionByStatus
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(completed)
 
     render(await renderPage())
 
@@ -60,6 +60,9 @@ describe("public ResultsPage", () => {
     expect(screen.getByText("รองชนะเลิศ")).toBeTruthy()
     expect(screen.getByText("อันดับ 3")).toBeTruthy()
     expect(screen.getByText("Phuket Waves")).toBeTruthy()
+    expect(repository.findFirstCompetitionByStatus).toHaveBeenCalledWith("ONGOING")
+    expect(repository.findFirstCompetitionByStatus).toHaveBeenCalledWith("COMPLETED")
+    expect(repository.list).not.toHaveBeenCalled()
   })
 
   it("shows an empty state when no tournament is available", async () => {
@@ -84,6 +87,7 @@ describe("public ResultsPage", () => {
     render(await renderPage("requested-cup"))
 
     expect(repository.list).not.toHaveBeenCalled()
+    expect(repository.findFirstCompetitionByStatus).not.toHaveBeenCalled()
     expect(repository.findCompetitionBySlug).toHaveBeenCalledWith(
       "requested-cup",
     )

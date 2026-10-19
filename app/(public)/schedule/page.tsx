@@ -4,7 +4,6 @@ import { ScheduleTable } from "@/components/schedule-table"
 import { CompetitionResultSummary } from "@/components/tournaments/competition-result-summary"
 import { StatePanel } from "@/components/state-panel"
 import { getTournamentCompetitionBySlug } from "@/features/tournaments/application/get-tournament-competition-by-slug"
-import { searchTournaments } from "@/features/tournaments/application/search-tournaments"
 import { getTournamentRepository } from "@/features/tournaments/infrastructure/get-tournament-repository"
 import { getCompetitionSummary } from "@/features/competition/application/get-competition-summary"
 
@@ -12,12 +11,10 @@ export default async function SchedulePage({ searchParams }: PageProps<"/schedul
   const repository = getTournamentRepository()
   const { tournament: requestedTournament } = await searchParams
   const slug = typeof requestedTournament === "string" ? requestedTournament : undefined
-  const selectedSlug =
-    slug ??
-    (await searchTournaments(repository, { status: "OPEN" }))[0]?.slug
-  const selectedTournament = selectedSlug
-    ? await getTournamentCompetitionBySlug(repository, selectedSlug)
-    : null
+  // ใช้ slug จาก URL ก่อน; ค่าเริ่มต้นอ่านรายการ OPEN พร้อมข้อมูลการแข่งขันในคำขอเดียว
+  const selectedTournament = slug
+    ? await getTournamentCompetitionBySlug(repository, slug)
+    : await repository.findFirstCompetitionByStatus("OPEN")
   const scheduledMatches =
     selectedTournament?.matches.filter((match) => match.scheduledAt) ?? []
 
@@ -30,10 +27,10 @@ export default async function SchedulePage({ searchParams }: PageProps<"/schedul
           <>
             <p className="mt-3 text-sm text-muted-foreground sm:text-base">{selectedTournament.title}</p>
             <div className="mt-4 flex flex-wrap gap-5 text-sm">
-              <Link className="font-medium underline underline-offset-4" href={`/bracket?tournament=${selectedTournament.slug}`}>
+              <Link className="font-medium underline underline-offset-4" href={`/bracket?tournament=${selectedTournament.slug}`} prefetch={false}>
                 ดูสายการแข่งขัน
               </Link>
-              <Link className="font-medium underline underline-offset-4" href={`/results?tournament=${selectedTournament.slug}`}>
+              <Link className="font-medium underline underline-offset-4" href={`/results?tournament=${selectedTournament.slug}`} prefetch={false}>
                 ดูผลการแข่งขัน
               </Link>
             </div>

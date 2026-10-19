@@ -8,7 +8,7 @@ import type {
 import { getBangkokCalendarDayUtcRange } from "@/features/tournaments/domain/tournament-calendar"
 import { resolvePublicTournamentStatus } from "@/features/tournaments/domain/public-tournament-status"
 
-import type { TournamentRepository } from "./tournament-repository"
+import type { DefaultCompetitionStatus, TournamentRepository } from "./tournament-repository"
 
 const publicStatuses = [
   "PUBLISHED",
@@ -149,6 +149,21 @@ export class PrismaTournamentRepository implements TournamentRepository {
     })
 
     return row ? this.mapCompetitionTournament(row, this.now()) : null
+  }
+
+  async findFirstCompetitionByStatus(status: DefaultCompetitionStatus): Promise<Tournament | null> {
+    const now = this.now()
+    const row = await this.prisma.tournament.findFirst({
+      where: {
+        governanceStatus: "ACTIVE",
+        status: { in: [...databaseStatusesByPublicStatus[status]] },
+        ...(status === "OPEN" ? { registrationDeadline: { gte: now } } : {}),
+      },
+      include: publicCompetitionInclude,
+      orderBy: { startsAt: "desc" },
+    })
+
+    return row ? this.mapCompetitionTournament(row, now) : null
   }
 
   private mapDiscoveryTournament(row: PublicDiscoveryRow, now: Date): Tournament {

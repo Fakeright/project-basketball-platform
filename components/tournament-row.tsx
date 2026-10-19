@@ -18,6 +18,7 @@ export function TournamentRow({ tournament }: { tournament: Tournament }) {
     <Link
       className="group grid gap-3 border-b border-border px-4 py-5 transition-colors hover:bg-muted/60 sm:grid-cols-[9rem_minmax(0,1fr)_auto] sm:items-center sm:gap-6 sm:px-6"
       href={`/tournaments/${tournament.slug}`}
+      prefetch={false}
     >
       <p className="text-sm font-medium text-court">
         {formatTournamentDateRange(tournament.startsAt, tournament.endsAt)}

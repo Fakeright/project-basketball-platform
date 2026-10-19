@@ -31,7 +31,7 @@ export function SiteHeader({ actor = null }: { actor?: Actor | null }) {
   return (
     <header className="border-b border-border bg-background">
       <div className="mx-auto flex min-h-16 max-w-7xl items-center justify-between gap-4 px-4 py-2 sm:px-6 lg:px-8">
-        <Link className="text-base font-semibold tracking-[0.08em]" href="/">
+        <Link className="text-base font-semibold tracking-[0.08em]" href="/" prefetch={false}>
           COURTSIDE
         </Link>
 
@@ -41,6 +41,7 @@ export function SiteHeader({ actor = null }: { actor?: Actor | null }) {
               className="px-3 py-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
               href={item.href}
               key={item.href}
+              prefetch={false}
             >
               {item.label}
             </Link>
@@ -53,12 +54,13 @@ export function SiteHeader({ actor = null }: { actor?: Actor | null }) {
               <AccountSessionControl actor={actor} />
             ) : (
               <div className="flex items-center gap-2 text-sm">
-                <Link className="px-2 py-2 hover:text-court" href="/login">
+                <Link className="px-2 py-2 hover:text-court" href="/login" prefetch={false}>
                   เข้าสู่ระบบ
                 </Link>
                 <Link
                   className="border border-foreground px-3 py-2 font-medium hover:bg-foreground hover:text-background"
                   href="/register"
+                  prefetch={false}
                 >
                   สมัครสมาชิก
                 </Link>
@@ -92,6 +94,7 @@ export function SiteHeader({ actor = null }: { actor?: Actor | null }) {
                     href={item.href}
                     key={item.href}
                     onClick={() => setMobileMenuOpen(false)}
+                    prefetch={false}
                   >
                     {item.label}
                   </Link>
@@ -109,6 +112,7 @@ export function SiteHeader({ actor = null }: { actor?: Actor | null }) {
                       className="min-h-11 border border-border px-3 py-2 text-center text-sm font-medium"
                       href="/login"
                       onClick={() => setMobileMenuOpen(false)}
+                      prefetch={false}
                     >
                       เข้าสู่ระบบ
                     </Link>
@@ -116,6 +120,7 @@ export function SiteHeader({ actor = null }: { actor?: Actor | null }) {
                       className="min-h-11 bg-foreground px-3 py-2 text-center text-sm font-medium text-background"
                       href="/register"
                       onClick={() => setMobileMenuOpen(false)}
+                      prefetch={false}
                     >
                       สมัครสมาชิก
                     </Link>

@@ -4,7 +4,6 @@ import { StatePanel } from "@/components/state-panel"
 import { CompetitionResultSummary } from "@/components/tournaments/competition-result-summary"
 import { getCompetitionSummary } from "@/features/competition/application/get-competition-summary"
 import { getTournamentCompetitionBySlug } from "@/features/tournaments/application/get-tournament-competition-by-slug"
-import { searchTournaments } from "@/features/tournaments/application/search-tournaments"
 import { getTournamentRepository } from "@/features/tournaments/infrastructure/get-tournament-repository"
 
 const statusLabels = {
@@ -21,10 +20,10 @@ export default async function ResultsPage({
   const { tournament: requestedTournament } = await searchParams
   const requestedSlug =
     typeof requestedTournament === "string" ? requestedTournament : undefined
-  const selectedSlug = requestedSlug ?? (await findLatestResultSlug(repository))
-  const tournament = selectedSlug
-    ? await getTournamentCompetitionBySlug(repository, selectedSlug)
-    : null
+  const tournament = requestedSlug
+    ? await getTournamentCompetitionBySlug(repository, requestedSlug)
+    : (await repository.findFirstCompetitionByStatus("ONGOING"))
+      ?? (await repository.findFirstCompetitionByStatus("COMPLETED"))
 
   if (!tournament) {
     return (
@@ -76,18 +75,21 @@ export default async function ResultsPage({
           <Link
             className="font-medium underline underline-offset-4"
             href={`/schedule?tournament=${tournament.slug}`}
+            prefetch={false}
           >
             ตารางแข่งขัน
           </Link>
           <Link
             className="font-medium underline underline-offset-4"
             href={`/bracket?tournament=${tournament.slug}`}
+            prefetch={false}
           >
             สายการแข่งขัน
           </Link>
           <Link
             className="font-medium underline underline-offset-4"
             href={`/tournaments/${tournament.slug}`}
+            prefetch={false}
           >
             รายละเอียดรายการ
           </Link>
@@ -111,14 +113,4 @@ export default async function ResultsPage({
       </div>
     </div>
   )
-}
-
-async function findLatestResultSlug(
-  repository: ReturnType<typeof getTournamentRepository>,
-) {
-  const ongoing = await searchTournaments(repository, { status: "ONGOING" })
-  if (ongoing[0]) return ongoing[0].slug
-
-  const completed = await searchTournaments(repository, { status: "COMPLETED" })
-  return completed[0]?.slug
 }

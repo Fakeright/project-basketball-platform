@@ -45,7 +45,7 @@ export function StatePanel({ kind, title, message, action, children }: StatePane
       </p>
       {children ? <div className="mt-5">{children}</div> : null}
       {action ? (
-        <Link className="mt-5 text-sm font-medium text-foreground underline underline-offset-4" href={action.href}>
+        <Link className="mt-5 text-sm font-medium text-foreground underline underline-offset-4" href={action.href} prefetch={false}>
           {action.label}
         </Link>
       ) : null}

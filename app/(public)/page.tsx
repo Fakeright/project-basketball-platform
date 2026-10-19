@@ -38,7 +38,7 @@ export default async function HomePage() {
             <p className="text-sm font-medium text-court">เปิดรับสมัคร</p>
             <h2 className="mt-1 text-xl font-semibold sm:text-2xl">รายการที่สมัครได้ตอนนี้</h2>
           </div>
-          <Link className="text-sm font-medium underline underline-offset-4" href="/tournaments">
+          <Link className="text-sm font-medium underline underline-offset-4" href="/tournaments" prefetch={false}>
             ดูทัวร์นาเมนต์ทั้งหมด
           </Link>
         </div>

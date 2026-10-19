@@ -5,7 +5,6 @@ import { ExternalBracketView } from "@/components/external-bracket-view"
 import { CompetitionResultSummary } from "@/components/tournaments/competition-result-summary"
 import { StatePanel } from "@/components/state-panel"
 import { getTournamentCompetitionBySlug } from "@/features/tournaments/application/get-tournament-competition-by-slug"
-import { searchTournaments } from "@/features/tournaments/application/search-tournaments"
 import { getTournamentRepository } from "@/features/tournaments/infrastructure/get-tournament-repository"
 import { getCompetitionSummary } from "@/features/competition/application/get-competition-summary"
 import { getExternalBracketView } from "@/features/competition/application/get-external-bracket-view"
@@ -16,12 +15,11 @@ export default async function BracketPage({ searchParams }: PageProps<"/bracket"
   const repository = getTournamentRepository()
   const { tournament: requestedTournament } = await searchParams
   const slug = typeof requestedTournament === "string" ? requestedTournament : undefined
-  const selectedSlug =
-    slug ??
-    (await searchTournaments(repository, { status: "OPEN" }))[0]?.slug
-  const selectedTournament = selectedSlug
-    ? await getTournamentCompetitionBySlug(repository, selectedSlug)
-    : null
+  // หากไม่มี slug ให้เลือกรายการ OPEN และข้อมูลการแข่งขันในคำขอฐานข้อมูลเดียว
+  const selectedTournament = slug
+    ? await getTournamentCompetitionBySlug(repository, slug)
+    : await repository.findFirstCompetitionByStatus("OPEN")
+  const selectedSlug = selectedTournament?.slug
   const externalBracket = selectedSlug
     ? await getExternalBracketView(selectedSlug, {
         externalBrackets: getExternalBracketRepository(),
@@ -38,10 +36,10 @@ export default async function BracketPage({ searchParams }: PageProps<"/bracket"
           <>
             <p className="mt-3 text-sm text-muted-foreground sm:text-base">{selectedTournament.title}</p>
             <div className="mt-4 flex flex-wrap gap-5 text-sm">
-              <Link className="font-medium underline underline-offset-4" href={`/schedule?tournament=${selectedTournament.slug}`}>
+              <Link className="font-medium underline underline-offset-4" href={`/schedule?tournament=${selectedTournament.slug}`} prefetch={false}>
                 ดูตารางแข่งขัน
               </Link>
-              <Link className="font-medium underline underline-offset-4" href={`/results?tournament=${selectedTournament.slug}`}>
+              <Link className="font-medium underline underline-offset-4" href={`/results?tournament=${selectedTournament.slug}`} prefetch={false}>
                 ดูผลการแข่งขัน
               </Link>
             </div>
