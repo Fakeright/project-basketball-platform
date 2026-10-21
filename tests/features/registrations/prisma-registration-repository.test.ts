@@ -470,14 +470,19 @@ describe("PrismaRegistrationRepository transactions", () => {
           ...teamRow,
           isActive: true,
           deactivatedAt: null,
+          owner: { displayName: "Coach May" },
           players: [
             {
               id: "player-1",
-              isActive: true,
+              firstName: "Anan",
+              lastName: "Suk",
+              jerseyNumber: 7,
             },
             {
               id: "player-2",
-              isActive: true,
+              firstName: "Niran",
+              lastName: "Dee",
+              jerseyNumber: null,
             },
           ],
         },
@@ -491,6 +496,11 @@ describe("PrismaRegistrationRepository transactions", () => {
       expect.objectContaining({
         playerCount: 2,
         managerCoachCount: 1,
+        managerCoachName: "Coach May",
+        players: [
+          { id: "player-1", firstName: "Anan", lastName: "Suk", jerseyNumber: 7 },
+          { id: "player-2", firstName: "Niran", lastName: "Dee", jerseyNumber: null },
+        ],
       }),
     ])
     expect(findMany).toHaveBeenCalledWith(
@@ -501,8 +511,15 @@ describe("PrismaRegistrationRepository transactions", () => {
               province: true,
               players: {
                 where: { isActive: true },
-                select: { id: true },
+                orderBy: { createdAt: "asc" },
+                select: {
+                  id: true,
+                  firstName: true,
+                  lastName: true,
+                  jerseyNumber: true,
+                },
               },
+              owner: { select: { displayName: true } },
             },
           },
         },

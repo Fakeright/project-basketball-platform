@@ -12,6 +12,13 @@ const pending = {
   province: "Bangkok",
   playerCount: 5,
   managerCoachCount: 1,
+  managerCoachName: "Coach May",
+  players: Array.from({ length: 5 }, (_, index) => ({
+    id: `player-${index + 1}`,
+    firstName: index === 0 ? "Anan" : `Player ${index + 1}`,
+    lastName: index === 0 ? "Suk" : "Test",
+    jerseyNumber: index === 0 ? 7 : null,
+  })),
   submittedAt: "1 ต.ค. 2569",
   status: "PENDING" as const,
   decisionNote: null,
@@ -52,6 +59,43 @@ afterEach(() => {
 })
 
 describe("RegistrationReviewList", () => {
+  it("reveals only the selected team's current roster on demand", async () => {
+    const user = userEvent.setup()
+    render(
+      <RegistrationReviewList
+        registrations={[pending, approved]}
+        tournamentId="tournament-1"
+      />,
+    )
+
+    const row = screen.getByText("Bangkok Ballers").closest("li")
+    if (!row) throw new Error("Expected registration row")
+    const disclosure = within(row).getByText("ดูสมาชิกทีม").closest("details")
+    if (!disclosure) throw new Error("Expected roster disclosure")
+
+    expect(disclosure.hasAttribute("open")).toBe(false)
+    await user.click(within(row).getByText("ดูสมาชิกทีม"))
+
+    expect(disclosure.hasAttribute("open")).toBe(true)
+    expect(within(disclosure).getByText("Coach May")).toBeTruthy()
+    expect(within(disclosure).getByText("Anan Suk")).toBeTruthy()
+    expect(within(disclosure).getByText("#7")).toBeTruthy()
+    expect(within(disclosure).queryByText(/โทรศัพท์|วันเกิด/)).toBeNull()
+  })
+
+  it("explains when an applicant team has no active players", async () => {
+    const user = userEvent.setup()
+    render(
+      <RegistrationReviewList
+        registrations={[{ ...pending, players: [], playerCount: 0 }]}
+        tournamentId="tournament-1"
+      />,
+    )
+
+    await user.click(screen.getByText("ดูสมาชิกทีม"))
+    expect(screen.getByText("ยังไม่มีผู้เล่นที่ใช้งานอยู่")).toBeTruthy()
+  })
+
   it("shows status counts and structured roster details", () => {
     render(
       <RegistrationReviewList

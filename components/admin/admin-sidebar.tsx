@@ -30,6 +30,9 @@ export function AdminSidebar({ actor }: { actor: Actor }) {
             <Link className={navigationClassName} href="/admin/tournaments">
               รายการแข่งขันทั้งหมด
             </Link>
+            <Link className={navigationClassName} href="/admin/teams">
+              ทีมทั้งหมด
+            </Link>
           </>
         ) : null}
         {isTeamManager || isPlatformAdmin ? (

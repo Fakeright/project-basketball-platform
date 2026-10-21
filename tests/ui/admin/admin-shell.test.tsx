@@ -18,6 +18,9 @@ describe("AdminSidebar", () => {
     expect(
       screen.getByRole("link", { name: "รายการแข่งขันทั้งหมด" }).getAttribute("href"),
     ).toBe("/admin/tournaments")
+    expect(
+      screen.getByRole("link", { name: "ทีมทั้งหมด" }).getAttribute("href"),
+    ).toBe("/admin/teams")
   })
 
   it("hides the review queue from tournament organizers", () => {
@@ -29,5 +32,6 @@ describe("AdminSidebar", () => {
 
     expect(screen.queryByRole("link", { name: "คิวตรวจสอบ" })).toBeNull()
     expect(screen.queryByRole("link", { name: "รายการแข่งขันทั้งหมด" })).toBeNull()
+    expect(screen.queryByRole("link", { name: "ทีมทั้งหมด" })).toBeNull()
   })
 })

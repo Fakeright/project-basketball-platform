@@ -6,6 +6,8 @@ import { Check, UserMinus, X } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { RegistrationTeamRoster } from "@/components/organizer/registration-team-roster"
+import type { RegistrationReviewPlayer } from "@/features/registrations/application/ports/registration-repository"
 import type { RegistrationStatus } from "@/features/registrations/domain/registration"
 
 export interface RegistrationReviewListItem {
@@ -16,6 +18,8 @@ export interface RegistrationReviewListItem {
   province: string
   playerCount: number
   managerCoachCount: number
+  managerCoachName: string
+  players: RegistrationReviewPlayer[]
   submittedAt: string
   status: RegistrationStatus
   decisionNote: string | null
@@ -78,6 +82,7 @@ export function RegistrationReviewList({
     setConfirmation({ kind, registration, reason })
   }
 
+  // ยืนยันบนหน้าจอแล้วส่ง POST ไป decision หรือ withdraw ตามคำสั่งที่ผู้จัดเลือก
   async function submitConfirmation() {
     const action = confirmation
     if (!action) return
@@ -190,6 +195,11 @@ export function RegistrationReviewList({
                   ผู้เล่น {registration.playerCount} / ผู้จัดการ/โค้ช{" "}
                   {registration.managerCoachCount}
                 </p>
+                <RegistrationTeamRoster
+                  managerCoachName={registration.managerCoachName}
+                  players={registration.players}
+                  teamName={registration.teamName}
+                />
               </div>
 
               <div className="text-sm">

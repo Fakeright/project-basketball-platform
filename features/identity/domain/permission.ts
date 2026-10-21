@@ -17,6 +17,7 @@ export const permissions = [
   "registration.read",
   "registration.decide",
   "team.create",
+  "team.read",
   "team.update",
   "team.roster.manage",
   "registration.cancel",

@@ -35,6 +35,7 @@ export class PrismaRegistrationRepository implements RegistrationRepository {
     this.operations = new PrismaRegistrationOperations(prisma)
   }
 
+  // ธุรกรรม Serializable ทำให้การตรวจเงื่อนไขและบันทึกใบสมัครเห็นข้อมูลชุดเดียวกัน
   async inTransaction<T>(
     operation: (repository: RegistrationRepositoryTransaction) => Promise<T>,
   ): Promise<T> {
@@ -178,8 +179,16 @@ export class PrismaRegistrationRepository implements RegistrationRepository {
             province: true,
             players: {
               where: { isActive: true },
-              select: { id: true },
+              orderBy: { createdAt: "asc" },
+              // ข้อมูลติดต่อและวันเกิดไม่จำเป็นต่อการตรวจรายชื่อ จึงไม่ส่งออกจากฐานข้อมูล
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                jerseyNumber: true,
+              },
             },
+            owner: { select: { displayName: true } },
           },
         },
       },
@@ -192,6 +201,13 @@ export class PrismaRegistrationRepository implements RegistrationRepository {
       province: registration.team.province.nameTh,
       playerCount: registration.team.players.length,
       managerCoachCount: registration.team.ownerId ? 1 : 0,
+      managerCoachName: registration.team.owner.displayName,
+      players: registration.team.players.map((player) => ({
+        id: player.id,
+        firstName: player.firstName,
+        lastName: player.lastName,
+        jerseyNumber: player.jerseyNumber,
+      })),
       submittedAt: registration.createdAt.toISOString(),
     }))
   }
@@ -424,6 +440,7 @@ class PrismaRegistrationOperations implements RegistrationRepositoryTransaction 
       : null
   }
 
+  // ล็อกรายการก่อนนับทีมที่อนุมัติ เพื่อกันคำขอพร้อมกันทำให้เกินจำนวนรับ
   async approveWithCapacity(
     input: ApproveRegistrationInput,
   ): Promise<TournamentRegistration> {

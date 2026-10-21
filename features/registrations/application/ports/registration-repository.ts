@@ -50,12 +50,21 @@ export interface RegistrationReviewContext {
   tournament: RegistrationReviewTournament
 }
 
+export interface RegistrationReviewPlayer {
+  id: string
+  firstName: string
+  lastName: string
+  jerseyNumber: number | null
+}
+
 export interface TournamentRegistrationReviewItem
   extends TournamentRegistration {
   teamName: string
   province: string
   playerCount: number
   managerCoachCount: number
+  managerCoachName: string
+  players: RegistrationReviewPlayer[]
   submittedAt: string
 }
 

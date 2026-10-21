@@ -28,4 +28,11 @@ describe("role permissions", () => {
       ),
     ).toBe(false)
   })
+
+  it("reserves reading all teams for platform admins", () => {
+    expect(permissions).toContain("team.read")
+    expect(permissionsByRole.PLATFORM_ADMIN.has("team.read")).toBe(true)
+    expect(permissionsByRole.TEAM_MANAGER_COACH.has("team.read")).toBe(false)
+    expect(permissionsByRole.TOURNAMENT_ORGANIZER.has("team.read")).toBe(false)
+  })
 })
