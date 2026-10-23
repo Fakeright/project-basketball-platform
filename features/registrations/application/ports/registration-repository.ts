@@ -1,3 +1,9 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * กำหนดข้อมูลทีม/รายการที่ใช้พิจารณาใบสมัครและสัญญาการอ่าน เปลี่ยนสถานะ และ transaction
+ * เรียกใช้จาก: components/organizer/registration-review-list.tsx, components/organizer/registration-team-roster.tsx
+ */
+
 import type { TeamPlayer, TeamSummary } from "@/features/team-management/domain/team"
 import type { RosterFormat } from "@/features/team-management/domain/team-policy"
 import type { RegistrationTournamentStatus } from "@/features/registrations/domain/registration-policy"
@@ -97,6 +103,11 @@ export interface RegistrationRepositoryTransaction {
     teamId: string,
   ): Promise<RegistrationApplicationContext | null>
   findActive(tournamentId: string, teamId: string): Promise<TournamentRegistration | null>
+  hasActiveNameConflict(
+    tournamentId: string,
+    teamId: string,
+    teamName: string,
+  ): Promise<boolean>
   createPending(input: {
     tournamentId: string
     teamId: string

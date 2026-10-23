@@ -1,3 +1,10 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ตรวจสิทธิ์แอดมินและสถานะส่งตรวจ ก่อนบันทึกผลอนุมัติ ขอแก้ไข หรือปฏิเสธพร้อมเหตุผล
+ * เรียกใช้จาก: features/admin/presentation/review-tournament-handler.ts
+ * ตามการทำงานต่อ: features/identity/application/authorize.ts
+ */
+
 import type { Actor } from "@/features/identity/domain/actor"
 import { authorize } from "@/features/identity/application/authorize"
 import type { TournamentOperation } from "@/features/tournament-operations/domain/tournament-operation"

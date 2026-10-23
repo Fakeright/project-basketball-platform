@@ -1,3 +1,8 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ทดสอบ features/competition/infrastructure/development-external-bracket-repository.ts โดยจำลอง dependencies ตามกรณี และตรวจผลสำเร็จ/ข้อผิดพลาดด้วย assertions
+ */
+
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import path from "node:path"
@@ -72,6 +77,7 @@ describe("DevelopmentExternalBracketRepository", () => {
       },
       actorId: "organizer-1",
       adminOverride: false,
+      reason: null,
     })
 
     const state = JSON.parse(await readFile(statePath, "utf8"))
@@ -108,6 +114,7 @@ describe("DevelopmentExternalBracketRepository", () => {
       },
       actorId: "organizer-1",
       adminOverride: false,
+      reason: null,
     }
 
     await repository.commitUploadedRevision(input)

@@ -1,3 +1,8 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ทดสอบ features/tournaments/domain/tournament.ts, features/tournaments/presentation/schedule-view-model.ts โดยจำลอง dependencies ตามกรณี และตรวจผลสำเร็จ/ข้อผิดพลาดด้วย assertions
+ */
+
 import { expect, test } from "vitest"
 
 import type { Match } from "@/features/tournaments/domain/tournament"
@@ -7,7 +12,7 @@ test("groups matches under their scheduled date and court", () => {
   const matches: Match[] = [
     {
       id: "match-1",
-      tournamentSlug: "bangkok-open-2026",
+      purpose: "STANDARD", tournamentSlug: "bangkok-open-2026",
       round: "Group stage",
       court: "Court A",
       scheduledAt: "2026-07-27T09:00:00+07:00",
@@ -26,7 +31,7 @@ test("groups matches under their scheduled date and court", () => {
 test("omits matches that do not have a confirmed schedule yet", () => {
   const unscheduled: Match = {
     id: "match-unscheduled",
-    tournamentSlug: "bangkok-open-2026",
+    purpose: "STANDARD", tournamentSlug: "bangkok-open-2026",
     round: "Semi Final",
     court: "Court A",
     scheduledAt: null,
@@ -42,7 +47,7 @@ test("omits matches that do not have a confirmed schedule yet", () => {
 test("groups UTC instants by the Bangkok calendar day", () => {
   const beforeBangkokMidnight: Match = {
     id: "match-before-midnight",
-    tournamentSlug: "bangkok-open-2026",
+    purpose: "STANDARD", tournamentSlug: "bangkok-open-2026",
     round: "Group stage",
     court: "Court A",
     scheduledAt: "2026-10-03T16:59:59.000Z",

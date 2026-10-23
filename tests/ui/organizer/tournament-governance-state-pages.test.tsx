@@ -1,3 +1,8 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ทดสอบ app/(admin)/organizer/tournaments/[id]/page.tsx, app/(admin)/organizer/tournaments/[id]/bracket/page.tsx, app/(admin)/organizer/tournaments/[id]/registrations/page.tsx โดยจำลอง dependencies ตามกรณี และตรวจผลสำเร็จ/ข้อผิดพลาดด้วย assertions
+ */
+
 import { cleanup, render, screen } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
@@ -177,7 +182,7 @@ afterEach(() => {
 describe("organizer tournament governance states", () => {
   it("shows suspended tournament identity without editor, lifecycle, or media controls", async () => {
     render(
-      await EditTournamentPage({
+      await EditTournamentPage({ searchParams: Promise.resolve({}),
         params: Promise.resolve({ id: tournament.id }),
       }),
     )
@@ -197,7 +202,7 @@ describe("organizer tournament governance states", () => {
     "makes the suspended %s workspace read-only",
     async (_name, Page) => {
       render(
-        await Page({
+        await Page({ searchParams: Promise.resolve({}),
           params: Promise.resolve({ id: tournament.id }),
         }),
       )
@@ -210,7 +215,7 @@ describe("organizer tournament governance states", () => {
 
   it("omits registration decisions for a suspended tournament", async () => {
     render(
-      await TournamentRegistrationsPage({
+      await TournamentRegistrationsPage({ searchParams: Promise.resolve({}),
         params: Promise.resolve({ id: tournament.id }),
       }),
     )
@@ -228,7 +233,7 @@ describe("organizer tournament governance states", () => {
           ...tournament,
           governanceStatus: "REMOVED",
         })
-        return EditTournamentPage({
+        return EditTournamentPage({ searchParams: Promise.resolve({}),
           params: Promise.resolve({ id: tournament.id }),
         })
       },
@@ -239,7 +244,7 @@ describe("organizer tournament governance states", () => {
         mocks.getOrganizerCompetition.mockResolvedValueOnce(
           competitionWorkspace("REMOVED"),
         )
-        return OrganizerBracketPage({
+        return OrganizerBracketPage({ searchParams: Promise.resolve({}),
           params: Promise.resolve({ id: tournament.id }),
         })
       },
@@ -250,7 +255,7 @@ describe("organizer tournament governance states", () => {
         mocks.listTournamentRegistrations.mockResolvedValueOnce(
           registrationReview("REMOVED"),
         )
-        return TournamentRegistrationsPage({
+        return TournamentRegistrationsPage({ searchParams: Promise.resolve({}),
           params: Promise.resolve({ id: tournament.id }),
         })
       },
@@ -261,7 +266,7 @@ describe("organizer tournament governance states", () => {
         mocks.getOrganizerCompetition.mockResolvedValueOnce(
           competitionWorkspace("REMOVED"),
         )
-        return OrganizerSchedulePage({
+        return OrganizerSchedulePage({ searchParams: Promise.resolve({}),
           params: Promise.resolve({ id: tournament.id }),
         })
       },
@@ -272,7 +277,7 @@ describe("organizer tournament governance states", () => {
         mocks.getOrganizerCompetition.mockResolvedValueOnce(
           competitionWorkspace("REMOVED"),
         )
-        return OrganizerResultsPage({
+        return OrganizerResultsPage({ searchParams: Promise.resolve({}),
           params: Promise.resolve({ id: tournament.id }),
         })
       },

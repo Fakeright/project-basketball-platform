@@ -1,3 +1,8 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ทดสอบ components/province-combobox.tsx โดยจำลอง dependencies ตามกรณี และตรวจผลสำเร็จ/ข้อผิดพลาดด้วย assertions
+ */
+
 import { render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { afterEach, describe, expect, it } from "vitest"
@@ -49,5 +54,27 @@ describe("ProvinceCombobox", () => {
     await user.click(input)
     await user.click(await screen.findByRole("option", { name: "ทุกจังหวัด" }))
     expect(new FormData(container.querySelector("form")!).get("province")).toBe("")
+  })
+
+  it("updates the selected province when the form receives a new default", () => {
+    const { container, rerender } = render(
+      <form>
+        <ProvinceCombobox id="province" label="จังหวัด" name="province" />
+      </form>,
+    )
+
+    rerender(
+      <form>
+        <ProvinceCombobox
+          defaultValue="92"
+          id="province"
+          label="จังหวัด"
+          name="province"
+        />
+      </form>,
+    )
+
+    expect(new FormData(container.querySelector("form")!).get("province")).toBe("92")
+    expect((screen.getByLabelText("จังหวัด") as HTMLInputElement).value).toBe("ตรัง (Trang)")
   })
 })

@@ -1,3 +1,10 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ค้นหาและอ่านรายการจากข้อมูลจำลอง โดยใช้สัญญาเดียวกับ repository จริง
+ * เรียกใช้จาก: features/tournaments/infrastructure/get-tournament-repository.ts
+ * ตามการทำงานต่อ: features/tournaments/infrastructure/mock-tournament-data.ts
+ */
+
 import type { Tournament, TournamentSearchFilters } from "@/features/tournaments/domain/tournament"
 import { toBangkokCalendarDate } from "@/features/tournaments/domain/tournament-calendar"
 import { resolvePublicTournamentStatus } from "@/features/tournaments/domain/public-tournament-status"

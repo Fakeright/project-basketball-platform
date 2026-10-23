@@ -1,3 +1,10 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ตรวจทีม เจ้าของ อายุ จำนวนผู้เล่น สถานะรับสมัคร และชื่อทีมซ้ำ ก่อนสร้างใบสมัครรอพิจารณา
+ * เรียกใช้จาก: app/api/tournaments/[id]/registrations/route.ts, features/registrations/presentation/registration-handler.ts
+ * ตามการทำงานต่อ: features/team-management/application/team-access.ts
+ */
+
 import type { Actor } from "@/features/identity/domain/actor"
 import { authorizeTeamAccess } from "@/features/team-management/application/team-access"
 import { assertCanApply } from "@/features/registrations/domain/registration-policy"
@@ -11,6 +18,7 @@ export interface ApplyToTournamentInput {
   teamId: string
 }
 
+// ตรวจทีม รายชื่อผู้เล่น และสถานะรายการใน transaction เดียวก่อนสร้างใบสมัคร PENDING
 export async function applyToTournament(
   input: ApplyToTournamentInput,
   actor: Actor,
@@ -26,6 +34,7 @@ export async function applyToTournament(
   })
 }
 
+// อ่านทีมและรายการภายใน transaction แล้วตรวจสิทธิ์และเงื่อนไขสมัครก่อนสร้างใบสมัคร
 async function loadEligibleApplicationContext(
   input: ApplyToTournamentInput,
   actor: Actor,
@@ -46,5 +55,14 @@ async function loadEligibleApplicationContext(
     hasActiveRegistration: activeRegistration !== null,
     now,
   })
+  if (
+    await registrations.hasActiveNameConflict(
+      input.tournamentId,
+      input.teamId,
+      context.team.name,
+    )
+  ) {
+    throw new Error("REGISTRATION_TEAM_NAME_TAKEN")
+  }
   return context
 }

@@ -1,3 +1,8 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ทดสอบ features/team-management/application/ports/team-repository.ts, features/registrations/application/ports/registration-repository.ts, features/tournaments/domain/tournament.ts โดยจำลอง dependencies ตามกรณี และตรวจผลสำเร็จ/ข้อผิดพลาดด้วย assertions
+ */
+
 import { describe, expect, it, vi } from "vitest"
 
 import type { TeamRepository } from "@/features/team-management/application/ports/team-repository"
@@ -21,6 +26,13 @@ function teamRepository(): TeamRepository {
     create: vi.fn(),
     update: vi.fn(),
     findById: vi.fn(),
+    findByIdForUpdate: vi.fn(),
+    hasActiveNameConflict: vi.fn(async () => false),
+    listPlayerHistoryByOwner: vi.fn(async () => []),
+    listLegacyReconciliationContexts: vi.fn(async () => []),
+    getRemovalContextForUpdate: vi.fn(),
+    deleteTeam: vi.fn(),
+    deactivateTeam: vi.fn(),
     listByOwner: vi.fn(async () => [
       {
         id: "team-1",
@@ -28,7 +40,7 @@ function teamRepository(): TeamRepository {
         provinceCode: "10",
         province: "กรุงเทพมหานคร",
         ownerId: "team-manager-1",
-        format: "FIVE_V_FIVE",
+        format: "FIVE_V_FIVE" as const,
         isActive: true,
         deactivatedAt: null,
         version: 0,
@@ -49,6 +61,7 @@ function registrationRepository(): RegistrationRepository {
     inTransaction: vi.fn(),
     getApplicationContext: vi.fn(),
     findActive: vi.fn(async () => null),
+    hasActiveNameConflict: vi.fn(async () => false),
     createPending: vi.fn(),
     findById: vi.fn(),
     cancelWithVersion: vi.fn(),

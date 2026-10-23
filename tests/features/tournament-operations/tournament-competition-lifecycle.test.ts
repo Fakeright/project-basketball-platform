@@ -1,3 +1,8 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ทดสอบ features/competition/domain/competition.ts, features/tournament-operations/application/transition-tournament-competition.ts, features/tournament-operations/domain/tournament-operation.ts โดยจำลอง dependencies ตามกรณี และตรวจผลสำเร็จ/ข้อผิดพลาดด้วย assertions
+ */
+
 import { describe, expect, it, vi } from "vitest"
 
 import type { TournamentCompetitionLifecycleContext } from "@/features/competition/domain/competition"

@@ -1,3 +1,9 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * หน้า /bracket: อ่านสายที่เผยแพร่ของรายการที่เลือก แล้วแสดงสายระบบหรือไฟล์ภายนอก
+ * ตามการทำงานต่อ: features/tournaments/application/get-tournament-competition-by-slug.ts, features/tournaments/infrastructure/get-tournament-repository.ts, features/competition/application/get-competition-summary.ts
+ */
+
 import Link from "next/link"
 
 import { BracketView } from "@/components/bracket-view"
@@ -11,6 +17,7 @@ import { getExternalBracketView } from "@/features/competition/application/get-e
 import { getExternalBracketRepository } from "@/features/competition/infrastructure/get-external-bracket-repository"
 import { SupabaseObjectStorage } from "@/features/tournament-media/infrastructure/supabase-object-storage"
 
+/** หน้าสาธารณะของสายที่เผยแพร่แล้ว โดยรับ slug รายการผ่าน ?tournament= */
 export default async function BracketPage({ searchParams }: PageProps<"/bracket">) {
   const repository = getTournamentRepository()
   const { tournament: requestedTournament } = await searchParams
@@ -47,6 +54,7 @@ export default async function BracketPage({ searchParams }: PageProps<"/bracket"
         ) : null}
       </header>
       <section className="mt-8">
+        {/* โหมดไฟล์ภายนอกแสดงเอกสาร; โหมดระบบแสดงคู่ที่สร้างและเผยแพร่ */}
         {externalBracket ? (
           <div className="space-y-10">
             <ExternalBracketView view={externalBracket} />

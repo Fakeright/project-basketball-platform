@@ -1,6 +1,11 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ทดสอบ lib/generated/prisma/client.ts, features/registrations/infrastructure/prisma-registration-repository.ts, features/registrations/domain/registration.ts โดยจำลอง dependencies ตามกรณี และตรวจผลสำเร็จ/ข้อผิดพลาดด้วย assertions
+ */
+
 import { describe, expect, it, vi } from "vitest"
 
-import type { PrismaClient } from "@/lib/generated/prisma/client"
+import type { Prisma, PrismaClient } from "@/lib/generated/prisma/client"
 import { PrismaRegistrationRepository } from "@/features/registrations/infrastructure/prisma-registration-repository"
 import type { TournamentRegistration } from "@/features/registrations/domain/registration"
 
@@ -68,6 +73,20 @@ function repositoryWithTransactionClient(client: object) {
 }
 
 describe("PrismaRegistrationRepository transactions", () => {
+  it("checks active registrations for another team with the same normalized name", async () => {
+    const queryRaw = vi.fn().mockResolvedValue([{ id: "registration-2" }])
+    const { repository } = repositoryWithTransactionClient({ $queryRaw: queryRaw })
+
+    const conflict = await repository.inTransaction((registrations) =>
+      registrations.hasActiveNameConflict("tournament-1", "team-1", " bangkok hoops "),
+    )
+
+    expect(conflict).toBe(true)
+    expect(queryRaw.mock.calls[0][0].text).toContain('lower(btrim(t."name"))')
+    expect(queryRaw.mock.calls[0][0].text).toContain('r."teamId" <>')
+    expect(queryRaw.mock.calls[0][0].text).toContain('r."status" IN')
+  })
+
   it.each([
     {
       operation: "create a registration",
@@ -139,7 +158,7 @@ describe("PrismaRegistrationRepository transactions", () => {
   ])(
     "locks and rechecks tournament governance before attempting to $operation",
     async ({ run }) => {
-      const queryRaw = vi.fn(async () => [
+      const queryRaw = vi.fn<(query: Prisma.Sql) => Promise<object[]>>(async () => [
         { id: "tournament-1", governanceStatus: "SUSPENDED", capacity: 8 },
       ])
       const create = vi.fn()
@@ -540,7 +559,7 @@ describe("PrismaRegistrationRepository transactions", () => {
       updateMany: vi.fn(async () => ({ count: 1 })),
       findUnique: vi.fn(async () => cancelled),
     }
-    const createAudit = vi.fn(async () => undefined)
+    const createAudit = vi.fn<(input: { data: { action: string } }) => Promise<void>>(async () => undefined)
     const { repository } = repositoryWithTransactionClient({
       $queryRaw: vi.fn(async () => [
         { id: "tournament-1", governanceStatus: "ACTIVE", capacity: 8 },
@@ -576,7 +595,7 @@ describe("PrismaRegistrationRepository transactions", () => {
   })
 
   it("locks the tournament and rejects approval deterministically at capacity", async () => {
-    const lockTournament = vi.fn(async () => [
+    const lockTournament = vi.fn<(query: Prisma.Sql) => Promise<object[]>>(async () => [
       { id: "tournament-1", governanceStatus: "ACTIVE", capacity: 1 },
     ])
     const count = vi.fn(async () => 1)

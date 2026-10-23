@@ -1,4 +1,10 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ทดสอบ features/identity/infrastructure/get-auth-handlers.ts, features/identity/presentation/auth-handler.ts โดยจำลอง dependencies ตามกรณี และตรวจผลสำเร็จ/ข้อผิดพลาดด้วย assertions
+ */
+
 import { describe, expect, it, vi } from "vitest"
+import { createClient } from "@supabase/supabase-js"
 
 import {
   createAdminAuthService,
@@ -10,8 +16,11 @@ import {
 } from "@/features/identity/presentation/auth-handler"
 
 function createSupabase(authOverrides: Record<string, unknown>) {
-  return {
-    auth: {
+  // ใช้ client จริงเพื่อให้โครงสร้างครบ แล้วแทนเฉพาะคำสั่ง Auth เพื่อไม่ส่ง network
+  const client = createClient("https://example.supabase.co", "test-key", {
+    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+  })
+  Object.assign(client.auth, {
       signUp: vi.fn(),
       signInWithPassword: vi.fn(),
       signOut: vi.fn(),
@@ -20,8 +29,8 @@ function createSupabase(authOverrides: Record<string, unknown>) {
       exchangeCodeForSession: vi.fn(),
       getUser: vi.fn(),
       ...authOverrides,
-    },
-  }
+  })
+  return client
 }
 
 describe("Supabase auth command service", () => {
@@ -136,16 +145,13 @@ describe("Supabase auth command service", () => {
   })
 
   it("maps transient admin deletion failure without leaking provider details", async () => {
-    const adminClient = {
-      auth: {
-        admin: {
+    const adminClient = createSupabase({})
+    Object.assign(adminClient.auth.admin, {
           deleteUser: vi.fn(async () => ({
             data: null,
             error: { status: 500, message: "service-role detail" },
           })),
-        },
-      },
-    }
+    })
 
     await expect(
       createAdminAuthService(() => adminClient).deleteAuthUser(

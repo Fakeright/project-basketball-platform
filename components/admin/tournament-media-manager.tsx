@@ -1,5 +1,12 @@
 "use client"
 
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * อัปโหลดและลบโปสเตอร์/เอกสารของรายการ พร้อมแสดงไฟล์และผลการทำงาน
+ * เรียกใช้จาก: components/admin/tournament-editor.tsx
+ * ตามการทำงานต่อ: features/tournament-media/domain/media-policy.ts
+ */
+
 import { FileText, ImageUp, Trash2 } from "lucide-react"
 import Image from "next/image"
 import { useMemo, useState } from "react"
@@ -31,6 +38,7 @@ export function TournamentMediaManager({
   )
   const documents = currentAssets.filter((asset) => asset.kind === "DOCUMENT")
 
+  // ส่งไฟล์และชนิดสื่อเป็น FormData ไป API แล้วเพิ่ม asset ที่เซิร์ฟเวอร์คืนในรายการบนหน้าจอ
   async function upload(kind: "POSTER" | "DOCUMENT", file: File) {
     const limit = getMediaMaximumBytes(kind)
     if (file.size > limit) {
@@ -67,6 +75,7 @@ export function TournamentMediaManager({
     }
   }
 
+  // เรียก API ลบ asset ที่เลือก แล้วนำออกจากรายการบนหน้าจอเมื่อสำเร็จ
   async function remove(asset: TournamentMediaManagerAsset) {
     if (!window.confirm(`ลบไฟล์ ${asset.fileName} ใช่หรือไม่`)) return
     setPending(true)

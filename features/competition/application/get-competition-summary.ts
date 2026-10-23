@@ -1,3 +1,9 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * อ่านคู่และผลที่ยืนยันเพื่อสรุปผู้ชนะ รองชนะเลิศ และความพร้อมของผลการแข่งขัน
+ * เรียกใช้จาก: app/(public)/bracket/page.tsx, app/(public)/results/page.tsx
+ */
+
 import type { MatchPurpose } from "@/features/competition/domain/competition"
 
 export interface CompetitionSummaryTeam {
@@ -31,6 +37,7 @@ interface CompetitionSummaryMatch {
   winnerTeamId?: string | null
 }
 
+/** หาผู้ชนะ รองชนะเลิศ และอันดับ 3 จากประเภทคู่ที่ยืนยันแล้ว */
 export function getCompetitionSummary(
   matches: readonly CompetitionSummaryMatch[],
 ): CompetitionSummary {
@@ -94,6 +101,7 @@ export function getCompetitionSummary(
   }
 }
 
+// คัดผลที่ถือว่ายืนยันแล้วก่อนนำไปคิดผู้ชนะ/อันดับ
 function getConfirmedResult(match: CompetitionSummaryMatch): {
   winner: CompetitionSummaryTeam
   loser: CompetitionSummaryTeam

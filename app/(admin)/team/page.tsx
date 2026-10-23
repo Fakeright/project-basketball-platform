@@ -1,3 +1,9 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * หน้า /team: อ่านทีมของบัญชีปัจจุบันและแสดงทางไปสร้าง/จัดการทีม
+ * ตามการทำงานต่อ: features/identity/infrastructure/next-cookie-current-actor-provider.ts, features/registrations/application/list-owned-team-registrations.ts, features/registrations/infrastructure/get-registration-repository.ts
+ */
+
 import { TeamList } from "@/components/team/team-list"
 import { TeamWorkspaceHeader } from "@/components/team/team-workspace-header"
 import { createNextCookieCurrentActorProvider } from "@/features/identity/infrastructure/next-cookie-current-actor-provider"

@@ -1,5 +1,11 @@
 "use client"
 
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * รับข้อผิดพลาดจากการแสดงหน้าในขอบเขต / และให้ลองโหลดใหม่ผ่าน reset
+ * ตามการทำงานต่อ: components/ui/button.tsx, components/state-panel.tsx
+ */
+
 import { Button } from "@/components/ui/button"
 import { StatePanel } from "@/components/state-panel"
 

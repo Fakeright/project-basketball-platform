@@ -1,3 +1,8 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ทดสอบ app/(public)/bracket/page.tsx, app/(public)/results/page.tsx, app/(public)/schedule/page.tsx โดยจำลอง dependencies ตามกรณี และตรวจผลสำเร็จ/ข้อผิดพลาดด้วย assertions
+ */
+
 import { cleanup, render, screen } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
@@ -33,7 +38,7 @@ afterEach(() => {
 describe("public competition navigation", () => {
   it("does not prefetch the schedule, results, or fallback list from the bracket", async () => {
     repository.findFirstCompetitionByStatus.mockResolvedValue(mockTournamentData[1])
-    render(await BracketPage({ searchParams: Promise.resolve({}) }))
+    render(await BracketPage({ params: Promise.resolve({}), searchParams: Promise.resolve({}) }))
 
     expect(screen.getByRole("link", { name: "ดูตารางแข่งขัน" }).getAttribute("data-prefetch")).toBe("off")
     expect(screen.getByRole("link", { name: "ดูผลการแข่งขัน" }).getAttribute("data-prefetch")).toBe("off")
@@ -42,7 +47,7 @@ describe("public competition navigation", () => {
 
   it("does not prefetch bracket and results from the schedule", async () => {
     repository.findFirstCompetitionByStatus.mockResolvedValue(mockTournamentData[1])
-    render(await SchedulePage({ searchParams: Promise.resolve({}) }))
+    render(await SchedulePage({ params: Promise.resolve({}), searchParams: Promise.resolve({}) }))
 
     expect(screen.getByRole("link", { name: "ดูสายการแข่งขัน" }).getAttribute("data-prefetch")).toBe("off")
     expect(screen.getByRole("link", { name: "ดูผลการแข่งขัน" }).getAttribute("data-prefetch")).toBe("off")
@@ -50,7 +55,7 @@ describe("public competition navigation", () => {
 
   it("does not prefetch competition links from results", async () => {
     repository.findFirstCompetitionByStatus.mockResolvedValue(mockTournamentData[1])
-    render(await ResultsPage({ searchParams: Promise.resolve({}) }))
+    render(await ResultsPage({ params: Promise.resolve({}), searchParams: Promise.resolve({}) }))
 
     for (const label of ["ตารางแข่งขัน", "สายการแข่งขัน", "รายละเอียดรายการ"]) {
       expect(screen.getByRole("link", { name: label }).getAttribute("data-prefetch")).toBe("off")

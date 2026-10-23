@@ -1,3 +1,10 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ช่วยแปลงวันที่เวลาไทยเป็นช่วง UTC เพื่อค้นหาการแข่งขันตามวันได้ถูกต้อง
+ * เรียกใช้จาก: features/registrations/domain/player-age-policy.ts, features/tournaments/infrastructure/mock-tournament-repository.ts
+ * ตามการทำงานต่อ: features/shared/domain/calendar-date.ts
+ */
+
 import {
   BANGKOK_TIME_ZONE,
   toBangkokCalendarDate as toSharedBangkokCalendarDate,

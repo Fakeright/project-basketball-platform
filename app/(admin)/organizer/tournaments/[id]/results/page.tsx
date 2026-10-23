@@ -1,3 +1,9 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * หน้า /organizer/tournaments/[id]/results: อ่านคู่ คะแนน และสถานะก่อนแสดงฟอร์มบันทึก/ยืนยันผล
+ * ตามการทำงานต่อ: features/competition/application/get-organizer-competition.ts, features/competition/infrastructure/get-competition-repository.ts, features/identity/infrastructure/next-cookie-current-actor-provider.ts
+ */
+
 import { notFound, redirect } from "next/navigation"
 
 import { SuspendedTournamentWorkspace } from "@/components/admin/tournament-governance-read-only"
@@ -11,6 +17,7 @@ import { getOrganizerCompetition } from "@/features/competition/application/get-
 import { getCompetitionRepository } from "@/features/competition/infrastructure/get-competition-repository"
 import { createNextCookieCurrentActorProvider } from "@/features/identity/infrastructure/next-cookie-current-actor-provider"
 
+/** แปลงคู่แข่งขันใน workspace เป็นข้อมูลพร้อมแสดงสำหรับฟอร์มผลการแข่งขัน */
 export default async function OrganizerResultsPage({
   params,
 }: PageProps<"/organizer/tournaments/[id]/results">) {

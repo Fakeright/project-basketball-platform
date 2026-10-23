@@ -1,3 +1,10 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * อ่าน/ล็อกทีมและรายการก่อนจัดการใบสมัครผ่าน Prisma พร้อม transaction, retry และ audit
+ * เรียกใช้จาก: features/registrations/infrastructure/get-registration-repository.ts
+ * ตามการทำงานต่อ: features/tournament-operations/infrastructure/prisma-tournament-governance-lock.ts
+ */
+
 import { Prisma, type PrismaClient, type Registration, type Team, type TeamPlayer as PrismaTeamPlayer } from "@/lib/generated/prisma/client"
 import type {
   ApproveRegistrationInput,
@@ -60,6 +67,11 @@ export class PrismaRegistrationRepository implements RegistrationRepository {
 
   findActive(tournamentId: string, teamId: string) {
     return this.operations.findActive(tournamentId, teamId)
+  }
+
+  // ตรวจชื่อที่ normalize แล้วในขอบเขตเจ้าของทีมหรือรายการ โดยไม่นับระเบียนที่ไม่อยู่ในสถานะใช้งาน
+  hasActiveNameConflict(tournamentId: string, teamId: string, teamName: string) {
+    return this.operations.hasActiveNameConflict(tournamentId, teamId, teamName)
   }
 
   createPending(input: {
@@ -299,6 +311,23 @@ class PrismaRegistrationOperations implements RegistrationRepositoryTransaction 
       orderBy: { createdAt: "desc" },
     })
     return registration ? mapRegistration(registration) : null
+  }
+
+  // ตรวจชื่อที่ normalize แล้วในขอบเขตเจ้าของทีมหรือรายการ โดยไม่นับระเบียนที่ไม่อยู่ในสถานะใช้งาน
+  async hasActiveNameConflict(tournamentId: string, teamId: string, teamName: string) {
+    const registrations = await this.prisma.$queryRaw<Array<{ id: string }>>(
+      Prisma.sql`
+        SELECT r."id"
+        FROM "Registration" r
+        JOIN "Team" t ON t."id" = r."teamId"
+        WHERE r."tournamentId" = ${tournamentId}
+          AND r."teamId" <> ${teamId}
+          AND r."status" IN ('PENDING', 'APPROVED')
+          AND lower(btrim(t."name")) = lower(btrim(${teamName}))
+        LIMIT 1
+      `,
+    )
+    return registrations.length > 0
   }
 
   async createPending(input: {
@@ -604,6 +633,7 @@ class PrismaRegistrationOperations implements RegistrationRepositoryTransaction 
   }
 }
 
+// แปลงข้อมูลที่อ่านจากฐานข้อมูลเป็นรูปแบบทีมที่ application และ UI ใช้
 function mapTeam(team: Team & { province: { nameTh: string } }): TeamSummary {
   return {
     id: team.id,
@@ -618,6 +648,7 @@ function mapTeam(team: Team & { province: { nameTh: string } }): TeamSummary {
   }
 }
 
+// แปลงแถวผู้เล่นเป็นข้อมูล domain รวมรูปแบบวันที่และค่าที่เว้นว่างได้
 function mapPlayer(player: PrismaTeamPlayer): TeamPlayer {
   return {
     id: player.id,
@@ -636,6 +667,7 @@ function mapPlayer(player: PrismaTeamPlayer): TeamPlayer {
   }
 }
 
+// แปลงแถวใบสมัครเป็นข้อมูลที่ use case และหน้าจอใช้ร่วมกัน
 function mapRegistration(registration: Registration): TournamentRegistration {
   return {
     id: registration.id,
@@ -670,6 +702,7 @@ function mapReviewTournament(tournament: {
   }
 }
 
+// แปลงข้อมูลให้เก็บในช่อง JSON ของ Prisma ได้ เช่น snapshot ใน audit
 function toJsonValue(value: unknown): Prisma.InputJsonValue {
   return JSON.parse(JSON.stringify(value)) as Prisma.InputJsonValue
 }
@@ -678,6 +711,7 @@ function isPrismaUniqueError(error: unknown) {
   return typeof error === "object" && error !== null && "code" in error && error.code === "P2002"
 }
 
+// แยกข้อผิดพลาด transaction ชนกัน เพื่อให้ retry เฉพาะกรณีที่รองรับ
 function isPrismaSerializationConflict(error: unknown) {
   return typeof error === "object" && error !== null && "code" in error && error.code === "P2034"
 }

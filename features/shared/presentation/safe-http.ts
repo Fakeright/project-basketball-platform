@@ -1,3 +1,9 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * รวมการอ่าน JSON และขอบเขตดักข้อผิดพลาดที่คืนรหัสติดตาม โดยไม่ส่งรายละเอียดภายในให้ผู้ใช้
+ * เรียกใช้จาก: app/api/admin/tournaments/[id]/close-registration/route.ts, app/api/admin/tournaments/[id]/governance/route.ts
+ */
+
 import { randomUUID } from "node:crypto"
 
 export interface SafeHttpDiagnostics {
@@ -11,6 +17,7 @@ export interface SafeHttpDiagnostics {
   }
 }
 
+// แยกกรณี JSON ใช้ไม่ได้ออกจากข้อมูลที่ parse สำเร็จ เพื่อให้ handler ตอบ validation error ได้
 export async function parseJsonRequest(
   request: Request,
 ): Promise<{ ok: true; value: unknown } | { ok: false }> {
@@ -22,6 +29,7 @@ export async function parseJsonRequest(
   }
 }
 
+// คืนข้อความทั่วไปพร้อมรหัสติดตาม และบันทึกเหตุผิดพลาดสำหรับผู้พัฒนาโดยไม่ส่งรายละเอียดภายในไปหน้าเว็บ
 export function unexpectedFailureResponse(
   error: unknown,
   operation: string,
@@ -47,6 +55,7 @@ export function unexpectedFailureResponse(
   )
 }
 
+// ห่อการทำงานของ route เพื่อแปลงข้อผิดพลาดที่หลุดออกมาเป็น Response ที่ควบคุมได้
 export async function withSafeRouteBoundary(
   operation: string,
   execute: () => Promise<Response>,

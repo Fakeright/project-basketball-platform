@@ -1,3 +1,10 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ให้ผู้จัดเจ้าของรายการหรือแอดมินอนุมัติ/ปฏิเสธใบสมัคร พร้อมตรวจความจุและเหตุผล
+ * เรียกใช้จาก: app/api/organizer/tournaments/[id]/registrations/[registrationId]/decision/route.ts, features/registrations/presentation/registration-handler.ts
+ * ตามการทำงานต่อ: features/identity/application/authorize.ts
+ */
+
 import { authorize } from "@/features/identity/application/authorize"
 import type { Actor } from "@/features/identity/domain/actor"
 import type { TournamentRegistration } from "@/features/registrations/domain/registration"
@@ -14,6 +21,7 @@ export interface DecideRegistrationInput {
   version: number
 }
 
+// ตรวจว่าเป็นเจ้าของรายการและใบสมัครยังตัดสินได้ ก่อนบันทึกพร้อม version/audit ใน transaction
 export async function decideRegistration(
   input: DecideRegistrationInput,
   actor: Actor,
@@ -55,6 +63,7 @@ export async function decideRegistration(
       adminOverride: actor.role === "PLATFORM_ADMIN",
     }
 
+    // อนุมัติตรวจความจุซ้ำตอนบันทึก; ปฏิเสธบันทึกเหตุผลและตรวจ version กันข้อมูลทับกัน
     return input.decision === "APPROVE"
       ? registrations.approveWithCapacity({ ...auditInput, note })
       : registrations.rejectWithVersion({ ...auditInput, note })

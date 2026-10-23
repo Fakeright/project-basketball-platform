@@ -1,3 +1,10 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ประกอบประวัติไฟล์สายและไฟล์ปัจจุบันที่ผู้จัดมีสิทธิ์ดู พร้อมข้อมูลสำหรับแสดงตัวอย่าง
+ * เรียกใช้จาก: app/(admin)/organizer/tournaments/[id]/bracket/page.tsx, components/organizer/external-bracket-workspace.tsx
+ * ตามการทำงานต่อ: features/identity/application/authorize.ts
+ */
+
 import { authorize } from "@/features/identity/application/authorize"
 import type { Actor } from "@/features/identity/domain/actor"
 import type { ObjectStorage } from "@/features/tournament-media/application/ports/object-storage"

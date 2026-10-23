@@ -1,3 +1,10 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ประสานสมัคร เข้าสู่ระบบ ออกจากระบบ และกู้รหัสผ่าน; ตรวจข้อมูลและโปรไฟล์ก่อนคืนผลให้ฟอร์ม
+ * เรียกใช้จาก: features/identity/infrastructure/get-auth-handlers.ts
+ * ตามการทำงานต่อ: features/identity/application/ports/user-profile-repository.ts, features/identity/application/provision-auth-profile.ts, features/identity/application/auth-errors.ts
+ */
+
 import { randomUUID } from "node:crypto"
 
 import { z } from "zod"
@@ -96,6 +103,7 @@ export interface AuthHandlerDependencies {
   appUrl: URL
 }
 
+// คืนชุดฟังก์ชันสำหรับแต่ละ endpoint โดยใช้ dependencies ชุดเดียวกัน
 export function createAuthHandlers(dependencies: AuthHandlerDependencies) {
   return {
     register: (request: Request) => register(request, dependencies),
@@ -109,6 +117,7 @@ export function createAuthHandlers(dependencies: AuthHandlerDependencies) {
   }
 }
 
+// ตรวจข้อมูลสมัคร เรียก Supabase และสร้างโปรไฟล์แอป; หากสร้างโปรไฟล์ไม่สำเร็จจะจัดการบัญชีที่สร้างค้าง
 async function register(
   request: Request,
   dependencies: AuthHandlerDependencies,
@@ -136,6 +145,7 @@ async function register(
   }
 
   try {
+    // Supabase เก็บบัญชีสำหรับล็อกอิน; โปรไฟล์และบทบาทต้องสร้างในฐานข้อมูลของแอปด้วย
     if (registration.isNewUser) {
       await provisionAuthProfile(
         {
@@ -153,6 +163,7 @@ async function register(
     }
   } catch (error) {
     if (registration.isNewUser) {
+      // สร้างโปรไฟล์ไม่สำเร็จ จึงพยายามลบบัญชี Auth ที่เพิ่งสร้างเพื่อไม่ให้เหลือบัญชีใช้ไม่ได้
       const cleanupSucceeded =
         await compensateUnprovisionedRegistration(
           registration.user.id,
@@ -186,6 +197,7 @@ async function register(
   )
 }
 
+// ตรวจข้อมูลและเข้าสู่ระบบกับ Supabase แล้วตรวจโปรไฟล์ก่อนเลือกหน้าปลายทาง
 async function login(
   request: Request,
   dependencies: AuthHandlerDependencies,
@@ -216,6 +228,7 @@ async function login(
   }
 
   try {
+    // หลัง Supabase ยืนยันรหัสผ่าน อ่านบทบาทจากโปรไฟล์เพื่อเลือกหน้าปลายทาง
     const profile =
       await dependencies.profileRepository.findBySupabaseUserId(authUser.id)
 
@@ -243,6 +256,7 @@ async function login(
   }
 }
 
+// ยกเลิก session ผ่านบริการ Auth แล้วคืนผลให้ปุ่มออกจากระบบ
 async function logout(dependencies: AuthHandlerDependencies) {
   try {
     await dependencies.auth.signOut()
@@ -256,6 +270,7 @@ async function logout(dependencies: AuthHandlerDependencies) {
   }
 }
 
+// ตรวจอีเมลและเริ่มกระบวนการ recovery พร้อมตอบกลับโดยไม่เปิดเผยว่าบัญชีนั้นมีอยู่หรือไม่
 async function forgotPassword(
   request: Request,
   dependencies: AuthHandlerDependencies,
@@ -291,6 +306,7 @@ async function forgotPassword(
   })
 }
 
+// ตรวจรหัสผ่านใหม่และสิทธิ์ recovery ก่อนส่งคำสั่งเปลี่ยนรหัสผ่านไป provider
 async function resetPassword(
   request: Request,
   dependencies: AuthHandlerDependencies,
@@ -342,6 +358,7 @@ async function resetPassword(
   }
 }
 
+// รับผลกลับจาก Supabase แล้วตรวจ code/transaction ก่อนเลือกหน้าปลายทางที่อนุญาต
 async function callback(
   request: Request,
   dependencies: AuthHandlerDependencies,
@@ -467,6 +484,7 @@ async function signOutAfterRegistration(
   }
 }
 
+// พยายามลบบัญชี Auth ที่เพิ่งสร้างเมื่อไม่มีโปรไฟล์แอปรองรับ และคืนผลว่าล้างสำเร็จหรือไม่
 async function compensateUnprovisionedRegistration(
   userId: string,
   dependencies: AuthHandlerDependencies,
@@ -516,6 +534,7 @@ function validationResponse(message: string) {
   return Response.json({ message }, { status: 422 })
 }
 
+// รับเฉพาะเส้นทางที่อนุญาต เพื่อไม่ให้ค่า next พาผู้ใช้ไปเว็บไซต์ภายนอก
 export function getSafeRedirectPath(
   candidate: string | null | undefined,
   fallback: string,
@@ -540,6 +559,7 @@ export function getSafeRedirectPath(
   }
 }
 
+// เลือกหน้าเริ่มต้นของบัญชีตามบทบาทหลังเข้าสู่ระบบ
 function getDefaultPathForRole(role: Role) {
   const destinations: Record<Role, string> = {
     PLATFORM_ADMIN: "/admin",

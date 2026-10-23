@@ -1,5 +1,11 @@
 "use client"
 
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * รับผลตรวจและเหตุผลจากแอดมิน แล้วส่งอนุมัติ ขอแก้ไข หรือปฏิเสธไป API
+ * เรียกใช้จาก: app/(admin)/admin/reviews/[id]/page.tsx
+ */
+
 import { useState } from "react"
 import Link from "next/link"
 
@@ -40,6 +46,7 @@ export function TournamentReviewPanel({
   const [completed, setCompleted] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
 
+  // ส่งผลตรวจและเหตุผลไป API review พร้อมอัปเดตข้อความ/หน้าจอตามผลตอบกลับ
   async function submitDecision(decision: ReviewDecision) {
     const trimmedNote = note.trim()
     if (decision !== "APPROVED" && !trimmedNote) {

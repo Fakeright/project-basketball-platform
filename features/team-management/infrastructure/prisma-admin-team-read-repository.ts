@@ -1,3 +1,9 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * อ่านทีม ผู้สร้าง และสมาชิกปัจจุบันผ่าน Prisma โดยเลือกเฉพาะฟิลด์ที่หน้าแอดมินต้องแสดง
+ * เรียกใช้จาก: features/team-management/infrastructure/get-admin-team-read-repository.ts
+ */
+
 import type { PrismaClient } from "@/lib/generated/prisma/client"
 
 import type {

@@ -1,3 +1,8 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ทดสอบ features/tournament-operations/presentation/organizer-workflow-guidance.ts โดยจำลอง dependencies ตามกรณี และตรวจผลสำเร็จ/ข้อผิดพลาดด้วย assertions
+ */
+
 import { describe, expect, it } from "vitest"
 
 import { createOrganizerWorkflowGuidance } from "@/features/tournament-operations/presentation/organizer-workflow-guidance"

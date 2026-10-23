@@ -1,3 +1,9 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * หน้า /organizer/tournaments/[id]/schedule: อ่านคู่แข่งขันและสิทธิ์ก่อนแสดงฟอร์มจัดวันเวลา/สนาม
+ * ตามการทำงานต่อ: features/admin/presentation/tournament-editor-time.ts, features/competition/application/get-organizer-competition.ts, features/competition/infrastructure/get-competition-repository.ts
+ */
+
 import { notFound, redirect } from "next/navigation"
 
 import { SuspendedTournamentWorkspace } from "@/components/admin/tournament-governance-read-only"
@@ -12,6 +18,7 @@ import { getOrganizerCompetition } from "@/features/competition/application/get-
 import { getCompetitionRepository } from "@/features/competition/infrastructure/get-competition-repository"
 import { createNextCookieCurrentActorProvider } from "@/features/identity/infrastructure/next-cookie-current-actor-provider"
 
+/** เตรียมข้อมูลคู่และเวลาไทยให้ฟอร์มจัดตาราง; การบันทึกจริงทำผ่าน API */
 export default async function OrganizerSchedulePage({
   params,
 }: PageProps<"/organizer/tournaments/[id]/schedule">) {

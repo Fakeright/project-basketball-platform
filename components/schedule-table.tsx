@@ -1,3 +1,10 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * แสดงคู่แข่งขันตามวันเวลาและสนาม พร้อมทีมและข้อมูลผลที่มีอยู่
+ * เรียกใช้จาก: app/(public)/schedule/page.tsx
+ * ตามการทำงานต่อ: features/tournaments/presentation/schedule-view-model.ts
+ */
+
 import type { Match } from "@/features/tournaments/domain/tournament"
 import { groupMatchesByDateAndCourt } from "@/features/tournaments/presentation/schedule-view-model"
 

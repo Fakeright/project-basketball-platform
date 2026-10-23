@@ -1,3 +1,10 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ประกอบตัวอัปโหลด ตัวอย่าง และประวัติไฟล์สายให้เป็นพื้นที่ทำงานของผู้จัด
+ * เรียกใช้จาก: app/(admin)/organizer/tournaments/[id]/bracket/page.tsx
+ * ตามการทำงานต่อ: components/organizer/bracket-mode-control.tsx, components/organizer/external-bracket-preview.tsx, components/organizer/external-bracket-revision-list.tsx
+ */
+
 import { BracketModeControl } from "@/components/organizer/bracket-mode-control"
 import { ExternalBracketPreview } from "@/components/organizer/external-bracket-preview"
 import { ExternalBracketRevisionList } from "@/components/organizer/external-bracket-revision-list"

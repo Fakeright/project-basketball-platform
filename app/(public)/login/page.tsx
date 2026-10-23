@@ -1,3 +1,9 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * หน้า /login: เปิดฟอร์มเข้าสู่ระบบและกำหนดหน้าปลายทางเมื่อมีค่า next
+ * ตามการทำงานต่อ: features/identity/infrastructure/next-cookie-current-actor-provider.ts
+ */
+
 import Link from "next/link"
 
 import { AuthFormLayout } from "@/components/auth/auth-form-layout"

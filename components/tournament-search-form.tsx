@@ -1,5 +1,12 @@
 "use client"
 
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ฟอร์มค้นหาชื่อ จังหวัด รูปแบบ รุ่นอายุ สนาม และวันที่ โดยเก็บเงื่อนไขผ่าน query string
+ * เรียกใช้จาก: app/(public)/page.tsx, app/(public)/tournaments/page.tsx
+ * ตามการทำงานต่อ: features/tournaments/presentation/tournament-search-params.ts
+ */
+
 import { useRouter } from "next/navigation"
 import type { FormEvent } from "react"
 import { Search } from "lucide-react"
@@ -25,6 +32,7 @@ type TournamentSearchFormProps = {
 export function TournamentSearchForm({ initialFilters }: TournamentSearchFormProps) {
   const router = useRouter()
 
+  // อ่านตัวกรองแล้วเปลี่ยน URL การค้นหา เพื่อให้หน้าเซิร์ฟเวอร์โหลดผลตามค่าที่เลือก
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     const formData = new FormData(event.currentTarget)

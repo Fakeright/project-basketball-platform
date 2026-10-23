@@ -1,3 +1,8 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ทดสอบ features/admin/application/get-admin-dashboard.ts, features/admin/application/ports/admin-dashboard-repository.ts, features/admin/infrastructure/prisma-admin-dashboard-repository.ts โดยจำลอง dependencies ตามกรณี และตรวจผลสำเร็จ/ข้อผิดพลาดด้วย assertions
+ */
+
 import { describe, expect, it, vi } from "vitest"
 
 import { getAdminDashboard } from "@/features/admin/application/get-admin-dashboard"

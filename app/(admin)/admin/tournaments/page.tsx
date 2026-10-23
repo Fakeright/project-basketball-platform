@@ -1,3 +1,9 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * หน้า /admin/tournaments: อ่านรายการทั้งหมดตามเงื่อนไขสำหรับการกำกับของแอดมิน
+ * ตามการทำงานต่อ: features/tournament-operations/infrastructure/get-tournament-operations-repository.ts, features/identity/infrastructure/next-cookie-current-actor-provider.ts
+ */
+
 import Link from "next/link"
 import { notFound } from "next/navigation"
 import { Eye, GitBranch, ShieldCheck } from "lucide-react"

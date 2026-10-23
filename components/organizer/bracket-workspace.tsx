@@ -1,5 +1,12 @@
 "use client"
 
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ควบคุมการตรึงทีม จัดลำดับ/สุ่ม สร้างตัวอย่าง และเผยแพร่สาย โดยแต่ละคำสั่งส่งไป API ของรายการ
+ * เรียกใช้จาก: app/(admin)/organizer/tournaments/[id]/bracket/page.tsx
+ * ตามการทำงานต่อ: components/organizer/bracket-preview.tsx, components/organizer/bracket-mode-control.tsx, components/ui/button.tsx
+ */
+
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { ArrowDown, ArrowUp, Globe2, LockKeyhole, Shuffle } from "lucide-react"
@@ -32,19 +39,20 @@ export function BracketWorkspace({
   const orderedEntryIds = editedOrder?.bracketKey === bracketKey
     ? editedOrder.entryIds
     : [...(bracket?.entries ?? [])]
-        .sort((first, second) => first.drawPosition - second.drawPosition)
-        .map((entry) => entry.id)
+      .sort((first, second) => first.drawPosition - second.drawPosition)
+      .map((entry) => entry.id)
   const entryById = new Map(bracket?.entries.map((entry) => [entry.id, entry]) ?? [])
   const systemCountSupported = bracket ? [8, 16, 32].includes(bracket.entries.length) : false
   const generationLocked = bracket
     ? bracket.status !== "DRAFT" ||
-      bracket.mode !== "SYSTEM_GENERATED" ||
-      bracket.hasStartedMatch ||
-      bracket.rounds.some((round) =>
-        round.matches.some((match) => match.scheduledAt !== null),
-      )
+    bracket.mode !== "SYSTEM_GENERATED" ||
+    bracket.hasStartedMatch ||
+    bracket.rounds.some((round) =>
+      round.matches.some((match) => match.scheduledAt !== null),
+    )
     : true
 
+  // ตัวช่วยส่งคำสั่งจากพื้นที่สาย จัดการสถานะ pending และข้อความผิดพลาดร่วมกัน
   async function mutate(url: string, body: unknown) {
     setPending(true)
     setMessage(null)
@@ -67,36 +75,37 @@ export function BracketWorkspace({
     }
   }
 
+  // ส่งคำขอตรึงทีมที่ผ่านอนุมัติ เพื่อสร้างรายชื่อเริ่มต้นของสาย
   function lockEntries() {
     void mutate(
       `/api/organizer/tournaments/${workspace.tournament.id}/bracket/entries`,
       { expectedVersion: workspace.tournament.version },
     )
   }
-
+  //ฟังชั่นสายการแข่งขัน
   function moveEntry(index: number, direction: -1 | 1) {
     const next = [...orderedEntryIds]
     const adjacentIndex = index + direction
-    if (adjacentIndex < 0 || adjacentIndex >= next.length) return
+    if (adjacentIndex < 0 || adjacentIndex >= next.length) return // ป้องกันการหลุดขอบเขต
     const movedEntryId = next[index]
     next[index] = next[adjacentIndex]
     next[adjacentIndex] = movedEntryId
-    setEditedOrder({ bracketKey, entryIds: next })
+    setEditedOrder({ bracketKey, entryIds: next }) // อัปเดตลำดับใหม่ลงใน State
   }
-
+  // generateBracket: สั่งให้ระบบคำนวณและสร้างแผนภูมิสายการแข่งขัน (รองรับการสั่งสุ่มใหม่ผ่าน redraw)
   function generateBracket(redraw = false) {
     if (!bracket) return
     if (redraw && !window.confirm("สุ่มลำดับทีมใหม่และแทนตัวอย่างสายเดิม?")) return
     const body =
       method === "ORDERED"
         ? {
-            method,
-            expectedVersion: bracket.version,
-            positions: orderedEntryIds.map((entryId, index) => ({
-              entryId,
-              position: index + 1,
-            })),
-          }
+          method,
+          expectedVersion: bracket.version,
+          positions: orderedEntryIds.map((entryId, index) => ({
+            entryId,
+            position: index + 1,
+          })),
+        }
         : { method, expectedVersion: bracket.version, redraw }
     void mutate(
       `/api/organizer/tournaments/${workspace.tournament.id}/bracket/generate`,
@@ -104,6 +113,7 @@ export function BracketWorkspace({
     )
   }
 
+  // ส่งคำขอเผยแพร่สายฉบับร่างไป API publication แล้วโหลดสถานะล่าสุด
   function publishBracket() {
     if (!bracket) return
     void mutate(

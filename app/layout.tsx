@@ -1,3 +1,9 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * วางโครง HTML ภาษาไทย ฟอนต์ และ ThemeProvider ครอบทั้งแอป
+ * ตามการทำงานต่อ: components/theme-provider.tsx
+ */
+
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { ThemeProvider } from "@/components/theme-provider";

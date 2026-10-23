@@ -1,5 +1,12 @@
 "use client"
 
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * จัดรายการผู้เล่นก่อนสร้างทีม ทั้งกรอกใหม่และเลือกจากประวัติ พร้อมจำกัดจำนวนตาม 5v5/3v3
+ * เรียกใช้จาก: components/team/team-editor.tsx
+ * ตามการทำงานต่อ: components/team/reusable-player-selector.tsx, components/team/team-player-fields.tsx, components/ui/button.tsx
+ */
+
 import { Plus, Trash2 } from "lucide-react"
 import { useEffect, useId, useMemo, useRef, useState } from "react"
 
@@ -59,6 +66,7 @@ export function TeamCreationRosterEditor({
     firstInvalidField?.focus()
   }, [disabled, focusRequestId])
 
+  // ปรับชุดผู้เล่นที่เลือกและส่งผลกลับ component แม่ โดยยังไม่สร้างระเบียนในฐานข้อมูล
   function updateSelection(nextKeys: Set<string>) {
     const retainedRows = rows.filter(
       (row) => row.sourceKey === null || nextKeys.has(row.sourceKey),
@@ -91,6 +99,7 @@ export function TeamCreationRosterEditor({
     onRowsChange([...retainedRows, ...addedRows])
   }
 
+  // อัปเดตข้อมูลแถวที่เลือกใน state และส่งค่ารวมกลับตาม callback ของฟอร์ม
   function updateRow(rowId: string, field: TeamPlayerField, value: string) {
     onRowsChange(
       rows.map((row) =>
@@ -105,6 +114,7 @@ export function TeamCreationRosterEditor({
     )
   }
 
+  // เพิ่มแถวกรอกผู้เล่นใหม่ในหน้าจอตามจำนวนที่ยังเพิ่มได้
   function addManualRow() {
     if (rows.length >= maximumPlayerCount) return
     const rowId = `${idPrefix}-manual-${nextManualRowNumber.current}`
@@ -227,10 +237,12 @@ export function TeamCreationRosterEditor({
   )
 }
 
+// สร้างค่าเริ่มต้นและคีย์ของแถวผู้เล่นที่กรอกเอง
 export function createManualTeamCreationPlayerRow(id: string): TeamCreationPlayerRow {
   return { id, sourceKey: null, values: createBlankPlayerValues(), errors: {} }
 }
 
+// เลือกแถวที่ควรส่งสร้างทีมและแปลงเป็นข้อมูลผู้เล่นสำหรับคำขอ
 export function getSubmittableTeamCreationPlayerRows(
   rows: readonly TeamCreationPlayerRow[],
 ): TeamCreationPlayerRow[] {
@@ -239,6 +251,7 @@ export function getSubmittableTeamCreationPlayerRows(
   )
 }
 
+// ตรวจข้อมูลและความซ้ำข้ามแถวก่อนส่งสร้างทีม เพื่อชี้ข้อผิดพลาดให้ถูกแถว
 export function validateTeamCreationPlayerRows(
   rows: readonly TeamCreationPlayerRow[],
 ): TeamCreationPlayerRow[] {

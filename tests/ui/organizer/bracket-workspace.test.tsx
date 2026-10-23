@@ -1,3 +1,8 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ทดสอบ components/organizer/bracket-workspace.tsx, features/competition/application/ports/competition-repository.ts โดยจำลอง dependencies ตามกรณี และตรวจผลสำเร็จ/ข้อผิดพลาดด้วย assertions
+ */
+
 import { cleanup, render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { afterEach, describe, expect, it, vi } from "vitest"
@@ -212,6 +217,10 @@ describe("BracketWorkspace", () => {
                 homeScore: null,
                 awayScore: null,
                 winnerTeamId: null,
+                purpose: "CHAMPIONSHIP",
+                resultConfirmed: false,
+                nextMatchId: null,
+                nextSlot: null,
               },
             ],
           },

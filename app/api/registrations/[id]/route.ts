@@ -1,3 +1,9 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * API DELETE /api/registrations/[id]: รับคำขอ HTTP แล้วส่งต่อ handleCancelRegistration
+ * ตามการทำงานต่อ: features/registrations/application/cancel-registration.ts, features/registrations/infrastructure/get-registration-repository.ts, features/registrations/presentation/registration-handler.ts
+ */
+
 import { cancelRegistration } from "@/features/registrations/application/cancel-registration"
 import { getRegistrationRepository } from "@/features/registrations/infrastructure/get-registration-repository"
 import { handleCancelRegistration } from "@/features/registrations/presentation/registration-handler"

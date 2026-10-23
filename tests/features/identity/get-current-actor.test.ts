@@ -1,3 +1,8 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ทดสอบ features/identity/domain/actor.ts, features/identity/infrastructure/get-current-actor.ts โดยจำลอง dependencies ตามกรณี และตรวจผลสำเร็จ/ข้อผิดพลาดด้วย assertions
+ */
+
 import { describe, expect, it, vi } from "vitest"
 
 import type { CurrentActorProvider } from "@/features/identity/domain/actor"

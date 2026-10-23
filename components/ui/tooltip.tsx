@@ -1,5 +1,12 @@
 "use client"
 
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ห่อ Base UI Tooltip เพื่อแสดงชื่อหรือคำอธิบายปุ่มเมื่อชี้หรือโฟกัส
+ * เรียกใช้จาก: components/team/team-player-roster.tsx, components/theme-provider.tsx
+ * ตามการทำงานต่อ: lib/utils.ts
+ */
+
 import { Tooltip as TooltipPrimitive } from "@base-ui/react/tooltip"
 
 import { cn } from "@/lib/utils"

@@ -1,11 +1,33 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ทดสอบ app/(admin)/layout.tsx, app/(admin)/admin/reviews/[id]/page.tsx โดยจำลอง dependencies ตามกรณี และตรวจผลสำเร็จ/ข้อผิดพลาดด้วย assertions
+ */
+
 import { cleanup, render, screen } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest"
+import type { Actor } from "@/features/identity/domain/actor"
 
 import AdminLayout from "@/app/(admin)/layout"
 import AdminReviewDetailPage from "@/app/(admin)/admin/reviews/[id]/page"
 
 const mocks = vi.hoisted(() => ({
-  getCurrentActor: vi.fn(async () => ({
+  listActiveAssets: vi.fn(async () => [
+    {
+      id: "poster-1",
+      kind: "POSTER" as const,
+      bucket: "tournament-posters",
+      objectPath: "tournaments/tournament-submitted/poster.webp",
+    },
+    {
+      id: "document-1",
+      kind: "DOCUMENT" as const,
+      fileName: "competition-rules.pdf",
+      byteSize: 120_000,
+    },
+  ]),
+  getPublicUrl: vi.fn(() => "https://example.test/poster.webp"),
+  createSignedUrl: vi.fn(),
+  getCurrentActor: vi.fn<() => Promise<Actor | null>>(async () => ({
     id: "admin-1",
     role: "PLATFORM_ADMIN" as const,
     email: "admin@example.com",
@@ -38,7 +60,21 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("next/navigation", () => ({
   redirect: vi.fn(),
+  notFound: () => { throw new Error("NEXT_NOT_FOUND") },
   useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }),
+}))
+
+vi.mock("@/features/tournament-media/infrastructure/get-tournament-media-repository", () => ({
+  getTournamentMediaRepository: async () => ({
+    listActiveAssets: mocks.listActiveAssets,
+  }),
+}))
+
+vi.mock("@/features/tournament-media/infrastructure/supabase-object-storage", () => ({
+  SupabaseObjectStorage: class {
+    getPublicUrl = mocks.getPublicUrl
+    createSignedUrl = mocks.createSignedUrl
+  },
 }))
 
 vi.mock(
@@ -65,8 +101,40 @@ afterEach(() => {
 })
 
 describe("AdminReviewDetailPage", () => {
+  it("shows the submitted poster and stable document link without signing on page load", async () => {
+    const page = await AdminReviewDetailPage({ searchParams: Promise.resolve({}),
+      params: Promise.resolve({ id: "tournament-submitted" }),
+    })
+
+    render(page)
+
+    expect(screen.getByRole("img", { name: "โปสเตอร์การแข่งขัน Submitted Court Cup" })).toBeTruthy()
+    expect(screen.getByRole("link", { name: "เปิดโปสเตอร์ขนาดเต็ม" }).getAttribute("href"))
+      .toBe("https://example.test/poster.webp")
+    expect(screen.getByRole("link", { name: "เปิด competition-rules.pdf" }).getAttribute("href"))
+      .toBe("/api/admin/tournaments/tournament-submitted/media/document-1/open")
+    expect(mocks.createSignedUrl).not.toHaveBeenCalled()
+  })
+
+  it("shows a clear empty state when the submitted tournament has no media", async () => {
+    mocks.listActiveAssets.mockResolvedValueOnce([])
+
+    render(await AdminReviewDetailPage({ searchParams: Promise.resolve({}), params: Promise.resolve({ id: "tournament-submitted" }) }))
+
+    expect(screen.getByText("ยังไม่มีโปสเตอร์หรือเอกสารประกอบ")).toBeTruthy()
+  })
+
+  it("does not read media for someone who is not a platform admin", async () => {
+    mocks.getCurrentActor.mockResolvedValueOnce(null)
+
+    await expect(
+      AdminReviewDetailPage({ searchParams: Promise.resolve({}), params: Promise.resolve({ id: "tournament-submitted" }) }),
+    ).rejects.toThrow("NEXT_NOT_FOUND")
+    expect(mocks.listActiveAssets).not.toHaveBeenCalled()
+  })
+
   it("keeps one main landmark when composed with the admin layout", async () => {
-    const page = await AdminReviewDetailPage({
+    const page = await AdminReviewDetailPage({ searchParams: Promise.resolve({}),
       params: Promise.resolve({ id: "tournament-submitted" }),
     })
     const layout = await AdminLayout({ children: page })

@@ -1,3 +1,10 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ตรวจสิทธิ์เจ้าของรายการก่อนส่งข้อมูลทีม สาย คู่แข่งขัน และสถานะให้หน้าผู้จัด
+ * เรียกใช้จาก: app/(admin)/admin/tournaments/[id]/results/page.tsx, app/(admin)/organizer/tournaments/[id]/bracket/page.tsx
+ * ตามการทำงานต่อ: features/competition/domain/tournament-competition-policy.ts
+ */
+
 import type { Actor } from "@/features/identity/domain/actor"
 import {
   getCompletionIssues,

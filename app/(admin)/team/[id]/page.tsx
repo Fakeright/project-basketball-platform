@@ -1,3 +1,9 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * หน้า /team/[id]: ตรวจสิทธิ์แล้วอ่านข้อมูลทีม ผู้เล่น และใบสมัครสำหรับพื้นที่จัดการทีม
+ * ตามการทำงานต่อ: features/identity/infrastructure/next-cookie-current-actor-provider.ts, features/team-management/application/get-owned-team-workspace.ts, features/team-management/infrastructure/get-team-repository.ts
+ */
+
 import { notFound } from "next/navigation"
 
 import { TeamRegistrationList } from "@/components/team/team-registration-list"

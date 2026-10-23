@@ -1,3 +1,8 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ทดสอบ features/competition/domain/bracket-generator.ts, features/competition/domain/match-result-policy.ts, features/competition/domain/tournament-competition-policy.ts โดยจำลอง dependencies ตามกรณี และตรวจผลสำเร็จ/ข้อผิดพลาดด้วย assertions
+ */
+
 import { describe, expect, it } from "vitest"
 
 import { generateSingleEliminationBracket } from "@/features/competition/domain/bracket-generator"
@@ -307,7 +312,7 @@ describe("tournament competition policy", () => {
         },
       },
     ],
-  ] as const)("reports %s when start readiness is incomplete", (issue, context) => {
+  ] satisfies Array<[string, TournamentCompetitionLifecycleContext]>)("reports %s when start readiness is incomplete", (issue, context) => {
     expect(getStartIssues(context)).toContain(issue)
   })
 

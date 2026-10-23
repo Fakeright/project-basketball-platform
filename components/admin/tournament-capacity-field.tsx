@@ -1,3 +1,10 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ช่องเลือกจำนวนทีมตามชุดค่าที่รองรับ โดยอ่านค่าเดิมได้เมื่อแก้รายการเก่า
+ * เรียกใช้จาก: components/admin/tournament-editor.tsx
+ * ตามการทำงานต่อ: features/tournament-operations/domain/tournament-capacity.ts
+ */
+
 import {
   isLegacyTournamentCapacity,
   isValidTournamentCapacity,

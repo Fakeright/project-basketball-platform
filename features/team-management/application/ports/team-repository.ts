@@ -1,3 +1,9 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * กำหนดสัญญาอ่าน/แก้ทีม ผู้เล่น ประวัติ และการล็อกข้อมูลที่ use case ใช้ผ่าน transaction
+ * เรียกใช้จาก: features/team-management/application/add-team-players.ts, features/team-management/application/create-team.ts
+ */
+
 import type {
   TeamFormat,
   TeamPlayer,
@@ -28,6 +34,11 @@ export interface LegacyTeamReconciliationContext {
 
 export interface TeamMutationRepository {
   findByIdForUpdate(id: string): Promise<TeamSummary | null>
+  hasActiveNameConflict(
+    ownerId: string,
+    name: string,
+    excludedTeamId?: string,
+  ): Promise<boolean>
   create(input: {
     name: string
     provinceCode: string

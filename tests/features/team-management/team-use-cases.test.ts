@@ -1,3 +1,8 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ทดสอบ features/team-management/application/add-team-players.ts, features/team-management/application/create-team.ts, features/team-management/application/deactivate-team-player.ts โดยจำลอง dependencies ตามกรณี และตรวจผลสำเร็จ/ข้อผิดพลาดด้วย assertions
+ */
+
 import { describe, expect, it, vi } from "vitest"
 
 import { addTeamPlayers } from "@/features/team-management/application/add-team-players"
@@ -106,7 +111,7 @@ function createRepository(
   overrides: Partial<TransactionalTeamRepository> = {},
 ): TransactionalTeamRepository {
   const repository: TransactionalTeamRepository = {
-    create: vi.fn(async (input) => ({ id: "team-new", ...input })),
+    create: vi.fn<TeamRepository["create"]>(async (input) => ({ ...team, id: "team-new", ...input })),
     findById: vi.fn(async () => team),
     findByIdForUpdate: vi.fn(async () => team),
     listByOwner: vi.fn(async () => [team]),
@@ -115,7 +120,8 @@ function createRepository(
     update: vi.fn(async (id, input) => ({ ...team, id, ...input })),
     listActivePlayers: vi.fn(async () => []),
     hasActiveRegistration: vi.fn(async () => false),
-    getRemovalContextForUpdate: vi.fn(async () => ({
+    hasActiveNameConflict: vi.fn(async () => false),
+    getRemovalContextForUpdate: vi.fn<TeamRepository["getRemovalContextForUpdate"]>(async () => ({
       team,
       registrationStatuses: [],
       totalLegacyMemberCount: 0,
@@ -128,7 +134,7 @@ function createRepository(
       version: expectedVersion + 1,
     })),
     findExistingPlayersByIdentities: vi.fn(async () => []),
-    addPlayers: vi.fn(async (teamId, players) =>
+    addPlayers: vi.fn<TeamRepository["addPlayers"]>(async (teamId, players) =>
       players.map((player, index) =>
         playerFromDraft(player, {
           id: `player-${index + 1}`,
@@ -191,10 +197,8 @@ function createDistinctTransactionRepositories(
     () => transactionActive,
   )
   const outer = createRepository()
-  outer.inTransaction = vi.fn(
-    async <T>(
-      operation: (repository: TeamMutationRepository) => Promise<T>,
-    ): Promise<T> => {
+  vi.spyOn(outer, "inTransaction").mockImplementation(
+    async (operation) => {
       transactionActive = true
       try {
         return await operation(transaction)
@@ -207,6 +211,57 @@ function createDistinctTransactionRepositories(
 }
 
 describe("team use cases", () => {
+  it("rejects a name already used by another active team in the same account", async () => {
+    const repository = createRepository({
+      hasActiveNameConflict: vi.fn(async () => true),
+    })
+
+    await expect(createTeam(
+      { name: " bangkok ballers ", provinceCode: "10", format: "FIVE_V_FIVE" },
+      teamManager,
+      { teams: repository },
+    )).rejects.toThrow("TEAM_NAME_TAKEN")
+    expect(repository.create).not.toHaveBeenCalled()
+  })
+
+  it("rejects renaming a team to another active team name in the same account", async () => {
+    const repository = createRepository({
+      hasActiveNameConflict: vi.fn(async () => true),
+    })
+
+    await expect(updateTeam(
+      {
+        teamId: team.id,
+        name: "Other Team",
+        provinceCode: team.provinceCode,
+        format: team.format,
+        expectedVersion: team.version,
+      },
+      teamManager,
+      { teams: repository },
+    )).rejects.toThrow("TEAM_NAME_TAKEN")
+    expect(repository.update).not.toHaveBeenCalled()
+  })
+
+  it("does not allow changing a registered team's name while its application is active", async () => {
+    const repository = createRepository({
+      hasActiveRegistration: vi.fn(async () => true),
+    })
+
+    await expect(updateTeam(
+      {
+        teamId: team.id,
+        name: "Renamed Team",
+        provinceCode: team.provinceCode,
+        format: team.format,
+        expectedVersion: team.version,
+      },
+      teamManager,
+      { teams: repository },
+    )).rejects.toThrow("TEAM_NAME_CHANGE_BLOCKED")
+    expect(repository.update).not.toHaveBeenCalled()
+  })
+
   describe("transaction-scoped roster mutations", () => {
     it("rejects transaction repository use after the callback lifetime", async () => {
       const { outer, transaction } = createDistinctTransactionRepositories()
@@ -493,7 +548,7 @@ describe("team use cases", () => {
 
   it("rejects adding players when the active roster would exceed the format limit", async () => {
     const repository = createRepository({
-      findByIdForUpdate: vi.fn(async () => ({ ...team, format: "THREE_V_THREE" })),
+      findByIdForUpdate: vi.fn<TeamRepository["findByIdForUpdate"]>(async () => ({ ...team, format: "THREE_V_THREE" })),
       listActivePlayers: vi.fn(async () =>
         [1, 2, 3].map((index) => playerFromDraft(draftPlayer(`existing-${index}`, index))),
       ),
@@ -1079,7 +1134,7 @@ describe("team use cases", () => {
   it("deactivates a team with legacy member history even without registrations", async () => {
     const at = "2026-08-09T12:00:00.000Z"
     const repository = createRepository({
-      getRemovalContextForUpdate: vi.fn(async () => ({
+      getRemovalContextForUpdate: vi.fn<TeamRepository["getRemovalContextForUpdate"]>(async () => ({
         team,
         registrationStatuses: [],
         totalLegacyMemberCount: 2,
@@ -1118,7 +1173,7 @@ describe("team use cases", () => {
   it("deactivates a team with terminal registration history and increments version", async () => {
     const at = "2026-08-09T12:00:00.000Z"
     const repository = createRepository({
-      getRemovalContextForUpdate: vi.fn(async () => ({
+      getRemovalContextForUpdate: vi.fn<TeamRepository["getRemovalContextForUpdate"]>(async () => ({
         team,
         registrationStatuses: ["REJECTED", "CANCELLED", "WITHDRAWN"],
         totalLegacyMemberCount: 0,
@@ -1161,7 +1216,7 @@ describe("team use cases", () => {
     "blocks removal while a registration is %s",
     async (status) => {
       const repository = createRepository({
-        getRemovalContextForUpdate: vi.fn(async () => ({
+        getRemovalContextForUpdate: vi.fn<TeamRepository["getRemovalContextForUpdate"]>(async () => ({
           team,
           registrationStatuses: [status],
           totalLegacyMemberCount: 1,
@@ -1189,7 +1244,7 @@ describe("team use cases", () => {
 
   it("returns a stale conflict before the active-registration lifecycle guard", async () => {
     const repository = createRepository({
-      getRemovalContextForUpdate: vi.fn(async () => ({
+      getRemovalContextForUpdate: vi.fn<TeamRepository["getRemovalContextForUpdate"]>(async () => ({
         team: { ...team, version: 2 },
         registrationStatuses: ["APPROVED"],
         totalLegacyMemberCount: 1,
@@ -1212,7 +1267,7 @@ describe("team use cases", () => {
 
   it("rejects removal when the team is already inactive", async () => {
     const repository = createRepository({
-      getRemovalContextForUpdate: vi.fn(async () => ({
+      getRemovalContextForUpdate: vi.fn<TeamRepository["getRemovalContextForUpdate"]>(async () => ({
         team: { ...team, isActive: false },
         registrationStatuses: ["APPROVED"],
         totalLegacyMemberCount: 1,
@@ -1235,7 +1290,7 @@ describe("team use cases", () => {
 
   it("requires the trimmed confirmation to match the team name exactly", async () => {
     const repository = createRepository({
-      getRemovalContextForUpdate: vi.fn(async () => ({
+      getRemovalContextForUpdate: vi.fn<TeamRepository["getRemovalContextForUpdate"]>(async () => ({
         team,
         registrationStatuses: ["APPROVED"],
         totalLegacyMemberCount: 1,
@@ -1261,7 +1316,7 @@ describe("team use cases", () => {
 
   it("hides another manager's team when removing it", async () => {
     const repository = createRepository({
-      getRemovalContextForUpdate: vi.fn(async () => ({
+      getRemovalContextForUpdate: vi.fn<TeamRepository["getRemovalContextForUpdate"]>(async () => ({
         team: { ...team, ownerId: "manager-2" },
         registrationStatuses: [],
         totalLegacyMemberCount: 1,
@@ -1285,7 +1340,7 @@ describe("team use cases", () => {
   it("audits an admin team removal override as a second event", async () => {
     const otherOwnerTeam = { ...team, ownerId: "manager-2" }
     const repository = createRepository({
-      getRemovalContextForUpdate: vi.fn(async () => ({
+      getRemovalContextForUpdate: vi.fn<TeamRepository["getRemovalContextForUpdate"]>(async () => ({
         team: otherOwnerTeam,
         registrationStatuses: ["REJECTED"],
         totalLegacyMemberCount: 1,
@@ -1321,7 +1376,7 @@ describe("team use cases", () => {
     await updateTeam(
       {
         teamId: team.id,
-        name: "Changed",
+        name: team.name,
         provinceCode: team.provinceCode,
         format: team.format,
         expectedVersion: 2,
@@ -1334,7 +1389,7 @@ describe("team use cases", () => {
     expect(repository.findById).not.toHaveBeenCalled()
     expect(repository.findByIdForUpdate).toHaveBeenCalledWith(team.id)
     expect(repository.update).toHaveBeenCalledWith(team.id, {
-      name: "Changed",
+      name: team.name,
       provinceCode: team.provinceCode,
       format: team.format,
       expectedVersion: 2,

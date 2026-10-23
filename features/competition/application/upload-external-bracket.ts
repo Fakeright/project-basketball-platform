@@ -1,3 +1,10 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ตรวจไฟล์ PDF/ภาพจริง อัปโหลดเนื้อไฟล์ แล้วบันทึกเวอร์ชันสาย; หากบันทึกไม่สำเร็จจะพยายามล้างไฟล์ที่อัปไว้
+ * เรียกใช้จาก: app/api/organizer/tournaments/[id]/bracket/external/revisions/route.ts, features/competition/presentation/external-bracket-handler.ts
+ * ตามการทำงานต่อ: features/tournament-media/application/ports/object-storage.ts, features/competition/application/external-bracket-access.ts
+ */
+
 import type { Actor } from "@/features/identity/domain/actor"
 import {
   assertExternalBracketFile,
@@ -39,6 +46,7 @@ interface Dependencies {
 
 const bucket = "tournament-brackets"
 
+// ตรวจเนื้อไฟล์ อัปโหลด แล้วบันทึก revision; ข้อผิดพลาดหลังอัปโหลดต้องพยายามล้างไฟล์ที่ยังไม่มีรายการอ้างอิง
 export async function uploadExternalBracket(
   input: UploadExternalBracketInput,
   actor: Actor,
@@ -121,6 +129,7 @@ export async function uploadExternalBracket(
   }
 }
 
+// ชดเชยขั้นตอนอัปโหลดที่เสร็จแล้วเมื่อการบันทึกข้อมูลภายหลังล้มเหลว
 async function compensate(
   objectPath: string,
   assetId: string,

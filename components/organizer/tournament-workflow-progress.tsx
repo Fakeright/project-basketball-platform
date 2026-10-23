@@ -1,3 +1,10 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * แสดงความคืบหน้าของรายการและลิงก์ไปขั้นตอนที่ผู้จัดควรทำต่อ
+ * เรียกใช้จาก: app/(admin)/organizer/tournaments/[id]/bracket/page.tsx, app/(admin)/organizer/tournaments/[id]/page.tsx
+ * ตามการทำงานต่อ: features/tournament-operations/presentation/organizer-workflow-guidance.ts
+ */
+
 import Link from "next/link"
 
 import type { TournamentOperationStatus } from "@/features/tournament-operations/domain/tournament-operation"

@@ -1,3 +1,9 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * API POST /api/admin/tournaments/[id]/matches/[matchId]/result-correction: รับคำขอ HTTP แล้วส่งต่อ handleCorrectMatchResult
+ * ตามการทำงานต่อ: features/competition/application/correct-match-result.ts, features/competition/infrastructure/get-competition-repository.ts, features/competition/presentation/competition-handler.ts
+ */
+
 import { correctMatchResult } from "@/features/competition/application/correct-match-result"
 import { getCompetitionRepository } from "@/features/competition/infrastructure/get-competition-repository"
 import { handleCorrectMatchResult } from "@/features/competition/presentation/competition-handler"

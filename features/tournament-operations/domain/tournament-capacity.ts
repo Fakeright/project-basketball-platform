@@ -1,3 +1,9 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * กำหนดตัวเลือกจำนวนทีมปัจจุบันและการรองรับค่าจำนวนทีมของข้อมูลเดิม
+ * เรียกใช้จาก: components/admin/tournament-capacity-field.tsx, features/admin/presentation/tournament-editor-schema.ts
+ */
+
 export const MIN_TOURNAMENT_CAPACITY = 6
 export const MAX_TOURNAMENT_CAPACITY = 32
 export const SUPPORTED_TOURNAMENT_CAPACITIES = [8, 16, 32] as const

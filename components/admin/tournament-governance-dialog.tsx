@@ -1,5 +1,12 @@
 "use client"
 
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * รับเหตุผลและยืนยันคำสั่งกำกับรายการก่อนส่งไป API ของแอดมิน
+ * เรียกใช้จาก: components/admin/tournament-governance-panel.tsx
+ * ตามการทำงานต่อ: components/ui/button.tsx, components/ui/input.tsx
+ */
+
 import { Dialog as DialogPrimitive } from "@base-ui/react/dialog"
 import {
   Archive,
@@ -66,6 +73,7 @@ export function TournamentGovernanceDialog({
     setFeedback(null)
   }
 
+  // ส่งคำสั่งกำกับ เหตุผล และ version ไป API แอดมิน; แสดงข้อผิดพลาดหากสถานะเปลี่ยนไปแล้ว
   async function submitCommand(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (!canSubmit) return

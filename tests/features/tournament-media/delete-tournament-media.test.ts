@@ -1,9 +1,15 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ทดสอบ features/tournament-media/application/delete-tournament-media.ts, features/tournament-media/application/ports/object-storage.ts, features/tournament-media/domain/media-asset.ts โดยจำลอง dependencies ตามกรณี และตรวจผลสำเร็จ/ข้อผิดพลาดด้วย assertions
+ */
+
 import { describe, expect, it, vi } from "vitest"
 
 import { deleteTournamentMedia } from "@/features/tournament-media/application/delete-tournament-media"
 import { ObjectStorageError } from "@/features/tournament-media/application/ports/object-storage"
 import type { TournamentMediaAsset } from "@/features/tournament-media/domain/media-asset"
 import { createTestActor } from "@/tests/fixtures/actor"
+import { createTestTournamentOperation } from "@/tests/fixtures/tournament-operation"
 
 const organizer = createTestActor("organizer-1", "TOURNAMENT_ORGANIZER")
 
@@ -34,7 +40,7 @@ function createDependencies(
       retireWithAudit: vi.fn(async () => asset),
     },
     tournaments: {
-      findById: vi.fn(async () => ({
+      findById: vi.fn(async () => createTestTournamentOperation({
         organizerId: "organizer-1",
         governanceStatus,
       })),

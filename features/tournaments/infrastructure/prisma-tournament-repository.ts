@@ -1,3 +1,10 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * อ่านรายการที่อนุญาตให้เผยแพร่และข้อมูลการแข่งขันจาก Prisma พร้อมตัวกรองและการเลือกข้อมูลสำหรับหน้าสาธารณะ
+ * เรียกใช้จาก: features/tournaments/infrastructure/get-tournament-repository.ts
+ * ตามการทำงานต่อ: features/tournaments/domain/tournament-calendar.ts, features/tournaments/domain/public-tournament-status.ts
+ */
+
 import type { Prisma, PrismaClient } from "@/lib/generated/prisma/client"
 import type { ObjectStorage } from "@/features/tournament-media/application/ports/object-storage"
 import type {
@@ -138,6 +145,7 @@ export class PrismaTournamentRepository implements TournamentRepository {
     return row ? this.mapDetailTournament(row, this.now()) : null
   }
 
+  /** คืนเฉพาะรายการที่เปิดสาธารณะและไม่ถูกถอดออก */
   async findCompetitionBySlug(slug: string): Promise<Tournament | null> {
     const row = await this.prisma.tournament.findFirst({
       where: {
@@ -176,6 +184,7 @@ export class PrismaTournamentRepository implements TournamentRepository {
     row: PublicCompetitionRow | PublicDetailRow,
     now: Date,
   ): Tournament {
+    // หน้าสาธารณะต้องไม่เห็นคู่จากสายฉบับร่าง แม้ฐานข้อมูลจะมีคู่นั้นอยู่แล้ว
     const publishedMatches = row.matches
       .filter((match) => match.bracket.status === "PUBLISHED")
       .sort(
@@ -246,6 +255,7 @@ export class PrismaTournamentRepository implements TournamentRepository {
   }
 }
 
+// ประกอบ Prisma where จากตัวกรองค้นหาและข้อจำกัดการเผยแพร่รายการ
 function buildDiscoveryWhere(
   filters: TournamentSearchFilters,
 ): Prisma.TournamentWhereInput {

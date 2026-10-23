@@ -1,3 +1,10 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * เก็บรายการและประวัติลงไฟล์ในโหมดพัฒนา โดยทำตามสัญญา repository เดียวกับฐานข้อมูล
+ * เรียกใช้จาก: features/tournament-operations/infrastructure/get-tournament-operations-repository.ts
+ * ตามการทำงานต่อ: features/provinces/domain/thai-provinces.ts, features/competition/domain/tournament-competition-policy.ts, features/tournament-operations/domain/tournament-governance-policy.ts
+ */
+
 import "server-only"
 
 import { mkdir, readFile, writeFile } from "node:fs/promises"

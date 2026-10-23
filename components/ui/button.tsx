@@ -1,3 +1,10 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ห่อปุ่มพื้นฐานและรูปแบบที่ใช้ร่วมกัน ส่ง props และ event ให้ primitive โดยไม่มีตรรกะธุรกิจ
+ * เรียกใช้จาก: app/(public)/results/error.tsx, app/(public)/tournaments/error.tsx
+ * ตามการทำงานต่อ: lib/utils.ts
+ */
+
 import { Button as ButtonPrimitive } from "@base-ui/react/button"
 import { cva, type VariantProps } from "class-variance-authority"
 

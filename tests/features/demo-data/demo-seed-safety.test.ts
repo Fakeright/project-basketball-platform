@@ -1,3 +1,8 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ทดสอบ features/competition/infrastructure/demo-competition-fixtures.ts, features/demo-data/infrastructure/demo-seed-safety.ts, features/demo-data/infrastructure/demo-workflow-fixtures.ts โดยจำลอง dependencies ตามกรณี และตรวจผลสำเร็จ/ข้อผิดพลาดด้วย assertions
+ */
+
 import { describe, expect, it } from "vitest"
 
 import { createDemoCompetitionFixtures } from "@/features/competition/infrastructure/demo-competition-fixtures"

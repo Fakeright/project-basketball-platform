@@ -1,3 +1,9 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * หน้า /results: อ่านผลที่ยืนยันและข้อมูลอันดับของรายการที่เลือก
+ * ตามการทำงานต่อ: features/competition/application/get-competition-summary.ts, features/tournaments/application/get-tournament-competition-by-slug.ts, features/tournaments/infrastructure/get-tournament-repository.ts
+ */
+
 import Link from "next/link"
 
 import { StatePanel } from "@/components/state-panel"
@@ -13,6 +19,7 @@ const statusLabels = {
   COMPLETED: "แข่งขันจบแล้ว",
 } as const
 
+/** สรุปผลจากคู่ที่ยืนยันแล้ว ไม่ถือว่ารายการยังแข่งอยู่เป็นผลสุดท้าย */
 export default async function ResultsPage({
   searchParams,
 }: PageProps<"/results">) {

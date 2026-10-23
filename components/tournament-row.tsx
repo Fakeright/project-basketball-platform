@@ -1,3 +1,10 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * แสดงข้อมูลรายการหนึ่งรายการและลิงก์รายละเอียดในผลค้นหา
+ * เรียกใช้จาก: app/(public)/page.tsx, app/(public)/tournaments/page.tsx
+ * ตามการทำงานต่อ: features/tournaments/presentation/tournament-view-model.ts
+ */
+
 import Link from "next/link"
 
 import type { Tournament, TournamentStatus } from "@/features/tournaments/domain/tournament"

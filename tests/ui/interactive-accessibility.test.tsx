@@ -1,3 +1,8 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ทดสอบ components/site-header.tsx, components/tournament-search-form.tsx, components/ui/sheet.tsx โดยจำลอง dependencies ตามกรณี และตรวจผลสำเร็จ/ข้อผิดพลาดด้วย assertions
+ */
+
 import { act, useState } from "react"
 import Link from "next/link"
 import { hydrateRoot } from "react-dom/client"

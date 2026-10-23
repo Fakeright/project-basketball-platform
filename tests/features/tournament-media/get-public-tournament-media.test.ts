@@ -1,3 +1,8 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ทดสอบ features/tournament-media/application/get-public-tournament-media.ts, features/tournament-media/application/ports/tournament-media-repository.ts, features/tournament-media/application/ports/object-storage.ts โดยจำลอง dependencies ตามกรณี และตรวจผลสำเร็จ/ข้อผิดพลาดด้วย assertions
+ */
+
 import { describe, expect, it, vi } from "vitest"
 
 import { getPublicTournamentMedia } from "@/features/tournament-media/application/get-public-tournament-media"

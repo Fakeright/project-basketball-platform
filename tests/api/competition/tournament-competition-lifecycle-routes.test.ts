@@ -1,3 +1,8 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ทดสอบ features/competition/domain/tournament-competition-policy.ts, features/tournament-operations/presentation/tournament-competition-lifecycle-handler.ts, features/tournament-operations/domain/tournament-governance-policy.ts โดยจำลอง dependencies ตามกรณี และตรวจผลสำเร็จ/ข้อผิดพลาดด้วย assertions
+ */
+
 import { describe, expect, it, vi } from "vitest"
 
 import { TournamentCompetitionPolicyError } from "@/features/competition/domain/tournament-competition-policy"

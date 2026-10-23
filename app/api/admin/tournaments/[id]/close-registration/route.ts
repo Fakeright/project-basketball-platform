@@ -1,3 +1,9 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * API POST /api/admin/tournaments/[id]/close-registration: รับคำขอ HTTP แล้วส่งต่อ handleTournamentLifecycleRequest
+ * ตามการทำงานต่อ: features/admin/presentation/tournament-lifecycle-handler.ts, features/identity/infrastructure/next-cookie-current-actor-provider.ts, features/shared/presentation/safe-http.ts
+ */
+
 import { handleTournamentLifecycleRequest } from "@/features/admin/presentation/tournament-lifecycle-handler"
 import { createNextCookieCurrentActorProvider } from "@/features/identity/infrastructure/next-cookie-current-actor-provider"
 import { withSafeRouteBoundary } from "@/features/shared/presentation/safe-http"

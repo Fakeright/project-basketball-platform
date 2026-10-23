@@ -1,3 +1,10 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * เลิกใช้เวอร์ชันไฟล์สายตามสิทธิ์และสถานะ พร้อมเหตุผลและประวัติ
+ * เรียกใช้จาก: app/api/organizer/tournaments/[id]/bracket/external/revisions/[revisionId]/route.ts
+ * ตามการทำงานต่อ: features/competition/application/external-bracket-access.ts
+ */
+
 import type { Actor } from "@/features/identity/domain/actor"
 
 import { assertExternalBracketAccess } from "./external-bracket-access"
@@ -10,6 +17,7 @@ interface Input {
   reason?: string
 }
 
+// ตรวจเงื่อนไขแล้วเลิกใช้ไฟล์สายเวอร์ชันที่ระบุ พร้อมผู้ดำเนินการและเหตุผล
 export async function retireExternalBracket(
   input: Input,
   actor: Actor,

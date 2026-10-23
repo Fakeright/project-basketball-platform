@@ -1,3 +1,10 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ประกอบบริการ Supabase Auth โปรไฟล์ และ recovery grant ให้ presentation handler พร้อมแปลงข้อผิดพลาดจาก provider
+ * เรียกใช้จาก: app/api/auth/forgot-password/route.ts, app/api/auth/login/route.ts
+ * ตามการทำงานต่อ: features/identity/presentation/auth-handler.ts, features/identity/application/auth-errors.ts, features/identity/infrastructure/get-user-profile-repository.ts
+ */
+
 import "server-only"
 
 import type { SupabaseClient } from "@supabase/supabase-js"
@@ -22,10 +29,12 @@ import { HmacRecoveryGrantService } from "./hmac-recovery-grant-service"
 import { PrismaAuthRecoveryGrantRepository } from "./prisma-auth-recovery-grant-repository"
 import { getPrismaClient } from "@/lib/server/prisma"
 
+// ประกอบ dependencies จริงให้ชุดคำสั่ง Auth ที่ route นำไปเรียก
 export async function getAuthHandlers() {
   return (await getAuthRouteContext()).handlers
 }
 
+// ประกอบ Supabase Auth, โปรไฟล์ใน PostgreSQL และบริการกู้รหัสผ่านให้ auth-handler ใช้
 export async function getAuthRouteContext() {
   const supabaseContext =
     await createRouteHandlerSupabaseContext()
@@ -49,6 +58,7 @@ export async function getAuthRouteContext() {
       }),
       appUrl,
     }),
+    // แนบ cookie ที่ Supabase เปลี่ยนไว้กับ HTTP response ก่อนส่งกลับเบราว์เซอร์
     finalizeResponse: supabaseContext.finalizeResponse,
   }
 }

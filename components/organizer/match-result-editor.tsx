@@ -1,5 +1,12 @@
 "use client"
 
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * รับคะแนนแต่ละคู่ แยกบันทึกร่างกับยืนยันผล และรีเฟรชข้อมูลเมื่อคำสั่งสำเร็จ
+ * เรียกใช้จาก: app/(admin)/organizer/tournaments/[id]/results/page.tsx
+ * ตามการทำงานต่อ: components/ui/button.tsx, components/ui/input.tsx, components/organizer/external-match-purpose-control.tsx
+ */
+
 import type { FormEvent } from "react"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
@@ -26,6 +33,7 @@ export interface EditableMatchResult {
   purposeEditable: boolean
 }
 
+/** ฟอร์มคะแนนแยกบันทึกร่างกับยืนยันผล; การยืนยันอาจเลื่อนทีมชนะในสายระบบ */
 export function MatchResultEditor({
   tournamentId,
   matches,
@@ -37,6 +45,7 @@ export function MatchResultEditor({
   const [pendingMatchId, setPendingMatchId] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
 
+  // ปุ่มที่กดเป็นตัวเลือก endpoint: score บันทึกร่าง, confirm ยืนยันผลจริง
   async function submitResult(
     event: FormEvent<HTMLFormElement>,
     match: EditableMatchResult,

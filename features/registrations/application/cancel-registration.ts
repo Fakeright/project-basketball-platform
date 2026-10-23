@@ -1,3 +1,10 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ให้เจ้าของทีมยกเลิกใบสมัครที่ยังอยู่ในสถานะที่ยกเลิกได้ พร้อมตรวจ version
+ * เรียกใช้จาก: app/api/registrations/[id]/route.ts, features/registrations/presentation/registration-handler.ts
+ * ตามการทำงานต่อ: features/team-management/application/team-access.ts
+ */
+
 import type { Actor } from "@/features/identity/domain/actor"
 import { authorizeTeamAccess } from "@/features/team-management/application/team-access"
 import { transitionRegistration } from "@/features/registrations/domain/registration-policy"
@@ -11,6 +18,7 @@ export interface CancelRegistrationInput {
   version: number
 }
 
+// ยกเลิกใบสมัครของทีมที่เข้าถึงได้ โดยตรวจสถานะและ version ปัจจุบันก่อนเขียน
 export async function cancelRegistration(
   input: CancelRegistrationInput,
   actor: Actor,

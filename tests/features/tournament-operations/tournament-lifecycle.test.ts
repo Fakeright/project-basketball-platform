@@ -1,3 +1,8 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ทดสอบ features/tournament-operations/application/transition-tournament-lifecycle.ts, features/tournament-operations/domain/tournament-operation.ts, features/tournament-operations/infrastructure/tournament-operations-repository.ts โดยจำลอง dependencies ตามกรณี และตรวจผลสำเร็จ/ข้อผิดพลาดด้วย assertions
+ */
+
 import { describe, expect, it, vi } from "vitest"
 
 import {

@@ -1,3 +1,10 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * จัดข้อความวันที่และรูปแบบการแข่งขันให้อ่านเป็นภาษาไทยก่อนแสดงใน component
+ * เรียกใช้จาก: app/(public)/tournaments/[slug]/page.tsx, components/tournament-row.tsx
+ * ตามการทำงานต่อ: features/tournaments/domain/tournament-calendar.ts
+ */
+
 import type { TournamentFormat } from "@/features/tournaments/domain/tournament"
 import { toBangkokCalendarDate } from "@/features/tournaments/domain/tournament-calendar"
 

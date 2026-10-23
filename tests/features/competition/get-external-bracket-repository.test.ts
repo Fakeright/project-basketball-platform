@@ -1,3 +1,8 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ทดสอบ get-external-bracket-repository โดยจำลอง dependencies ตามกรณี และตรวจผลสำเร็จ/ข้อผิดพลาดด้วย assertions
+ */
+
 import { afterEach, describe, expect, it, vi } from "vitest"
 
 vi.mock("server-only", () => ({}))

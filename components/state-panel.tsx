@@ -1,3 +1,9 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ส่วนแสดงสถานะว่าง ไม่พบข้อมูล หรือข้อผิดพลาด พร้อมคำสั่งถัดไปเมื่อมี
+ * เรียกใช้จาก: app/(public)/bracket/page.tsx, app/(public)/results/error.tsx
+ */
+
 import Link from "next/link"
 import { CircleAlert, Inbox, MapPinOff } from "lucide-react"
 

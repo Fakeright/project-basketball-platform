@@ -1,3 +1,10 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * สร้างสถานะและคำแนะนำขั้นถัดไปของทีมจากจำนวนผู้เล่นและสถานะทีม
+ * เรียกใช้จาก: app/(admin)/team/page.tsx
+ * ตามการทำงานต่อ: features/team-management/domain/team-policy.ts
+ */
+
 import type { TeamSummary } from "@/features/team-management/domain/team"
 import { getMinimumRosterSize } from "@/features/team-management/domain/team-policy"
 import type { TeamRegistrationListItem } from "@/features/registrations/application/ports/registration-repository"

@@ -1,3 +1,8 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ทดสอบ app/(admin)/admin/tournaments/page.tsx โดยจำลอง dependencies ตามกรณี และตรวจผลสำเร็จ/ข้อผิดพลาดด้วย assertions
+ */
+
 import { cleanup, render, screen } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
@@ -63,7 +68,7 @@ afterEach(() => {
 describe("AdminTournamentListPage", () => {
   it("forwards URL filters and links to tournament operations", async () => {
     render(
-      await AdminTournamentListPage({
+      await AdminTournamentListPage({ params: Promise.resolve({}),
         searchParams: Promise.resolve({ q: "court", status: "IN_PROGRESS" }),
       }),
     )

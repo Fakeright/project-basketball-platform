@@ -1,3 +1,9 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * แสดงเมนูหลังบ้านตามบทบาทและหน้าปัจจุบัน พร้อมเมนูสำหรับหน้าจอเล็ก
+ * เรียกใช้จาก: app/(admin)/layout.tsx
+ */
+
 import Link from "next/link"
 
 import type { Actor } from "@/features/identity/domain/actor"

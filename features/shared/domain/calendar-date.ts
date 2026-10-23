@@ -1,3 +1,9 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * แปลงเวลาเป็นวันที่ปฏิทินของกรุงเทพฯ เพื่อให้การตรวจอายุและวันแข่งขันใช้ฐานเวลาเดียวกัน
+ * เรียกใช้จาก: components/team/team-player-fields.tsx, features/team-management/presentation/team-handler.ts
+ */
+
 export const BANGKOK_TIME_ZONE = "Asia/Bangkok"
 
 const bangkokCalendarDateFormatter = new Intl.DateTimeFormat("en-CA", {

@@ -1,3 +1,8 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ทดสอบ features/tournament-operations/application/create-tournament.ts, features/tournament-operations/domain/tournament-workflow.ts, features/tournament-operations/application/review-tournament.ts โดยจำลอง dependencies ตามกรณี และตรวจผลสำเร็จ/ข้อผิดพลาดด้วย assertions
+ */
+
 import { describe, expect, it, vi } from "vitest"
 
 import {
@@ -28,6 +33,21 @@ const validInput = {
 }
 
 describe("tournament workflow", () => {
+  it("creates and publishes a tournament without text details or rules", async () => {
+    const repository = new InMemoryTournamentOperationsRepository()
+    const tournament = await createTournament(
+      repository,
+      { ...validInput, description: "", rules: "" },
+      organizer,
+    )
+
+    expect(tournament).toMatchObject({ description: "", rules: "" })
+    expect(() => assertCanPublish(
+      { ...tournament, status: "APPROVED" },
+      new Date("2026-10-01"),
+    )).not.toThrow()
+  })
+
   it("creates a draft owned by the organizer", async () => {
     const repository = new InMemoryTournamentOperationsRepository()
     const tournament = await createTournament(repository, validInput, organizer)

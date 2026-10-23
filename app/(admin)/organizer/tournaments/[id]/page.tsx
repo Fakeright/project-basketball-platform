@@ -1,3 +1,9 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * หน้า /organizer/tournaments/[id]: ตรวจเจ้าของรายการก่อนเปิดรายละเอียดและคำสั่งตามสถานะ
+ * ตามการทำงานต่อ: features/admin/presentation/tournament-editor-time.ts, features/identity/application/authorize.ts, features/identity/infrastructure/next-cookie-current-actor-provider.ts
+ */
+
 import { notFound, redirect } from "next/navigation"
 import Link from "next/link"
 import { ClipboardCheck, Workflow } from "lucide-react"

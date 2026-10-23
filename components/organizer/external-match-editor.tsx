@@ -1,5 +1,12 @@
 "use client"
 
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ฟอร์มเพิ่มคู่แข่งขันเองในโหมดไฟล์สาย พร้อมทีม รอบ ลำดับ วันเวลา และสนาม
+ * เรียกใช้จาก: app/(admin)/organizer/tournaments/[id]/schedule/page.tsx
+ * ตามการทำงานต่อ: features/admin/presentation/tournament-editor-time.ts
+ */
+
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Combobox } from "@base-ui/react/combobox"
@@ -38,6 +45,7 @@ export function ExternalMatchEditor({
   const [pending, setPending] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
 
+  // อ่านรอบ ลำดับ ทีม วันเวลา และสนามจากฟอร์ม แล้วส่งเพิ่มคู่แข่งขันโหมดไฟล์ไป API
   async function submit(form: HTMLFormElement) {
     if (!homeTeam || !awayTeam) {
       setMessage("กรุณาเลือกทีมเหย้าและทีมเยือน")

@@ -1,5 +1,12 @@
 "use client"
 
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * รับรายชื่อผู้เล่นหลายคน ตรวจข้อมูลเบื้องต้นและจำนวน แล้วส่งเพิ่มผู้เล่นเป็นชุด
+ * เรียกใช้จาก: components/team/team-player-roster.tsx
+ * ตามการทำงานต่อ: components/team/team-player-fields.tsx, components/ui/button.tsx, features/team-management/domain/team-player-batch-policy.ts
+ */
+
 import { Plus, Trash2 } from "lucide-react"
 import { useEffect, useId, useRef, useState } from "react"
 
@@ -57,6 +64,7 @@ export function TeamPlayerBatchForm({
     if (errorCycle > 0) summaryRef.current?.focus()
   }, [errorCycle])
 
+  // อัปเดตข้อมูลแถวที่เลือกใน state และส่งค่ารวมกลับตาม callback ของฟอร์ม
   function updateRow(rowId: string, field: TeamPlayerField, value: string) {
     setRows((current) =>
       current.map((row) =>
@@ -72,6 +80,7 @@ export function TeamPlayerBatchForm({
     setErrorCycle((cycle) => cycle + 1)
   }
 
+  // ตรวจข้อมูลแต่ละแถวแล้วส่งชุดผู้เล่นไป API; ผูกข้อผิดพลาดที่เซิร์ฟเวอร์ระบุกลับกับแถวที่เกี่ยวข้อง
   async function submitPlayers(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (pending) return

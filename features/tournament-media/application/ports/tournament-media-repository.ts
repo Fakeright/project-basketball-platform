@@ -1,3 +1,9 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * กำหนดสัญญาอ่านและบันทึก metadata ของโปสเตอร์ เอกสาร และไฟล์สาย
+ * เรียกใช้จาก: features/tournament-media/application/delete-tournament-media.ts, features/tournament-media/application/get-admin-review-media.ts
+ */
+
 import type {
   MediaAssetKind,
   TournamentMediaAsset,

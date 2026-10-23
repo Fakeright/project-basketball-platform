@@ -1,3 +1,8 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ทดสอบ components/organizer/tournament-competition-lifecycle-panel.tsx โดยจำลอง dependencies ตามกรณี และตรวจผลสำเร็จ/ข้อผิดพลาดด้วย assertions
+ */
+
 import { cleanup, render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
@@ -88,7 +93,7 @@ describe("TournamentCompetitionLifecyclePanel", () => {
   })
 
   it("requires a reason when an admin acts for the organizer", async () => {
-    const fetchMock = vi.fn(async () => Response.json({ tournament: {} }))
+    const fetchMock = vi.fn<typeof fetch>(async () => Response.json({ tournament: {} }))
     vi.stubGlobal("fetch", fetchMock)
     const user = userEvent.setup()
     renderPanel({ requiresOverrideReason: true })

@@ -1,3 +1,8 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ทดสอบ components/bracket-view.tsx, features/tournaments/domain/tournament.ts โดยจำลอง dependencies ตามกรณี และตรวจผลสำเร็จ/ข้อผิดพลาดด้วย assertions
+ */
+
 import { cleanup, render, screen } from "@testing-library/react"
 import { afterEach, describe, expect, it } from "vitest"
 
@@ -40,7 +45,7 @@ function match(
 ): Match {
   return {
     id,
-    tournamentSlug: "courtside-open",
+    purpose: "STANDARD", tournamentSlug: "courtside-open",
     round,
     roundSequence,
     sequence,

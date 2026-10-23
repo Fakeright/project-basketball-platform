@@ -1,3 +1,9 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * รวบรวมเงื่อนไขที่ขาดก่อนเริ่มหรือจบรายการ เช่น สาย คู่ ตาราง และผลที่ยังไม่ครบ
+ * เรียกใช้จาก: components/organizer/tournament-competition-lifecycle-panel.tsx, features/competition/application/get-organizer-competition.ts
+ */
+
 import type { TournamentCompetitionLifecycleContext } from "./competition"
 
 export type TournamentCompetitionIssueCode =
@@ -25,6 +31,7 @@ export class TournamentCompetitionPolicyError extends Error {
   }
 }
 
+// รวบรวมรายการเงื่อนไขที่ยังขาดก่อนเริ่มแข่ง เพื่อให้ UI แสดงสิ่งที่ต้องแก้ได้ทั้งหมด
 export function getStartIssues(
   context: TournamentCompetitionLifecycleContext,
 ): TournamentCompetitionIssueCode[] {
@@ -69,6 +76,7 @@ export function getStartIssues(
   return uniqueIssues(issues)
 }
 
+// รวบรวมเงื่อนไขที่ยังขาดก่อนจบรายการ เช่น ผลที่ยังไม่ยืนยันหรือข้อมูลคู่ตัดสิน
 export function getCompletionIssues(
   context: TournamentCompetitionLifecycleContext,
 ): TournamentCompetitionIssueCode[] {
@@ -101,12 +109,14 @@ export function getCompletionIssues(
   return uniqueIssues(issues)
 }
 
+// หยุดคำสั่งเริ่มรายการหากยังมีเงื่อนไขความพร้อมไม่ผ่าน
 export function assertTournamentCanStart(
   context: TournamentCompetitionLifecycleContext,
 ): void {
   assertNoIssues(getStartIssues(context))
 }
 
+// หยุดคำสั่งจบรายการหากข้อมูลการแข่งขันหรือผลยังไม่ครบ
 export function assertTournamentCanComplete(
   context: TournamentCompetitionLifecycleContext,
 ): void {

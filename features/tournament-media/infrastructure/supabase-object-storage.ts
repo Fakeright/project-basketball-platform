@@ -1,3 +1,10 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * นำสัญญา object storage ไปใช้กับ Supabase Storage เพื่ออัปโหลด ลบ อ่าน และสร้าง URL
+ * เรียกใช้จาก: app/(admin)/admin/reviews/[id]/page.tsx, app/(admin)/organizer/tournaments/[id]/bracket/page.tsx
+ * ตามการทำงานต่อ: features/tournament-media/application/ports/object-storage.ts
+ */
+
 import "server-only"
 
 import { createClient, StorageApiError } from "@supabase/supabase-js"

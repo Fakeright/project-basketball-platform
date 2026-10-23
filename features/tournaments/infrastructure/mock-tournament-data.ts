@@ -1,3 +1,9 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ข้อมูลรายการจำลองสำหรับพัฒนา UI และทดสอบโดยไม่ต้องมีฐานข้อมูล
+ * เรียกใช้จาก: features/tournaments/infrastructure/mock-tournament-repository.ts
+ */
+
 import type { Tournament } from "@/features/tournaments/domain/tournament"
 import type { TournamentGovernanceStatus } from "@/features/tournament-operations/domain/tournament-governance-policy"
 

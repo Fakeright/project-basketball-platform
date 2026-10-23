@@ -1,5 +1,12 @@
 "use client"
 
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ห่อ Base UI Select พร้อม trigger รายการตัวเลือก และส่วน popup สำหรับเลือกค่าจากชุดข้อมูล
+ * เรียกใช้จาก: components/organizer/external-match-editor.tsx, components/organizer/external-match-purpose-control.tsx
+ * ตามการทำงานต่อ: lib/utils.ts
+ */
+
 import * as React from "react"
 import { Select as SelectPrimitive } from "@base-ui/react/select"
 

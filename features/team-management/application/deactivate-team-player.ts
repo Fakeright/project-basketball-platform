@@ -1,9 +1,16 @@
-import { authorize } from "@/features/identity/application/authorize"
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * นำผู้เล่นออกจากรายชื่อปัจจุบันโดยปิดสถานะ พร้อมเก็บประวัติการเปลี่ยนแปลง
+ * เรียกใช้จาก: app/api/teams/[id]/players/[playerId]/route.ts, features/team-management/presentation/team-handler.ts
+ * ตามการทำงานต่อ: features/identity/application/authorize.ts
+ */
+
 import type { Actor } from "@/features/identity/domain/actor"
 import type { TeamPlayer } from "@/features/team-management/domain/team"
 import { projectTeamPlayerAuditSnapshot } from "@/features/team-management/domain/team-player-audit"
 
 import type { TeamRepository } from "./ports/team-repository"
+import { authorizePlayerRosterAccess } from "./team-access"
 
 export interface DeactivateTeamPlayerInput {
   teamId: string
@@ -11,6 +18,7 @@ export interface DeactivateTeamPlayerInput {
   at: string
 }
 
+// ค้นผู้เล่นที่ยังใช้งานภายในทีมก่อนปิดสถานะ เพื่อเก็บประวัติโดยไม่ลบข้อมูลอ้างอิง
 export async function deactivateTeamPlayer(
   input: DeactivateTeamPlayerInput,
   actor: Actor,
@@ -50,9 +58,4 @@ export async function deactivateTeamPlayer(
 
     return deactivated
   })
-}
-
-function authorizePlayerRosterAccess(actor: Actor, ownerId: string): boolean {
-  authorize(actor, "team.roster.manage", { organizerId: ownerId })
-  return actor.role === "PLATFORM_ADMIN" && actor.id !== ownerId
 }

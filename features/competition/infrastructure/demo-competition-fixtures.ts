@@ -1,3 +1,10 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * สร้างชุดทีม คู่ เวลา และผลตัวอย่างที่ระบุ ID คงที่สำหรับการสาธิตและ seed
+ * เรียกใช้จาก: features/demo-data/infrastructure/demo-seed-orchestration.ts, features/demo-data/infrastructure/demo-seed-safety.ts
+ * ตามการทำงานต่อ: features/competition/domain/bracket-generator.ts
+ */
+
 import { generateSingleEliminationBracket } from "@/features/competition/domain/bracket-generator"
 import type {
   MatchPurpose,
@@ -121,6 +128,7 @@ const definitions: DemoCaseDefinition[] = [
   },
 ]
 
+// ประกอบ fixture สำหรับสาธิตจากนิยามเคสที่มี ID และผลคงที่
 export function createDemoCompetitionFixtures(): DemoCompetitionFixture[] {
   return definitions.map(createFixture)
 }

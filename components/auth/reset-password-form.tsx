@@ -1,5 +1,12 @@
 "use client"
 
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * รับรหัสผ่านใหม่และคำยืนยัน แล้วส่ง API ที่ตรวจ recovery grant ก่อนเปลี่ยนรหัสผ่าน
+ * เรียกใช้จาก: app/(public)/reset-password/page.tsx
+ * ตามการทำงานต่อ: components/auth/auth-response.ts, components/ui/button.tsx, components/ui/input.tsx
+ */
+
 import { useRouter } from "next/navigation"
 import { type FormEvent, useState } from "react"
 import { KeyRound } from "lucide-react"
@@ -24,6 +31,7 @@ export function ResetPasswordForm() {
   const [submitting, setSubmitting] = useState(false)
   const [feedback, setFeedback] = useState("")
 
+  // ส่งรหัสผ่านใหม่และคำยืนยันไป API ซึ่งเป็นผู้ตรวจสิทธิ์ recovery จริง
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     const form = new FormData(event.currentTarget)

@@ -1,3 +1,8 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ทดสอบ lib/generated/prisma/client.ts, features/tournament-media/application/ports/object-storage.ts, features/tournaments/infrastructure/prisma-tournament-repository.ts โดยจำลอง dependencies ตามกรณี และตรวจผลสำเร็จ/ข้อผิดพลาดด้วย assertions
+ */
+
 import { describe, expect, it, vi } from "vitest"
 
 import type { PrismaClient } from "@/lib/generated/prisma/client"
@@ -90,14 +95,16 @@ const publicTournamentRow = {
   ],
 }
 
-function createRepository(
-  rows = [publicTournamentRow],
+// รับรูปทรง fixture ของแต่ละ query โดยไม่จำกัดสถานะหรือ null ตามตัวอย่างแรก
+function createRepository<Row extends object>(
+  rows?: Row[],
   options: { signedUrlError?: Error } = {},
 ) {
+  const fixtureRows = rows ?? [publicTournamentRow]
   const prisma = {
     tournament: {
-      findMany: vi.fn(async () => rows),
-      findFirst: vi.fn(async () => rows[0] ?? null),
+      findMany: vi.fn(async () => fixtureRows),
+      findFirst: vi.fn(async () => fixtureRows[0] ?? null),
     },
   }
   const storage: ObjectStorage = {

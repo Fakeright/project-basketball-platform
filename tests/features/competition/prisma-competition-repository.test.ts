@@ -1,3 +1,8 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ทดสอบ lib/generated/prisma/client.ts, features/competition/domain/bracket-generator.ts, features/competition/infrastructure/prisma-competition-repository.ts โดยจำลอง dependencies ตามกรณี และตรวจผลสำเร็จ/ข้อผิดพลาดด้วย assertions
+ */
+
 import { describe, expect, it, vi } from "vitest"
 
 import type { PrismaClient } from "@/lib/generated/prisma/client"
@@ -6,7 +11,7 @@ import { PrismaCompetitionRepository } from "@/features/competition/infrastructu
 
 function createPrismaMock() {
   const prisma = {
-    bracket: { create: vi.fn(), updateMany: vi.fn() },
+    bracket: { create: vi.fn(), findFirst: vi.fn(), updateMany: vi.fn() },
     bracketEntry: { createMany: vi.fn(), update: vi.fn(), updateMany: vi.fn() },
     bracketRound: { createMany: vi.fn(), deleteMany: vi.fn() },
     match: {
@@ -29,6 +34,95 @@ function createPrismaMock() {
 }
 
 describe("PrismaCompetitionRepository", () => {
+  it("locks the tournament before checking a scheduled match's court and returns its format", async () => {
+    const prisma = createPrismaMock()
+    const order: string[] = []
+    prisma.match.findFirst
+      .mockResolvedValueOnce({
+        id: "match-1",
+        status: "SCHEDULED",
+        version: 1,
+        bracket: { status: "PUBLISHED" },
+        tournament: {
+          id: "tournament-1",
+          organizerId: "organizer-1",
+          governanceStatus: "ACTIVE",
+          status: "REGISTRATION_CLOSED",
+          format: "FIVE_V_FIVE",
+          startsAt: new Date("2026-11-15T00:00:00Z"),
+          endsAt: new Date("2026-11-16T00:00:00Z"),
+        },
+      })
+      .mockImplementationOnce(async () => {
+        order.push("conflict check")
+        return { id: "match-2" }
+      })
+    prisma.$queryRaw.mockImplementation(async () => {
+      order.push("tournament lock")
+      return [{ id: "tournament-1", governanceStatus: "ACTIVE" }]
+    })
+    const repository = new PrismaCompetitionRepository(prisma as unknown as PrismaClient)
+
+    const context = await repository.inTransaction((transaction) =>
+      transaction.findMatchScheduleContext({
+        tournamentId: "tournament-1",
+        matchId: "match-1",
+        scheduledAt: "2026-11-15T05:00:00.000Z",
+        court: "Court A",
+      }),
+    )
+
+    expect(context).toMatchObject({ tournamentFormat: "FIVE_V_FIVE", hasCourtConflict: true })
+    expect(order).toEqual(["tournament lock", "conflict check"])
+    expect(prisma.match.findFirst).toHaveBeenNthCalledWith(2, expect.objectContaining({
+      where: expect.objectContaining({ status: { not: "COMPLETED" } }),
+    }))
+  })
+
+  it("locks the tournament before checking an external match's court and returns its format", async () => {
+    const prisma = createPrismaMock()
+    const order: string[] = []
+    prisma.bracket.findFirst.mockResolvedValue({
+      id: "bracket-1",
+      version: 2,
+      status: "PUBLISHED",
+      mode: "EXTERNAL_DOCUMENT",
+      entries: [],
+      rounds: [],
+      tournament: {
+        id: "tournament-1",
+        organizerId: "organizer-1",
+        governanceStatus: "ACTIVE",
+        status: "REGISTRATION_CLOSED",
+        format: "THREE_V_THREE",
+        startsAt: new Date("2026-11-15T00:00:00Z"),
+        endsAt: new Date("2026-11-16T00:00:00Z"),
+      },
+    })
+    prisma.match.findFirst.mockImplementation(async () => {
+      order.push("conflict check")
+      return { id: "match-2" }
+    })
+    prisma.$queryRaw.mockImplementation(async () => {
+      order.push("tournament lock")
+      return [{ id: "tournament-1", governanceStatus: "ACTIVE" }]
+    })
+    const repository = new PrismaCompetitionRepository(prisma as unknown as PrismaClient)
+
+    const context = await repository.inTransaction((transaction) =>
+      transaction.findExternalMatchCreationContext({
+        tournamentId: "tournament-1",
+        roundName: "Final",
+        sequence: 1,
+        scheduledAt: "2026-11-15T05:00:00.000Z",
+        court: "Court A",
+      }),
+    )
+
+    expect(context).toMatchObject({ tournamentFormat: "THREE_V_THREE", hasCourtConflict: true })
+    expect(order).toEqual(["tournament lock", "conflict check"])
+  })
+
   it("reports scheduled matches when loading generation context", async () => {
     const prisma = createPrismaMock()
     prisma.tournament.findUnique.mockResolvedValue({
@@ -78,7 +172,7 @@ describe("PrismaCompetitionRepository", () => {
           generationMethod: "SEEDED",
           drawToken: null,
           entries: [],
-          plan: { rounds: [], matches: [] },
+          plan: { bracketSize: 0, entryStarts: [], rounds: [], matches: [] },
           actorId: "organizer-1",
           adminOverride: false,
           at: "2026-08-19T05:00:00.000Z",
@@ -125,7 +219,7 @@ describe("PrismaCompetitionRepository", () => {
           tournamentId: "tournament-1",
           matchId: "match-1",
           purpose: "CHAMPIONSHIP",
-          previousPurpose: "PLACEMENT",
+          previousPurpose: "THIRD_PLACE",
           expectedVersion: 2,
           actorId: "organizer-1",
           adminOverride: false,
@@ -621,8 +715,8 @@ describe("PrismaCompetitionRepository", () => {
       prisma as unknown as PrismaClient,
     )
     const entries = [
-      { id: "entry-1", teamId: "team-1", seed: 2, drawPosition: 2, startRoundSequence: 1 },
-      { id: "entry-2", teamId: "team-2", seed: 1, drawPosition: 1, startRoundSequence: 1 },
+      { id: "entry-1", bracketId: "bracket-1", registrationId: "registration-1", teamNameSnapshot: "Team One", teamId: "team-1", seed: 2, drawPosition: 2, startRoundSequence: 1 },
+      { id: "entry-2", bracketId: "bracket-1", registrationId: "registration-2", teamNameSnapshot: "Team Two", teamId: "team-2", seed: 1, drawPosition: 1, startRoundSequence: 1 },
     ]
 
     await repository.persistGeneratedPlan({

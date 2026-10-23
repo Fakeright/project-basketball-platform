@@ -1,3 +1,10 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ตรึงทีมที่อนุมัติแล้วเป็นรายชื่อในสาย โดยตรวจสถานะรายการ จำนวนทีม และเวอร์ชันก่อนบันทึก
+ * เรียกใช้จาก: app/api/organizer/tournaments/[id]/bracket/entries/route.ts
+ * ตามการทำงานต่อ: features/identity/application/authorize.ts
+ */
+
 import { authorize } from "@/features/identity/application/authorize"
 import type { Actor } from "@/features/identity/domain/actor"
 import { assertTournamentGovernanceAllowsOperation } from "@/features/tournament-operations/domain/tournament-governance-policy"
@@ -11,6 +18,7 @@ import type {
   LockedCompetitionWorkspace,
 } from "./ports/competition-repository"
 
+/** ตรึงทีมที่อนุมัติแล้วเป็นผู้เข้าร่วมสาย ก่อนเลือกวิธีจัดคู่ */
 export async function lockBracketEntries(
   input: { tournamentId: string; expectedVersion: number },
   actor: Actor,

@@ -1,3 +1,9 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * กำหนดสัญญาเก็บ ลบ และเปิดไฟล์ เพื่อให้ use case เปลี่ยนผู้ให้บริการ storage ได้โดยไม่เปลี่ยนกฎงาน
+ * เรียกใช้จาก: features/admin/presentation/tournament-media-handler.ts, features/competition/application/get-external-bracket-view.ts
+ */
+
 export type ObjectStorageFailureCode = "NOT_FOUND" | "UNAVAILABLE"
 
 export class ObjectStorageError extends Error {

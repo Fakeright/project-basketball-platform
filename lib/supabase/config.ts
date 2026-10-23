@@ -1,3 +1,10 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * อ่านและตรวจ configuration ของ Supabase แยกค่าที่เปิดเผยได้กับค่าที่ใช้เฉพาะเซิร์ฟเวอร์
+ * เรียกใช้จาก: features/identity/infrastructure/get-auth-handlers.ts, lib/supabase/admin.ts
+ * ตามการทำงานต่อ: features/identity/application/auth-errors.ts
+ */
+
 import { AuthDependencyUnavailableError } from "@/features/identity/application/auth-errors"
 
 type Environment = Record<string, string | undefined>

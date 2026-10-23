@@ -1,3 +1,9 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * แสดงตัวเลขสรุป งานที่ต้องตรวจ และประวัติของผู้ดูแลจาก view model
+ * เรียกใช้จาก: app/(admin)/admin/page.tsx
+ */
+
 import { ArrowUpRight, ClipboardCheck, History, ShieldAlert } from "lucide-react"
 import Link from "next/link"
 

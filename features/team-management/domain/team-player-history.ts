@@ -1,3 +1,9 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * รวมผู้เล่นคนเดิมจากหลายทีมด้วยชื่อ นามสกุล วันเกิด และเลือกข้อมูลล่าสุดเพื่อใช้สร้างทีมใหม่
+ * เรียกใช้จาก: components/team/reusable-player-selector.tsx, components/team/team-creation-roster-editor.tsx
+ */
+
 import type { TeamPlayer, TeamPlayerDraft } from "./team"
 
 export interface TeamPlayerHistorySource extends TeamPlayer {
@@ -22,6 +28,7 @@ interface PlayerHistoryGroup {
   sources: TeamPlayerHistorySource[]
 }
 
+// จัดกลุ่มคนเดิมจากชื่อ/นามสกุล/วันเกิด แล้วเลือกข้อมูลล่าสุดและรวมทีมต้นทาง
 export function projectReusableTeamPlayers(
   sources: readonly TeamPlayerHistorySource[],
 ): ReusableTeamPlayer[] {
@@ -47,6 +54,7 @@ export function projectReusableTeamPlayers(
     .sort((left, right) => compareStrings(left.key, right.key))
 }
 
+// รวมชื่อ นามสกุล และวันเกิดเป็นคีย์เปรียบเทียบคนเดิม โดยตัดช่องว่างหัวท้ายและไม่แยกตัวพิมพ์
 function normalizedPlayerIdentity(player: TeamPlayerDraft): string {
   return [
     player.firstName.trim().toLowerCase(),
@@ -55,6 +63,7 @@ function normalizedPlayerIdentity(player: TeamPlayerDraft): string {
   ].join("\u0000")
 }
 
+// เลือกระเบียนที่แก้ไขล่าสุดก่อน และใช้ ID ตัดสินเมื่อลำดับเวลาเท่ากันเพื่อให้ผลคงที่
 function compareCanonicalSources(
   left: TeamPlayerHistorySource,
   right: TeamPlayerHistorySource,
@@ -65,6 +74,7 @@ function compareCanonicalSources(
   return compareStrings(left.id, right.id)
 }
 
+// แปลงกลุ่มประวัติของคนเดียวให้เหลือหนึ่งตัวเลือก พร้อมรายชื่อทีมต้นทาง
 function projectPlayerHistoryGroup(group: PlayerHistoryGroup): ReusableTeamPlayer {
   const selected = group.selected
   const sourceTeams = new Map<string, ReusableTeamPlayerSourceTeam>()

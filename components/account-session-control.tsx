@@ -1,5 +1,12 @@
 "use client"
 
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * แสดงปุ่มเข้าสู่ระบบ/สมัครสำหรับผู้เยี่ยมชม หรือข้อมูลบทบาทและคำสั่งออกจากระบบสำหรับบัญชีที่ล็อกอิน
+ * เรียกใช้จาก: app/(admin)/layout.tsx, components/site-header.tsx
+ * ตามการทำงานต่อ: components/ui/button.tsx
+ */
+
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
@@ -46,6 +53,7 @@ export function AccountSessionControl({
   const [feedback, setFeedback] = useState("")
   const destination = accountDestination[actor.role]
 
+  // เรียก API ออกจากระบบ แล้วอัปเดตเส้นทาง/ข้อมูลหน้าให้ตรงกับ session ที่ถูกยกเลิก
   async function logout() {
     setSubmitting(true)
     setFeedback("")

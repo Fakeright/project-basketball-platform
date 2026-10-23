@@ -1,3 +1,8 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ทดสอบ features/identity/application/provision-auth-profile.ts, features/identity/application/ports/user-profile-repository.ts โดยจำลอง dependencies ตามกรณี และตรวจผลสำเร็จ/ข้อผิดพลาดด้วย assertions
+ */
+
 import { describe, expect, it } from "vitest"
 
 import { provisionAuthProfile } from "@/features/identity/application/provision-auth-profile"

@@ -1,3 +1,9 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * API PUT /api/admin/tournaments/[id]: รับคำขอ HTTP แล้วส่งต่อ saveTournamentHandler
+ * ตามการทำงานต่อ: features/admin/presentation/save-tournament-handler.ts, features/identity/infrastructure/next-cookie-current-actor-provider.ts, features/shared/presentation/safe-http.ts
+ */
+
 import { saveTournamentHandler } from "@/features/admin/presentation/save-tournament-handler"
 import { createNextCookieCurrentActorProvider } from "@/features/identity/infrastructure/next-cookie-current-actor-provider"
 import { withSafeRouteBoundary } from "@/features/shared/presentation/safe-http"

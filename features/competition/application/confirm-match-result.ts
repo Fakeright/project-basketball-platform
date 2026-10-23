@@ -1,3 +1,10 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ตรวจคะแนนและบริบทคู่แข่งขัน ก่อนยืนยันผลและส่งผู้ชนะไปคู่ถัดไปภายในธุรกรรมเดียว
+ * เรียกใช้จาก: app/api/organizer/tournaments/[id]/matches/[matchId]/confirm/route.ts, features/competition/presentation/competition-handler.ts
+ * ตามการทำงานต่อ: features/competition/application/match-result-access.ts
+ */
+
 import type { Actor } from "@/features/identity/domain/actor"
 import { decideMatchAdvancement } from "@/features/competition/domain/match-result-policy"
 
@@ -15,6 +22,7 @@ export interface ConfirmMatchResultInput {
   expectedVersion: number
 }
 
+/** ยืนยันคะแนนและเลื่อนผู้ชนะใน transaction เดียว; โหมดไฟล์ไม่เชื่อมคู่ถัดไป */
 export async function confirmMatchResult(
   input: ConfirmMatchResultInput,
   actor: Actor,
@@ -35,6 +43,7 @@ export async function confirmMatchResult(
       nextMatchId: context.nextMatchId,
       nextSlot: context.nextSlot,
     })
+    // ไฟล์ภายนอกเป็นแหล่งอ้างอิงสาย จึงไม่เดาทางเดินของผู้ชนะจากคู่ในฐานข้อมูล
     const persistedAdvancement =
       context.bracketMode === "EXTERNAL_DOCUMENT"
         ? { ...advancement, nextMatchId: null, nextSlot: null }

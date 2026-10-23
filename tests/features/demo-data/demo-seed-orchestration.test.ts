@@ -1,3 +1,8 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ทดสอบ features/demo-data/infrastructure/demo-seed-orchestration.ts, features/competition/infrastructure/demo-competition-fixtures.ts, features/demo-data/infrastructure/demo-seed-safety.ts โดยจำลอง dependencies ตามกรณี และตรวจผลสำเร็จ/ข้อผิดพลาดด้วย assertions
+ */
+
 import { describe, expect, it } from "vitest"
 
 import {
@@ -19,8 +24,8 @@ import { demoSeedTimestamp } from "@/features/demo-data/infrastructure/demo-work
 describe("demo seed orchestration", () => {
   it("preflights before applying base fixture rows", async () => {
     const events: string[] = []
-    const port = {
-      transaction: async <T>(work: (transaction: typeof port) => Promise<T>) =>
+    const port: DemoSeedPort & DemoSeedTransactionPort = {
+      transaction: async <T>(work: (transaction: DemoSeedTransactionPort) => Promise<T>) =>
         work(port),
       readBaseSnapshot: async () => {
         events.push("read-base")
@@ -51,8 +56,8 @@ describe("demo seed orchestration", () => {
 
   it("preflights all competition fixtures before the first replacement", async () => {
     const events: string[] = []
-    const port = {
-      transaction: async <T>(work: (transaction: typeof port) => Promise<T>) =>
+    const port: DemoSeedPort & DemoSeedTransactionPort = {
+      transaction: async <T>(work: (transaction: DemoSeedTransactionPort) => Promise<T>) =>
         work(port),
       readBaseSnapshot: async () => {
         throw new Error("NOT_USED")
@@ -65,6 +70,8 @@ describe("demo seed orchestration", () => {
         return {
           tournament: {
             organizerId: "organizer-1",
+            provinceCode: "10",
+            format: "FIVE_V_FIVE",
             brackets: [],
             registrations: [],
           },

@@ -1,5 +1,12 @@
 "use client"
 
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * แสดงประวัติไฟล์สายและคำสั่งเผยแพร่/เลิกใช้แต่ละเวอร์ชัน
+ * เรียกใช้จาก: components/organizer/external-bracket-workspace.tsx
+ * ตามการทำงานต่อ: components/ui/button.tsx
+ */
+
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Dialog as DialogPrimitive } from "@base-ui/react/dialog"
@@ -27,6 +34,7 @@ export function ExternalBracketRevisionList({
   const [pending, setPending] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
 
+  // ส่งคำสั่งที่ยืนยันแล้วสำหรับเวอร์ชันไฟล์ เช่น เผยแพร่หรือเลิกใช้
   async function confirmAction() {
     if (!action || pending) return
     const publish = action.type === "publish"

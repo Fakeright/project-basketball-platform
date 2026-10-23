@@ -1,3 +1,9 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * หน้า /forgot-password: เปิดฟอร์มขอลิงก์กู้รหัสผ่าน
+ * ตามการทำงานต่อ: components/auth/auth-form-layout.tsx, components/auth/forgot-password-form.tsx
+ */
+
 import Link from "next/link"
 
 import { AuthFormLayout } from "@/components/auth/auth-form-layout"

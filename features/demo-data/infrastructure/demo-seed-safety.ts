@@ -1,3 +1,10 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ตรวจสภาพแวดล้อมและข้อมูลเดิมก่อน seed เพื่อไม่ให้ชุดตัวอย่างทับข้อมูลที่ไม่ใช่ fixture
+ * เรียกใช้จาก: features/demo-data/infrastructure/demo-seed-orchestration.ts, prisma/seed.ts
+ * ตามการทำงานต่อ: features/demo-data/infrastructure/demo-workflow-fixtures.ts
+ */
+
 import type { DemoCompetitionFixture } from "@/features/competition/infrastructure/demo-competition-fixtures"
 
 import {

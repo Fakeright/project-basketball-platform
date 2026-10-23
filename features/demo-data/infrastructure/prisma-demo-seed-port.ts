@@ -1,3 +1,10 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * นำสัญญา seed ไปใช้กับ Prisma เพื่อเขียนข้อมูลตัวอย่างหลายตารางใน transaction
+ * เรียกใช้จาก: prisma/seed.ts, scripts/seed-competition-demos.ts
+ * ตามการทำงานต่อ: features/demo-data/infrastructure/demo-workflow-fixtures.ts
+ */
+
 import type { DemoCompetitionFixture } from "@/features/competition/infrastructure/demo-competition-fixtures"
 import {
   Prisma,

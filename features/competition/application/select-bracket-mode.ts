@@ -1,3 +1,10 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * เลือกใช้สายที่ระบบสร้างหรือไฟล์ภายนอกตามความพร้อมและสถานะสาย
+ * เรียกใช้จาก: app/api/organizer/tournaments/[id]/bracket/mode/route.ts, features/competition/presentation/external-bracket-handler.ts
+ * ตามการทำงานต่อ: features/competition/application/external-bracket-access.ts
+ */
+
 import type { Actor } from "@/features/identity/domain/actor"
 import { assertCanSelectBracketMode } from "@/features/competition/domain/external-bracket-policy"
 import type { BracketMode } from "@/features/competition/domain/competition"
@@ -17,6 +24,7 @@ interface Dependencies {
   now?: () => Date
 }
 
+// ตรวจความพร้อมของสายแล้วเลือกโหมด SYSTEM_GENERATED หรือ EXTERNAL_DOCUMENT
 export async function selectBracketMode(
   input: SelectBracketModeRequest,
   actor: Actor,

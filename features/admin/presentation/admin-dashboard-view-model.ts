@@ -1,3 +1,9 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * จัดข้อมูลสรุปของแอดมินเป็นข้อความ ตัวเลข และรายการที่ component แสดงผลได้
+ * เรียกใช้จาก: app/(admin)/admin/page.tsx, components/admin/admin-dashboard.tsx
+ */
+
 import type { AdminDashboardReadModel } from "../application/ports/admin-dashboard-repository"
 
 export interface AdminDashboardViewModel {
@@ -68,6 +74,7 @@ const bangkokDateTimeFormatter = new Intl.DateTimeFormat("th-TH", {
   timeZone: "Asia/Bangkok",
 })
 
+// แปลงข้อมูลจาก repository เป็นค่าที่หน้าแดชบอร์ดใช้แสดง ไม่อ่านฐานข้อมูลเพิ่ม
 export function createAdminDashboardViewModel(
   dashboard: AdminDashboardReadModel,
 ): AdminDashboardViewModel {

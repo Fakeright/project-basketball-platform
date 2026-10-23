@@ -1,3 +1,9 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * หน้า /admin/teams/[id]: แสดงข้อมูลทีมและสมาชิกปัจจุบันให้แอดมินดูแบบอ่านอย่างเดียว
+ * ตามการทำงานต่อ: features/identity/infrastructure/next-cookie-current-actor-provider.ts, features/team-management/application/read-admin-teams.ts, features/team-management/infrastructure/get-admin-team-read-repository.ts
+ */
+
 import Link from "next/link"
 import { notFound } from "next/navigation"
 

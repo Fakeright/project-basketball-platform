@@ -1,3 +1,8 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * กำหนดกฎตรวจโค้ดของ Next.js/TypeScript และไฟล์ที่ไม่ต้องตรวจ เช่น generated output
+ */
+
 import { defineConfig, globalIgnores } from "eslint/config";
 import nextVitals from "eslint-config-next/core-web-vitals";
 import nextTs from "eslint-config-next/typescript";

@@ -1,3 +1,9 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * รวมยอดและรายการงานจาก PostgreSQL ผ่าน Prisma แล้วแปลงเป็นข้อมูลแดชบอร์ด
+ * เรียกใช้จาก: features/admin/infrastructure/get-admin-dashboard-repository.ts
+ */
+
 import type { PrismaClient } from "@/lib/generated/prisma/client"
 
 import type {

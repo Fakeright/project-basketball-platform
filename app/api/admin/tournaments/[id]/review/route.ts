@@ -1,3 +1,9 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * API POST /api/admin/tournaments/[id]/review: รับคำขอ HTTP แล้วส่งต่อ handleReviewRequest
+ * ตามการทำงานต่อ: features/admin/presentation/review-tournament-handler.ts, features/identity/infrastructure/next-cookie-current-actor-provider.ts, features/shared/presentation/safe-http.ts
+ */
+
 import { handleReviewRequest } from "@/features/admin/presentation/review-tournament-handler"
 import { createNextCookieCurrentActorProvider } from "@/features/identity/infrastructure/next-cookie-current-actor-provider"
 import { withSafeRouteBoundary } from "@/features/shared/presentation/safe-http"

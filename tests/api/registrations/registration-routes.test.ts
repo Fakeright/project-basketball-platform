@@ -1,3 +1,8 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ทดสอบ features/registrations/presentation/registration-handler.ts, features/registrations/domain/player-age-policy.ts โดยจำลอง dependencies ตามกรณี และตรวจผลสำเร็จ/ข้อผิดพลาดด้วย assertions
+ */
+
 import { describe, expect, it, vi } from "vitest"
 
 import {
@@ -21,6 +26,22 @@ function request(method: string, body: unknown) {
 }
 
 describe("registration route handlers", () => {
+  it("returns 409 when another team with the same name has applied", async () => {
+    const response = await handleApplyToTournament(
+      "tournament-1",
+      request("POST", { teamId: "team-1" }),
+      {
+        actorProvider: { getCurrentActor: vi.fn(async () => teamManager) },
+        apply: vi.fn(async () => { throw new Error("REGISTRATION_TEAM_NAME_TAKEN") }),
+      },
+    )
+
+    expect(response.status).toBe(409)
+    await expect(response.json()).resolves.toEqual({
+      message: "มีทีมชื่อนี้สมัครรายการแล้ว กรุณาเปลี่ยนชื่อทีมก่อนสมัคร",
+    })
+  })
+
   it("returns 401 when applying without an actor", async () => {
     const response = await handleApplyToTournament("tournament-1", request("POST", { teamId: "team-1" }), {
       actorProvider: { getCurrentActor: vi.fn(async () => null) },

@@ -1,3 +1,9 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * กำหนดสัญญาอ่านและแก้สาย ตาราง และผล รวมบริบทที่ use case ต้องใช้และการทำงานใน transaction
+ * เรียกใช้จาก: components/organizer/bracket-preview.tsx, components/organizer/bracket-workspace.tsx
+ */
+
 import type { GeneratedBracketPlan } from "@/features/competition/domain/bracket-generator"
 import type {
   BracketGenerationMethod,
@@ -5,6 +11,7 @@ import type {
   MatchPurpose,
 } from "@/features/competition/domain/competition"
 import type { TournamentGovernanceStatus } from "@/features/tournament-operations/domain/tournament-governance-policy"
+import type { TournamentFormat } from "@/features/tournaments/domain/tournament"
 
 export interface PersistGeneratedPlanInput {
   tournamentId: string
@@ -106,6 +113,7 @@ export interface MatchScheduleContext {
   tournamentId: string
   organizerId: string
   tournamentGovernanceStatus: TournamentGovernanceStatus
+  tournamentFormat: TournamentFormat
   tournamentStatus: string
   tournamentStartsAt: string
   tournamentEndsAt: string
@@ -120,6 +128,7 @@ export interface ExternalMatchCreationContext {
   tournamentId: string
   organizerId: string
   tournamentGovernanceStatus: TournamentGovernanceStatus
+  tournamentFormat: TournamentFormat
   tournamentStartsAt: string
   tournamentEndsAt: string
   bracketId: string

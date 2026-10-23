@@ -1,3 +1,10 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ตรวจผู้จัดเจ้าของรายการก่อนอ่านใบสมัคร ชื่อผู้จัดการ และรายชื่อผู้เล่นให้หน้าตรวจทีม
+ * เรียกใช้จาก: app/(admin)/organizer/tournaments/[id]/registrations/page.tsx
+ * ตามการทำงานต่อ: features/identity/application/authorize.ts
+ */
+
 import { authorize } from "@/features/identity/application/authorize"
 import type { Actor } from "@/features/identity/domain/actor"
 
@@ -12,6 +19,7 @@ export interface TournamentRegistrationReview {
   registrations: TournamentRegistrationReviewItem[]
 }
 
+// ตรวจเจ้าของรายการก่อนคืนใบสมัครพร้อมข้อมูลผู้จัดการและผู้เล่นสำหรับตรวจทีม
 export async function listTournamentRegistrations(
   tournamentId: string,
   actor: Actor,

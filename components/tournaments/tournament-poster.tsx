@@ -1,3 +1,9 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * แสดงโปสเตอร์รายการตามข้อมูลภาพที่ได้รับ พร้อมการจัดขนาดให้พอดีกับพื้นที่
+ * เรียกใช้จาก: app/(public)/tournaments/[slug]/page.tsx, components/admin/tournament-review-media.tsx
+ */
+
 import Image from "next/image"
 
 export function TournamentPoster({

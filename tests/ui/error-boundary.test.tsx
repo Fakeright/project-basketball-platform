@@ -1,3 +1,8 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ทดสอบ app/error.tsx โดยจำลอง dependencies ตามกรณี และตรวจผลสำเร็จ/ข้อผิดพลาดด้วย assertions
+ */
+
 import { render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { expect, it, vi } from "vitest"

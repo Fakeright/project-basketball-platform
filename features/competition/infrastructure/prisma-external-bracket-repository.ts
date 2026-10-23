@@ -1,3 +1,10 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * บันทึกโหมดและเวอร์ชันไฟล์สายผ่าน Prisma พร้อมล็อกสาย ตรวจ version และบันทึก audit
+ * เรียกใช้จาก: features/competition/infrastructure/get-external-bracket-repository.ts
+ * ตามการทำงานต่อ: features/tournament-operations/infrastructure/prisma-tournament-governance-lock.ts
+ */
+
 import { randomUUID } from "node:crypto"
 
 import { Prisma } from "@/lib/generated/prisma/client"
@@ -552,6 +559,7 @@ function isPrismaUniqueError(error: unknown) {
   )
 }
 
+// แปลงข้อมูลให้เก็บในช่อง JSON ของ Prisma ได้ เช่น snapshot ใน audit
 function toJsonValue(value: unknown): Prisma.InputJsonValue {
   return JSON.parse(JSON.stringify(value)) as Prisma.InputJsonValue
 }

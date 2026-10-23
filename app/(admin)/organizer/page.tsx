@@ -1,3 +1,9 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * หน้า /organizer: อ่านรายการของผู้จัดและแสดงความพร้อมกับขั้นตอนถัดไป
+ * ตามการทำงานต่อ: features/identity/infrastructure/next-cookie-current-actor-provider.ts, features/tournament-operations/application/list-owned-tournament-workflows.ts, features/tournament-operations/infrastructure/get-tournament-operations-repository.ts
+ */
+
 import Link from "next/link"
 import { redirect } from "next/navigation"
 

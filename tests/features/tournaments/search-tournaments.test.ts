@@ -1,3 +1,8 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ทดสอบ features/tournaments/application/search-tournaments.ts, features/tournaments/infrastructure/mock-tournament-repository.ts, features/tournaments/infrastructure/mock-tournament-data.ts โดยจำลอง dependencies ตามกรณี และตรวจผลสำเร็จ/ข้อผิดพลาดด้วย assertions
+ */
+
 import { searchTournaments } from "@/features/tournaments/application/search-tournaments"
 import { MockTournamentRepository } from "@/features/tournaments/infrastructure/mock-tournament-repository"
 import { mockTournamentData } from "@/features/tournaments/infrastructure/mock-tournament-data"

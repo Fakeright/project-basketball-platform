@@ -1,3 +1,9 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * กำหนดรูปแบบทีม ตำแหน่งผู้เล่น ข้อมูลทีม และข้อมูลผู้เล่นแบบร่าง/ที่บันทึกแล้ว
+ * เรียกใช้จาก: components/team/team-creation-roster-editor.tsx, components/team/team-editor.tsx
+ */
+
 export type TeamFormat = "FIVE_V_FIVE" | "THREE_V_THREE"
 
 export type TeamPlayerPosition = "PG" | "SG" | "SF" | "PF" | "C"

@@ -1,3 +1,10 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * อ่านรายการของผู้จัดพร้อมข้อมูลความพร้อม เพื่อแสดงสถานะและขั้นตอนถัดไป
+ * เรียกใช้จาก: app/(admin)/organizer/page.tsx
+ * ตามการทำงานต่อ: features/identity/application/authorize.ts
+ */
+
 import {
   getCompletionIssues,
   getStartIssues,

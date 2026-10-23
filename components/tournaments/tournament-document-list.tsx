@@ -1,3 +1,9 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * แสดงรายการเอกสารแนบและลิงก์เปิดไฟล์ของรายการแข่งขัน
+ * เรียกใช้จาก: app/(public)/tournaments/[slug]/page.tsx
+ */
+
 import { Download, FileText } from "lucide-react"
 
 import type { PublicDocumentLink } from "@/features/tournament-media/application/get-public-tournament-media"

@@ -1,3 +1,8 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ทดสอบ components/organizer/bracket-mode-control.tsx, components/organizer/external-bracket-preview.tsx, components/organizer/external-bracket-revision-list.tsx โดยจำลอง dependencies ตามกรณี และตรวจผลสำเร็จ/ข้อผิดพลาดด้วย assertions
+ */
+
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { afterEach, describe, expect, it, vi } from "vitest"
@@ -137,7 +142,7 @@ describe("ExternalBracketUploader", () => {
   })
 
   it("uploads a valid file with its expected version", async () => {
-    const fetchMock = vi.fn(async () => Response.json({ revision: {} }))
+    const fetchMock = vi.fn<typeof fetch>(async () => Response.json({ revision: {} }))
     vi.stubGlobal("fetch", fetchMock)
     const user = userEvent.setup()
     render(
@@ -156,6 +161,7 @@ describe("ExternalBracketUploader", () => {
     await user.click(screen.getByRole("button", { name: "อัปโหลดไฟล์" }))
 
     const [, request] = fetchMock.mock.calls[0]
+    if (!request) throw new Error("Expected upload request options")
     expect(request).toMatchObject({ method: "POST" })
     expect(request.body).toBeInstanceOf(FormData)
     expect((request.body as FormData).get("expectedVersion")).toBe("3")
@@ -169,6 +175,7 @@ describe("external bracket revisions", () => {
       <ExternalBracketWorkspace
         state={{
           modeContext: {
+            tournamentGovernanceStatus: "ACTIVE",
             tournamentId: "tournament-1",
             organizerId: "organizer-1",
             bracketId: "bracket-1",
@@ -178,6 +185,7 @@ describe("external bracket revisions", () => {
             hasStartedMatch: true,
           },
           workspace: {
+            tournamentGovernanceStatus: "ACTIVE",
             tournamentId: "tournament-1",
             tournamentTitle: "External Cup",
             organizerId: "organizer-1",

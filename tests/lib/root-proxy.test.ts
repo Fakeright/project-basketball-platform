@@ -1,3 +1,8 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ทดสอบ features/identity/presentation/auth-handler.ts, proxy.ts โดยจำลอง dependencies ตามกรณี และตรวจผลสำเร็จ/ข้อผิดพลาดด้วย assertions
+ */
+
 import { NextRequest, NextResponse } from "next/server"
 import { describe, expect, it, vi } from "vitest"
 

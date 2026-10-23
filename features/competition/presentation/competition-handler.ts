@@ -1,3 +1,10 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ตรวจ JSON และตัวตนสำหรับคำสั่งสาย ตาราง และผล แล้วเรียก use case และคืนข้อความผิดพลาดภาษาไทย
+ * เรียกใช้จาก: app/api/admin/tournaments/[id]/matches/[matchId]/result-correction/route.ts, app/api/organizer/tournaments/[id]/bracket/entries/route.ts
+ * ตามการทำงานต่อ: features/shared/presentation/safe-http.ts, features/tournament-operations/presentation/tournament-governance-error-response.ts
+ */
+
 import { z } from "zod"
 
 import type { LockedCompetitionWorkspace } from "@/features/competition/application/ports/competition-repository"

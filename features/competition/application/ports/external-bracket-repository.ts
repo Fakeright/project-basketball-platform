@@ -1,3 +1,9 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * กำหนดสัญญาโหมดสาย เวอร์ชันไฟล์ การเผยแพร่ และการเลิกใช้ไฟล์ เพื่อแยกกฎงานออกจากที่เก็บข้อมูล
+ * เรียกใช้จาก: components/organizer/bracket-workspace.tsx, components/organizer/external-bracket-preview.tsx
+ */
+
 import type { TournamentMediaAsset } from "@/features/tournament-media/domain/media-asset"
 import type { TournamentGovernanceStatus } from "@/features/tournament-operations/domain/tournament-governance-policy"
 

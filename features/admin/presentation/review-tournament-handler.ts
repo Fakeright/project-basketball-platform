@@ -1,3 +1,10 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ตรวจคำขอตัดสินรายการ แล้วส่งผลอนุมัติ ขอแก้ไข หรือปฏิเสธไปยัง use case
+ * เรียกใช้จาก: app/api/admin/tournaments/[id]/review/route.ts
+ * ตามการทำงานต่อ: features/shared/presentation/safe-http.ts, features/tournament-operations/application/review-tournament.ts, features/tournament-operations/presentation/tournament-governance-error-response.ts
+ */
+
 import { z } from "zod"
 
 import type { CurrentActorProvider } from "@/features/identity/domain/actor"

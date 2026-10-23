@@ -1,3 +1,8 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ทดสอบ features/competition/infrastructure/demo-competition-fixtures.ts, features/competition/application/get-competition-summary.ts โดยจำลอง dependencies ตามกรณี และตรวจผลสำเร็จ/ข้อผิดพลาดด้วย assertions
+ */
+
 import { describe, expect, it } from "vitest"
 
 import { createDemoCompetitionFixtures } from "@/features/competition/infrastructure/demo-competition-fixtures"
@@ -54,6 +59,8 @@ describe("demo competition fixtures", () => {
     const summary = getCompetitionSummary(
       completed?.matches.map((match) => ({
         ...match,
+        homeTeamId: match.homeTeamId ?? undefined,
+        awayTeamId: match.awayTeamId ?? undefined,
         round: match.roundName,
         homeTeam: completed.teamNames.get(match.homeTeamId ?? "") ?? "",
         awayTeam: completed.teamNames.get(match.awayTeamId ?? "") ?? "",

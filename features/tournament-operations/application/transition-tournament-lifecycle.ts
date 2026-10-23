@@ -1,3 +1,10 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ประสานส่งตรวจ เผยแพร่ และปิดรับสมัคร โดยตรวจสิทธิ์และสถานะรายการก่อนบันทึก
+ * เรียกใช้จาก: features/admin/presentation/tournament-lifecycle-handler.ts
+ * ตามการทำงานต่อ: features/identity/application/authorize.ts
+ */
+
 import { authorize } from "@/features/identity/application/authorize"
 import type { Actor } from "@/features/identity/domain/actor"
 import type { TournamentOperation } from "@/features/tournament-operations/domain/tournament-operation"

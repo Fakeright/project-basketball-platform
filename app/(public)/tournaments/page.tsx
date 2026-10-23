@@ -1,3 +1,9 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * หน้า /tournaments: ค้นหารายการแข่งขันตามตัวกรองใน URL และแสดงผลลัพธ์
+ * ตามการทำงานต่อ: features/tournaments/application/search-tournaments.ts, features/tournaments/infrastructure/get-tournament-repository.ts, features/tournaments/presentation/tournament-search-params.ts
+ */
+
 import { TournamentSearchForm } from "@/components/tournament-search-form"
 import { TournamentRow } from "@/components/tournament-row"
 import { StatePanel } from "@/components/state-panel"
@@ -5,6 +11,7 @@ import { searchTournaments } from "@/features/tournaments/application/search-tou
 import { getTournamentRepository } from "@/features/tournaments/infrastructure/get-tournament-repository"
 import { parseTournamentSearchParams } from "@/features/tournaments/presentation/tournament-search-params"
 
+/** อ่านตัวกรองจาก URL แล้วค้นหารายการผ่าน use case ก่อนแสดงผล */
 export default async function TournamentListPage({ searchParams }: PageProps<"/tournaments">) {
   const repository = getTournamentRepository()
   const filters = parseTournamentSearchParams(await searchParams)

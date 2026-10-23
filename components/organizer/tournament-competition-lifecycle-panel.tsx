@@ -1,5 +1,12 @@
 "use client"
 
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * แสดงความพร้อมและข้อที่ยังขาดก่อนเริ่มหรือจบรายการ แล้วส่งคำสั่งเมื่อยืนยัน
+ * เรียกใช้จาก: app/(admin)/organizer/tournaments/[id]/results/page.tsx
+ * ตามการทำงานต่อ: features/competition/presentation/tournament-competition-issue-label.ts, features/tournament-operations/presentation/organizer-workflow-guidance.ts
+ */
+
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { CircleAlert, Flag, Play } from "lucide-react"
@@ -40,6 +47,7 @@ export function TournamentCompetitionLifecyclePanel({
     action === "start" ? startIssues : action === "complete" ? completionIssues : []
   const commandLabel = action === "start" ? "เริ่มการแข่งขัน" : "จบการแข่งขัน"
 
+  // ส่งคำขอเริ่มหรือจบรายการไป API และแสดงเงื่อนไขที่เซิร์ฟเวอร์แจ้งว่ายังขาด
   async function submitCommand() {
     if (!action || issues.length > 0) return
     const trimmedReason = reason.trim()

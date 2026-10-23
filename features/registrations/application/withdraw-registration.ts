@@ -1,3 +1,10 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ถอนทีมที่อนุมัติแล้วตามเงื่อนไขการแข่งขัน โดยตรวจเหตุผล เวอร์ชัน และสิทธิ์
+ * เรียกใช้จาก: app/api/organizer/tournaments/[id]/registrations/[registrationId]/withdraw/route.ts, features/registrations/presentation/registration-handler.ts
+ * ตามการทำงานต่อ: features/identity/application/authorize.ts
+ */
+
 import { authorize } from "@/features/identity/application/authorize"
 import type { Actor } from "@/features/identity/domain/actor"
 import type { TournamentRegistration } from "@/features/registrations/domain/registration"
@@ -13,6 +20,7 @@ export interface WithdrawRegistrationInput {
   version: number
 }
 
+// ตรวจเหตุผลและสถานะก่อนถอนทีมที่อนุมัติแล้ว พร้อมป้องกันผลกระทบต่อการแข่งขันที่เริ่มไปแล้ว
 export async function withdrawRegistration(
   input: WithdrawRegistrationInput,
   actor: Actor,

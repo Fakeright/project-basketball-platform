@@ -1,3 +1,9 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * API POST/DELETE /api/organizer/tournaments/[id]/bracket/publication: รับคำขอ HTTP แล้วส่งต่อ handlePublishBracket, handleUnpublishBracket
+ * ตามการทำงานต่อ: features/competition/application/publish-bracket.ts, features/competition/infrastructure/get-competition-repository.ts, features/competition/presentation/competition-handler.ts
+ */
+
 import {
   publishBracket,
   unpublishBracket,

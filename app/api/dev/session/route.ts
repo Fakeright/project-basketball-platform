@@ -1,3 +1,9 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * API POST /api/dev/session: รับคำขอ HTTP และประสานบริการที่ใช้จัดการคำขอนี้
+ * ตามการทำงานต่อ: features/identity/infrastructure/cookie-current-actor-provider.ts, features/identity/infrastructure/next-cookie-current-actor-provider.ts
+ */
+
 import { NextResponse } from "next/server"
 
 import {

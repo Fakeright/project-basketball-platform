@@ -1,3 +1,9 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * เก็บรหัสและชื่อจังหวัดไทย 77 จังหวัด พร้อมค้นหาชื่อ/รหัสสำหรับ dropdown
+ * เรียกใช้จาก: components/province-combobox.tsx, features/demo-data/infrastructure/demo-seed-orchestration.ts
+ */
+
 export type ProvinceOption = {
   code: string
   nameTh: string
@@ -90,10 +96,12 @@ export const thaiProvinces = Object.freeze(
 
 const provinceByCode = new Map(thaiProvinces.map((province) => [province.code, province]))
 
+// ค้นข้อมูลจังหวัดจากรหัสที่เก็บในฟอร์มหรือฐานข้อมูล
 export function findProvinceByCode(code: string): ProvinceOption | undefined {
   return provinceByCode.get(code)
 }
 
+// กรองตัวเลือกจังหวัดด้วยคำค้นที่ normalize แล้วสำหรับ combobox
 export function searchThaiProvinces(query: string): readonly ProvinceOption[] {
   const normalizedQuery = query.trim().toLocaleLowerCase("th-TH")
 

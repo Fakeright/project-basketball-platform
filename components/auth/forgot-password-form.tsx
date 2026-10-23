@@ -1,5 +1,12 @@
 "use client"
 
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * รับอีเมลแล้วส่งคำขอกู้รหัสผ่าน พร้อมแสดงผลการส่งและสถานะกำลังทำงาน
+ * เรียกใช้จาก: app/(public)/forgot-password/page.tsx
+ * ตามการทำงานต่อ: components/auth/auth-response.ts, components/ui/button.tsx, components/ui/input.tsx
+ */
+
 import { type FormEvent, useState } from "react"
 import { Mail } from "lucide-react"
 
@@ -17,6 +24,7 @@ export function ForgotPasswordForm() {
   const [submitting, setSubmitting] = useState(false)
   const [feedback, setFeedback] = useState("")
 
+  // ส่งอีเมลไป API ขอ recovery แล้วแสดงข้อความตอบกลับจากระบบ
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setSubmitting(true)

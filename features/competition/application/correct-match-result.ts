@@ -1,3 +1,10 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ให้แอดมินแก้ผลที่ยืนยันแล้วตามเงื่อนไข พร้อมเหตุผลและบันทึกประวัติการแก้ไข
+ * เรียกใช้จาก: app/api/admin/tournaments/[id]/matches/[matchId]/result-correction/route.ts, features/competition/presentation/competition-handler.ts
+ * ตามการทำงานต่อ: features/identity/application/authorize.ts
+ */
+
 import { authorize } from "@/features/identity/application/authorize"
 import type { Actor } from "@/features/identity/domain/actor"
 import { assertScoreCanBeConfirmed } from "@/features/competition/domain/match-result-policy"
@@ -17,6 +24,7 @@ export interface CorrectMatchResultInput {
   reason: string
 }
 
+// ตรวจอำนาจแอดมิน เหตุผล และผลกระทบต่อคู่ถัดไปก่อนแก้ผลที่เคยยืนยัน
 export async function correctMatchResult(
   input: CorrectMatchResultInput,
   actor: Actor,

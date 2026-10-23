@@ -1,3 +1,9 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * เก็บและใช้ recovery grant ผ่าน Prisma โดยตรวจว่ายังไม่ถูกใช้และยังไม่หมดอายุ
+ * เรียกใช้จาก: features/identity/infrastructure/get-auth-handlers.ts
+ */
+
 import type {
   AuthRecoveryGrantRepository,
   ConsumeAuthRecoveryGrantInput,

@@ -1,3 +1,9 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * กำหนดชนิดข้อมูลสาย คู่แข่งขัน จุดส่งต่อผู้ชนะ และสถานะการแข่งขันที่ชั้นต่าง ๆ ใช้ร่วมกัน
+ * เรียกใช้จาก: components/organizer/bracket-mode-control.tsx, components/organizer/external-match-editor.tsx
+ */
+
 import type { TournamentGovernanceStatus } from "@/features/tournament-operations/domain/tournament-governance-policy"
 
 export type BracketMode = "SYSTEM_GENERATED" | "EXTERNAL_DOCUMENT"

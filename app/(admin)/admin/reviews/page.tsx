@@ -1,3 +1,9 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * หน้า /admin/reviews: อ่านคิวรายการที่ส่งตรวจให้แอดมินเลือกพิจารณา
+ * ตามการทำงานต่อ: features/identity/infrastructure/next-cookie-current-actor-provider.ts, features/tournament-operations/infrastructure/get-tournament-operations-repository.ts
+ */
+
 import { notFound } from "next/navigation"
 
 import { TournamentReviewQueue, type ReviewQueueItem } from "@/components/admin/tournament-review-queue"

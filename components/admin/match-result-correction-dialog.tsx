@@ -1,5 +1,12 @@
 "use client"
 
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ฟอร์มยืนยันให้แอดมินแก้คะแนนที่ยืนยันแล้ว พร้อมส่งเหตุผลและ version ไป API
+ * เรียกใช้จาก: app/(admin)/admin/tournaments/[id]/results/page.tsx
+ * ตามการทำงานต่อ: components/ui/button.tsx, components/ui/input.tsx
+ */
+
 import { type FormEvent, useState } from "react"
 import { useRouter } from "next/navigation"
 import { RotateCcw, ShieldCheck } from "lucide-react"
@@ -51,6 +58,7 @@ export function MatchResultCorrectionDialog({
           parsedHomeScore > parsedAwayScore ? match.homeTeam : match.awayTeam
         }`
 
+  // ส่งคะแนนแก้ไข เหตุผล และ version ไป API แอดมิน แล้วโหลดข้อมูลล่าสุดเมื่อสำเร็จ
   async function submitCorrection(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     const trimmedReason = reason.trim()

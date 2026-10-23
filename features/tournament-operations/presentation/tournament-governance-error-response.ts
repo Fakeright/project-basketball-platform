@@ -1,3 +1,10 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * แปลงข้อผิดพลาดการกำกับรายการเป็น HTTP และข้อความภาษาไทยที่ผู้ใช้แก้ไขตามได้
+ * เรียกใช้จาก: features/admin/presentation/review-tournament-handler.ts, features/admin/presentation/save-tournament-handler.ts
+ * ตามการทำงานต่อ: features/tournament-operations/domain/tournament-governance-policy.ts
+ */
+
 import {
   TournamentGovernancePolicyError,
   type TournamentGovernanceIssueCode,

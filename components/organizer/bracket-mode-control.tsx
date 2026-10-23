@@ -1,5 +1,12 @@
 "use client"
 
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ให้ผู้จัดเลือกสายจากระบบหรือเอกสารภายนอก แล้วส่ง mode และ version ไป API
+ * เรียกใช้จาก: components/organizer/bracket-workspace.tsx, components/organizer/external-bracket-workspace.tsx
+ * ตามการทำงานต่อ: lib/utils.ts
+ */
+
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 
@@ -26,6 +33,7 @@ export function BracketModeControl({
   const [pendingMode, setPendingMode] = useState<BracketMode | null>(null)
   const [message, setMessage] = useState<string | null>(null)
 
+  // ส่งโหมดสายที่เลือกและ version ไป API เพื่อให้เซิร์ฟเวอร์ตรวจว่าเปลี่ยนได้หรือไม่
   async function selectMode(mode: BracketMode) {
     if (locked || pendingMode || mode === currentMode) return
     setPendingMode(mode)

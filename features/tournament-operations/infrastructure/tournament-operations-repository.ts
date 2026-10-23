@@ -1,3 +1,9 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * กำหนดสัญญาอ่านรายการและคำสั่งเปลี่ยนสถานะ รวมบริบทการแข่งขันและการกำกับของแอดมิน
+ * เรียกใช้จาก: features/admin/presentation/review-tournament-handler.ts, features/admin/presentation/save-tournament-handler.ts
+ */
+
 import type {
   TournamentAuditAction,
   TournamentOperation,

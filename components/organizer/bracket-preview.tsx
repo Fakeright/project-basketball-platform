@@ -1,3 +1,9 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * แสดงตัวอย่างโครงสร้างคู่แข่งขันที่จัดเตรียมไว้ก่อนหรือหลังเผยแพร่
+ * เรียกใช้จาก: components/organizer/bracket-workspace.tsx
+ */
+
 import type { OrganizerCompetitionWorkspace } from "@/features/competition/application/ports/competition-repository"
 
 type Bracket = NonNullable<OrganizerCompetitionWorkspace["bracket"]>

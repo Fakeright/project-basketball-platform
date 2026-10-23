@@ -1,5 +1,12 @@
 "use client"
 
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * รับอีเมล/รหัสผ่าน ส่ง POST ไป API เข้าสู่ระบบ แล้วเปลี่ยนหน้าเมื่อสำเร็จ
+ * เรียกใช้จาก: app/(public)/login/page.tsx
+ * ตามการทำงานต่อ: components/auth/auth-response.ts, components/ui/button.tsx, components/ui/input.tsx
+ */
+
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { type FormEvent, useState } from "react"
@@ -25,6 +32,7 @@ export function LoginForm({ nextPath }: { nextPath?: string }) {
   const [submitting, setSubmitting] = useState(false)
   const [feedback, setFeedback] = useState("")
 
+  // ส่งข้อมูลไป /api/auth/login แล้วใช้ redirectTo ที่ server ตรวจแล้วเปิดหน้าตามบทบาท
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setSubmitting(true)

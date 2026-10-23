@@ -1,3 +1,8 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ทดสอบ components/admin/tournament-editor.tsx โดยจำลอง dependencies ตามกรณี และตรวจผลสำเร็จ/ข้อผิดพลาดด้วย assertions
+ */
+
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { afterEach, describe, expect, it, vi } from "vitest"
@@ -39,6 +44,31 @@ afterEach(() => {
 })
 
 describe("TournamentEditor", () => {
+  it("saves empty description and rules with document guidance in both fields", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(
+      JSON.stringify({ tournament: { id: "tournament-4", version: 0, status: "DRAFT" } }),
+      { status: 201 },
+    ))
+    vi.stubGlobal("fetch", fetchMock)
+    const user = userEvent.setup()
+    render(<TournamentEditor initialTournament={null} />)
+
+    await fillValidTournament(user)
+    fireEvent.change(screen.getByLabelText("รายละเอียด"), { target: { value: "" } })
+    fireEvent.change(screen.getByLabelText("กติกา"), { target: { value: "" } })
+    expect((screen.getByLabelText("รายละเอียด") as HTMLTextAreaElement).placeholder)
+      .toContain("หากใช้เอกสาร")
+    expect((screen.getByLabelText("กติกา") as HTMLTextAreaElement).placeholder)
+      .toContain("หากใช้เอกสาร")
+    await user.click(screen.getByRole("button", { name: "บันทึกฉบับร่าง" }))
+
+    expect(fetchMock).toHaveBeenCalledOnce()
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toMatchObject({
+      description: "",
+      rules: "",
+    })
+  })
+
   it("requires a canonical age group for a new tournament", () => {
     render(<TournamentEditor initialTournament={null} />)
 

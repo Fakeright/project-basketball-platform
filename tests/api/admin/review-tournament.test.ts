@@ -1,3 +1,8 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ทดสอบ features/admin/presentation/review-tournament-handler.ts, features/identity/domain/actor.ts, features/tournament-operations/infrastructure/in-memory-tournament-operations-repository.ts โดยจำลอง dependencies ตามกรณี และตรวจผลสำเร็จ/ข้อผิดพลาดด้วย assertions
+ */
+
 import { describe, expect, it, vi } from "vitest"
 
 import { handleReviewRequest } from "@/features/admin/presentation/review-tournament-handler"

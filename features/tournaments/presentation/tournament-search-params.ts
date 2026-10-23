@@ -1,3 +1,10 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * แปลง query string เป็นตัวกรองค้นหาและแปลงกลับ เพื่อให้ URL เก็บเงื่อนไขที่เลือก
+ * เรียกใช้จาก: app/(public)/tournaments/page.tsx, components/tournament-search-form.tsx
+ * ตามการทำงานต่อ: features/provinces/domain/thai-provinces.ts, features/tournament-operations/domain/tournament-age-group.ts
+ */
+
 import type {
   TournamentFormat,
   TournamentSearchFilters,
@@ -18,9 +25,11 @@ function scalarValue(value: string | string[] | undefined): string | undefined {
   return trimmed || undefined
 }
 
+// อ่าน query string และคืนเฉพาะตัวกรองที่ระบบรองรับ
 export function parseTournamentSearchParams(
   input: Record<string, string | string[] | undefined>,
 ): TournamentSearchFilters {
+  // อ่านข้อมูลจังหวัดและรูปแบบจาก URL
   const query = scalarValue(input.q)
   const provinceCode = scalarValue(input.province)
   const format = scalarValue(input.format)
@@ -29,6 +38,7 @@ export function parseTournamentSearchParams(
   const date = scalarValue(input.date)
   const status = scalarValue(input.status)
 
+  // คืนเฉพาะค่าที่ผ่านเงื่อนไข
   return {
     ...(query ? { query } : {}),
     ...(provinceCode && findProvinceByCode(provinceCode) ? { provinceCode } : {}),
@@ -40,6 +50,7 @@ export function parseTournamentSearchParams(
   }
 }
 
+// สร้าง query string จากตัวกรอง เพื่อคงตัวเลือกไว้ใน URL
 export function toTournamentSearchParams(filters: TournamentSearchFilters): URLSearchParams {
   const params = new URLSearchParams()
 

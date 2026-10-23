@@ -1,3 +1,9 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * กำหนดบัญชี ทีม ผู้เล่น รายการ และใบสมัครตัวอย่างสำหรับสาธิตเส้นทางหลัก
+ * เรียกใช้จาก: features/demo-data/infrastructure/demo-seed-orchestration.ts, features/demo-data/infrastructure/demo-seed-safety.ts
+ */
+
 import type {
   RegistrationStatus,
   Role,
@@ -239,6 +245,7 @@ export function getDemoBaseTeams(): readonly DemoTeamFixture[] {
   return [...demoSampleTeams, ...demoRegistrationScenarios.map(({ team }) => team)]
 }
 
+// ป้องกันสคริปต์สาธิตทำงานนอกสภาพแวดล้อมที่อนุญาต
 export function assertDemoEnvironment(environment: NodeJS.ProcessEnv): void {
   if (
     environment.NODE_ENV === "production" ||

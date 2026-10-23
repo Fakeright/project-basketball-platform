@@ -1,3 +1,10 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ตรวจเจ้าของรายการ สิทธิ์ และสถานะการกำกับดูแล ก่อนจัดการไฟล์สายการแข่งขัน
+ * เรียกใช้จาก: features/competition/application/publish-external-bracket.ts, features/competition/application/retire-external-bracket.ts
+ * ตามการทำงานต่อ: features/identity/application/authorize.ts
+ */
+
 import { authorize } from "@/features/identity/application/authorize"
 import type { Actor } from "@/features/identity/domain/actor"
 import {

@@ -1,5 +1,12 @@
 "use client"
 
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * แสดงแบรนด์ เมนูสาธารณะ ธีม และส่วนบัญชีตาม session สำหรับ desktop/mobile
+ * เรียกใช้จาก: app/(public)/layout.tsx
+ * ตามการทำงานต่อ: components/account-session-control.tsx, components/theme-toggle.tsx, components/ui/button.tsx
+ */
+
 import Link from "next/link"
 import { useState } from "react"
 import { Menu } from "lucide-react"

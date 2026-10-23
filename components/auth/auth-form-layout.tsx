@@ -1,3 +1,9 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * จัดวางหัวข้อ เนื้อหาฟอร์ม และลิงก์ของหน้าบัญชีให้สอดคล้องกัน
+ * เรียกใช้จาก: app/(public)/forgot-password/page.tsx, app/(public)/login/page.tsx
+ */
+
 import type { ReactNode } from "react"
 
 export function AuthFormLayout({

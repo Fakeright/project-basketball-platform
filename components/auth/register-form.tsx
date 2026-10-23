@@ -1,5 +1,12 @@
 "use client"
 
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * รับข้อมูลสมัครและบทบาทที่เลือกเองได้ ตรวจรหัสผ่านยืนยัน แล้วส่ง API สมัครบัญชี
+ * เรียกใช้จาก: app/(public)/register/page.tsx
+ * ตามการทำงานต่อ: components/auth/auth-response.ts, components/ui/button.tsx, components/ui/input.tsx
+ */
+
 import Link from "next/link"
 import { type FormEvent, useState } from "react"
 import { UserPlus } from "lucide-react"
@@ -34,6 +41,7 @@ export function RegisterForm() {
   const [feedback, setFeedback] = useState("")
   const [successful, setSuccessful] = useState(false)
 
+  // รวบรวมข้อมูลสมัครและรหัสผ่านยืนยัน ส่ง POST ไป API แล้วแสดงผลตามว่าต้องยืนยันอีเมลหรือเข้าสู่ระบบได้
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     const form = new FormData(event.currentTarget)

@@ -1,3 +1,8 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ทดสอบ features/tournament-media/infrastructure/supabase-object-storage.ts โดยจำลอง dependencies ตามกรณี และตรวจผลสำเร็จ/ข้อผิดพลาดด้วย assertions
+ */
+
 import { StorageApiError } from "@supabase/supabase-js"
 import { describe, expect, it, vi } from "vitest"
 

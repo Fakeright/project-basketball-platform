@@ -1,3 +1,9 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * เลือกเฉพาะข้อมูลที่จำเป็นสำหรับประวัติผู้เล่น และตรวจหา audit เก่าที่เก็บข้อมูลส่วนบุคคลเกินจำเป็น
+ * เรียกใช้จาก: features/team-management/application/add-team-players.ts, features/team-management/application/create-team.ts
+ */
+
 import type { TeamPlayer, TeamPlayerPosition } from "./team"
 
 export interface TeamPlayerAuditSnapshot {
@@ -43,6 +49,7 @@ const teamPlayerPiiKeys = new Set([
   "phone",
 ])
 
+// เลือกเฉพาะฟิลด์ที่จำเป็นต่อ audit โดยไม่คัดลอกข้อมูลส่วนบุคคลทั้งระเบียน
 export function projectTeamPlayerAuditSnapshot(
   player: TeamPlayer,
 ): TeamPlayerAuditSnapshot {
@@ -55,6 +62,7 @@ export function projectTeamPlayerAuditSnapshot(
   }
 }
 
+// สร้างประวัติแบบสรุปของชุดผู้เล่น รวม ID ที่เปิดกลับมาใช้
 export function projectTeamPlayerBatchAuditSnapshot(
   players: readonly TeamPlayer[],
   reactivatedPlayerIds: readonly string[],

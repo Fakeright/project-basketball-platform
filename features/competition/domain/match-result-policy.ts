@@ -1,5 +1,12 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ตรวจคะแนนและตัดสินทีมชนะจากคะแนน พร้อมระบุคู่และช่อง HOME/AWAY ที่ผู้ชนะจะไปต่อ
+ * เรียกใช้จาก: features/competition/application/confirm-match-result.ts, features/competition/application/correct-match-result.ts
+ */
+
 import type { MatchSlot } from "./competition"
 
+// คะแนนร่างต้องเป็นจำนวนเต็มตั้งแต่ศูนย์ขึ้นไป แต่ยังเสมอกันได้
 export function assertDraftScore(input: {
   homeScore: number
   awayScore: number
@@ -14,6 +21,7 @@ export function assertDraftScore(input: {
   }
 }
 
+// คะแนนที่จะยืนยันต้องผ่านกฎคะแนนร่างและห้ามเสมอ เพราะต้องตัดสินทีมชนะ
 export function assertScoreCanBeConfirmed(input: {
   homeScore: number
   awayScore: number
@@ -26,6 +34,7 @@ export function assertScoreCanBeConfirmed(input: {
   }
 }
 
+// เลือกทีมที่คะแนนมากกว่า แล้วคืนปลายทางคู่ถัดไปตามที่โครงสร้างสายกำหนดไว้
 export function decideMatchAdvancement(input: {
   homeTeamId: string
   awayTeamId: string

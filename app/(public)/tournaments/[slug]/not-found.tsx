@@ -1,3 +1,9 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * แสดงสถานะไม่พบหน้า/รายการในขอบเขต /tournaments/[slug] และทางกลับไปใช้งานต่อ
+ * ตามการทำงานต่อ: components/state-panel.tsx
+ */
+
 import { StatePanel } from "@/components/state-panel"
 
 export default function TournamentNotFound() {

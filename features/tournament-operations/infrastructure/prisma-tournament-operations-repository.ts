@@ -1,3 +1,10 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * อ่านและเปลี่ยนรายการผ่าน Prisma พร้อม version, transaction, audit และการตรวจสถานะซ้ำก่อนเขียน
+ * เรียกใช้จาก: features/tournament-operations/infrastructure/get-tournament-operations-repository.ts
+ * ตามการทำงานต่อ: features/tournament-operations/infrastructure/prisma-tournament-governance-lock.ts
+ */
+
 import { randomUUID } from "node:crypto"
 
 import {
@@ -503,6 +510,7 @@ export class PrismaTournamentOperationsRepository
   }
 }
 
+// รัน transaction ที่ป้องกันผลจากคำสั่งพร้อมกัน และลองใหม่ตามจำนวนครั้งที่จำกัดเมื่อเกิด serialization conflict
 async function runSerializableTransaction<T>(
   prisma: PrismaClient,
   operation: (transaction: Prisma.TransactionClient) => Promise<T>,
@@ -724,6 +732,7 @@ function mapTournamentChanges(
   return data
 }
 
+// แปลงระเบียนรายการและความสัมพันธ์ที่อ่านมาเป็นข้อมูลตามสัญญา repository
 function mapTournament(tournament: TournamentOperationRow): TournamentOperation {
   return {
     id: tournament.id,
@@ -751,10 +760,12 @@ function mapTournament(tournament: TournamentOperationRow): TournamentOperation 
   }
 }
 
+// แปลงข้อมูลให้เก็บในช่อง JSON ของ Prisma ได้ เช่น snapshot ใน audit
 function toJsonValue(value: unknown): Prisma.InputJsonValue {
   return JSON.parse(JSON.stringify(value)) as Prisma.InputJsonValue
 }
 
+// แยกข้อผิดพลาด transaction ชนกัน เพื่อให้ retry เฉพาะกรณีที่รองรับ
 function isPrismaSerializationConflict(error: unknown) {
   return (
     typeof error === "object" &&

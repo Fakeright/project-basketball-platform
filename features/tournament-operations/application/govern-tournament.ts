@@ -1,3 +1,10 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ดำเนินคำสั่งกำกับรายการของแอดมิน เช่น ระงับ เปิดกลับ เก็บถาวร หรือลบ ตามกฎและเหตุผล
+ * เรียกใช้จาก: features/tournament-operations/presentation/tournament-governance-handler.ts
+ * ตามการทำงานต่อ: features/identity/application/authorize.ts
+ */
+
 import { authorize } from "@/features/identity/application/authorize"
 import type { Actor } from "@/features/identity/domain/actor"
 import type { TournamentOperation } from "@/features/tournament-operations/domain/tournament-operation"

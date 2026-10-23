@@ -1,3 +1,10 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * เผยแพร่หรือยกเลิกเผยแพร่สายของระบบ หลังตรวจสิทธิ์ ความพร้อม และเงื่อนไขการแก้โครงสร้าง
+ * เรียกใช้จาก: app/api/organizer/tournaments/[id]/bracket/publication/route.ts
+ * ตามการทำงานต่อ: features/identity/application/authorize.ts
+ */
+
 import { authorize } from "@/features/identity/application/authorize"
 import type { Actor } from "@/features/identity/domain/actor"
 import { assertTournamentGovernanceAllowsOperation } from "@/features/tournament-operations/domain/tournament-governance-policy"
@@ -13,6 +20,7 @@ interface PublicationDependencies {
   now: () => Date
 }
 
+/** เผยแพร่สายฉบับร่างให้หน้าสาธารณะเห็น หลังตรวจว่าคู่ครบ */
 export async function publishBracket(
   input: { tournamentId: string; expectedVersion: number },
   actor: Actor,
@@ -21,6 +29,7 @@ export async function publishBracket(
   return changePublication(input, actor, dependencies, true, null)
 }
 
+/** ถอนการเผยแพร่ได้ก่อนมีคู่เริ่มแข่ง และต้องระบุเหตุผล */
 export async function unpublishBracket(
   input: { tournamentId: string; expectedVersion: number; reason: string },
   actor: Actor,

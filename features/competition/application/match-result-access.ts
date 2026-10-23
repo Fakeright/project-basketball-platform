@@ -1,3 +1,10 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * อ่านและตรวจบริบทคู่แข่งขันร่วมกันก่อนบันทึกหรือยืนยันคะแนน เช่น เจ้าของ สถานะ และเวอร์ชัน
+ * เรียกใช้จาก: features/competition/application/confirm-match-result.ts, features/competition/application/record-match-score.ts
+ * ตามการทำงานต่อ: features/identity/application/authorize.ts
+ */
+
 import { authorize } from "@/features/identity/application/authorize"
 import type { Actor } from "@/features/identity/domain/actor"
 import { assertTournamentGovernanceAllowsOperation } from "@/features/tournament-operations/domain/tournament-governance-policy"
@@ -7,6 +14,7 @@ import type {
   MatchResultContext,
 } from "./ports/competition-repository"
 
+/** ประตูร่วมของบันทึกร่าง/ยืนยันผล: สิทธิ์ เจ้าของ version และสถานะแข่งขัน */
 export async function loadMutableMatchResultContext(
   input: { tournamentId: string; matchId: string; expectedVersion: number },
   actor: Actor,

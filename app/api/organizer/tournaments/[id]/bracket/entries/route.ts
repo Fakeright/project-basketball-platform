@@ -1,3 +1,9 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * API POST /api/organizer/tournaments/[id]/bracket/entries: รับคำขอ HTTP แล้วส่งต่อ handleLockBracketEntries
+ * ตามการทำงานต่อ: features/competition/application/lock-bracket-entries.ts, features/competition/infrastructure/get-competition-repository.ts, features/competition/presentation/competition-handler.ts
+ */
+
 import { lockBracketEntries } from "@/features/competition/application/lock-bracket-entries"
 import { getCompetitionRepository } from "@/features/competition/infrastructure/get-competition-repository"
 import { handleLockBracketEntries } from "@/features/competition/presentation/competition-handler"

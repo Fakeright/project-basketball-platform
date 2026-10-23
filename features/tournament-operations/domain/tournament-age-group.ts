@@ -1,3 +1,9 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * กำหนดรุ่น U12, U14, U16, U18, U23 และ Open ให้ฟอร์มกับการค้นหาใช้ชุดเดียวกัน
+ * เรียกใช้จาก: components/admin/tournament-editor.tsx, components/tournament-search-form.tsx
+ */
+
 export const TOURNAMENT_AGE_GROUPS = [
   "U12",
   "U14",

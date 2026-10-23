@@ -1,3 +1,9 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * หน้า /team/new: เปิดฟอร์มสร้างทีมพร้อมประวัติผู้เล่นของบัญชีที่เลือกกลับมาใช้ได้
+ * ตามการทำงานต่อ: features/identity/infrastructure/next-cookie-current-actor-provider.ts, features/team-management/application/list-reusable-team-players.ts, features/team-management/infrastructure/get-team-repository.ts
+ */
+
 import { TeamEditor } from "@/components/team/team-editor"
 import { createNextCookieCurrentActorProvider } from "@/features/identity/infrastructure/next-cookie-current-actor-provider"
 import { listReusableTeamPlayers } from "@/features/team-management/application/list-reusable-team-players"

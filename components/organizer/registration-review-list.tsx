@@ -1,5 +1,12 @@
 "use client"
 
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * แสดงใบสมัคร สมาชิกทีม และปุ่มอนุมัติ/ปฏิเสธ/ถอน โดยยืนยันคำสั่งและส่งเหตุผลไป API
+ * เรียกใช้จาก: app/(admin)/organizer/tournaments/[id]/registrations/page.tsx
+ * ตามการทำงานต่อ: components/ui/button.tsx, components/ui/input.tsx, components/organizer/registration-team-roster.tsx
+ */
+
 import { useState } from "react"
 import { Dialog as DialogPrimitive } from "@base-ui/react/dialog"
 import { Check, UserMinus, X } from "lucide-react"
@@ -62,6 +69,7 @@ export function RegistrationReviewList({
     }
   })
 
+  // ตรวจเหตุผลบนหน้าจอเมื่อจำเป็น แล้วเปิด dialog ยืนยันคำสั่งก่อนส่ง API
   function requestConfirmation(
     kind: Confirmation["kind"],
     registration: RegistrationReviewListItem,

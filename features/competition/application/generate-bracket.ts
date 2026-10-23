@@ -1,3 +1,10 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * รับลำดับทีมที่จัดเองหรือสุ่ม แล้วสร้างสายฉบับร่างแบบจับคู่ติดกันและบันทึกรอบ/คู่พร้อมกัน
+ * เรียกใช้จาก: app/api/organizer/tournaments/[id]/bracket/generate/route.ts, features/competition/presentation/competition-handler.ts
+ * ตามการทำงานต่อ: features/identity/application/authorize.ts
+ */
+
 import { authorize } from "@/features/identity/application/authorize"
 import type { Actor } from "@/features/identity/domain/actor"
 import { generateOrderedSingleEliminationBracket } from "@/features/competition/domain/bracket-generator"
@@ -38,6 +45,7 @@ interface GenerateBracketDependencies {
   ) => LockedBracketEntry[]
 }
 
+/** ตรวจเจ้าของ/สิทธิ์ เวอร์ชัน สถานะ และจำนวนทีม ก่อนสร้างสายฉบับร่างใน transaction */
 export async function generateBracketDraft(
   input: GenerateBracketDraftInput,
   actor: Actor,
@@ -95,6 +103,7 @@ export async function generateBracketDraft(
     })
   })
 
+  // เรียงเองต้องส่งครบทุกทีมและไม่ซ้ำ; สุ่มเดิมใช้ token เดิมจนกว่าจะสั่ง redraw
   function prepareEntries(
     generationInput: GenerateBracketDraftInput,
     lockedEntries: readonly LockedBracketEntry[],

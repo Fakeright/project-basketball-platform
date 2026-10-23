@@ -1,5 +1,12 @@
 "use client"
 
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * แสดงรายชื่อปัจจุบัน พร้อมเพิ่ม แก้ และนำผู้เล่นออกผ่าน API แล้วปรับรายการบนหน้าจอ
+ * เรียกใช้จาก: components/team/team-workspace-manager.tsx
+ * ตามการทำงานต่อ: components/team/team-player-batch-form.tsx, components/team/team-player-fields.tsx, components/ui/button.tsx
+ */
+
 import { Pencil, UserMinus } from "lucide-react"
 import { useState } from "react"
 
@@ -48,6 +55,7 @@ export function TeamPlayerRoster({
   const maximumPlayers = getMaximumTeamPlayerCount(format)
   const formatLabel = format === "FIVE_V_FIVE" ? "5v5" : "3v3"
 
+  // คัดข้อมูลผู้เล่นที่เลือกมาเป็นค่าเริ่มต้นของฟอร์มแก้ไข
   function startEditing(player: TeamPlayer) {
     setEditingPlayerId(player.id)
     setEditValues(playerValuesFromDraft(player))
@@ -55,11 +63,13 @@ export function TeamPlayerRoster({
     setMessage(null)
   }
 
+  // แก้ค่า field ใน state ของฟอร์มผู้เล่น โดยยังไม่ส่งฐานข้อมูล
   function updateEditValue(field: TeamPlayerField, value: string) {
     setEditValues((current) => current ? { ...current, [field]: value } : current)
     setEditErrors((current) => ({ ...current, [field]: undefined }))
   }
 
+  // ส่งข้อมูลผู้เล่นที่แก้ไป API แล้วแทนที่ข้อมูลในรายชื่อด้วยค่าที่บันทึกสำเร็จ
   async function savePlayer(player: TeamPlayer) {
     if (!editValues || pendingPlayerId) return
     const errors = validatePlayerValues(editValues)
@@ -108,6 +118,7 @@ export function TeamPlayerRoster({
     }
   }
 
+  // เรียก API นำผู้เล่นออก และปรับรายการปัจจุบันเมื่อเซิร์ฟเวอร์ตอบสำเร็จ
   async function deactivatePlayer(player: TeamPlayer) {
     const name = playerDisplayName(player)
     const remainingPlayers = players.length - 1

@@ -1,3 +1,9 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * อ่านบัญชีจำลองจาก cookie สำหรับโหมดพัฒนา และกำหนดปลายทางตามบทบาท
+ * เรียกใช้จาก: app/api/dev/session/route.ts, features/identity/infrastructure/create-current-actor-provider.ts
+ */
+
 import type {
   Actor,
   CurrentActorProvider,
@@ -45,6 +51,7 @@ export class CookieCurrentActorProvider implements CurrentActorProvider {
     private readonly developmentSessionEnabled: boolean,
   ) {}
 
+  // อ่านตัวตนที่เชื่อถือได้ตาม provider นี้; คืน null เมื่อไม่มี session หรือไม่พบโปรไฟล์ที่ใช้ได้
   async getCurrentActor(): Promise<Actor | null> {
     if (!this.developmentSessionEnabled) return null
 

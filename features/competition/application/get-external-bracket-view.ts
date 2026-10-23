@@ -1,3 +1,9 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * อ่านไฟล์สายที่เผยแพร่พร้อมข้อมูลลิงก์และความเก่าของไฟล์สำหรับผู้ชม
+ * เรียกใช้จาก: app/(public)/bracket/page.tsx, components/external-bracket-view.tsx
+ */
+
 import type { ExternalBracketRepository } from "./ports/external-bracket-repository"
 import type { ObjectStorage } from "@/features/tournament-media/application/ports/object-storage"
 

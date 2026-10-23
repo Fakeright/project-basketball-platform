@@ -1,3 +1,8 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ทดสอบ features/tournament-media/domain/media-policy.ts โดยจำลอง dependencies ตามกรณี และตรวจผลสำเร็จ/ข้อผิดพลาดด้วย assertions
+ */
+
 import { describe, expect, it } from "vitest"
 
 import {
@@ -11,6 +16,7 @@ describe("validateMediaFile", () => {
       validateMediaFile({
         kind: "POSTER",
         contentType: "image/webp",
+        fileName: "poster.webp",
         byteSize: 4_000_000,
       }),
     ).not.toThrow()
@@ -23,6 +29,7 @@ describe("validateMediaFile", () => {
         validateMediaFile({
           kind,
           contentType: kind === "POSTER" ? "image/webp" : "application/pdf",
+          fileName: kind === "POSTER" ? "poster.webp" : "document.pdf",
           byteSize: 4_000_001,
         }),
       ).toThrow("MEDIA_FILE_TOO_LARGE")
@@ -34,6 +41,7 @@ describe("validateMediaFile", () => {
       validateMediaFile({
         kind: "POSTER",
         contentType: "image/gif",
+        fileName: "poster.gif",
         byteSize: 512,
       }),
     ).toThrow("MEDIA_FILE_TYPE_INVALID")

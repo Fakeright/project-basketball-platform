@@ -1,3 +1,10 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ชุดช่องกรอกชื่อ วันเกิด เบอร์เสื้อ ตำแหน่ง และข้อมูลผู้เล่นที่ฟอร์มหลายหน้าร่วมใช้
+ * เรียกใช้จาก: components/team/team-creation-roster-editor.tsx, components/team/team-editor.tsx
+ * ตามการทำงานต่อ: components/ui/input.tsx, features/shared/domain/calendar-date.ts
+ */
+
 import type { ChangeEvent } from "react"
 
 import { Input } from "@/components/ui/input"
@@ -178,6 +185,7 @@ export function isBlankPlayerValues(values: TeamPlayerFormValues) {
   return Object.values(values).every((value) => value.trim() === "")
 }
 
+// ตรวจค่าในฟอร์มผู้เล่นและคืนข้อผิดพลาดรายช่องสำหรับแสดงข้าง input
 export function validatePlayerValues(values: TeamPlayerFormValues): TeamPlayerFieldErrors {
   const errors: TeamPlayerFieldErrors = {}
   const firstName = values.firstName.trim()
@@ -207,12 +215,14 @@ export function validatePlayerValues(values: TeamPlayerFormValues): TeamPlayerFi
   return errors
 }
 
+// ตรวจว่าข้อความวันเกิดเป็นวันที่ปฏิทินที่มีอยู่จริงตามรูปแบบที่ระบบรับ
 function isIsoCalendarDate(value: string) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false
   const date = new Date(`${value}T00:00:00.000Z`)
   return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value
 }
 
+// แปลงข้อความจาก input เป็นชนิดข้อมูลร่างผู้เล่น เช่น เบอร์เสื้อเป็นตัวเลขหรือ null
 export function playerDraftFromValues(values: TeamPlayerFormValues): TeamPlayerDraft {
   return {
     firstName: values.firstName.trim(),
@@ -225,6 +235,7 @@ export function playerDraftFromValues(values: TeamPlayerFormValues): TeamPlayerD
   }
 }
 
+// แปลงข้อมูลผู้เล่นกลับเป็นข้อความสำหรับเติมในช่อง input
 export function playerValuesFromDraft(player: TeamPlayerDraft): TeamPlayerFormValues {
   return {
     firstName: player.firstName,

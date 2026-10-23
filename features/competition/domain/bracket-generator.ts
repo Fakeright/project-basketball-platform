@@ -1,3 +1,10 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * สร้างแผนรอบและคู่แข่งขันในหน่วยความจำ; เส้นทางปัจจุบันจับคู่ตำแหน่ง 1–2, 3–4 และเชื่อมผู้ชนะไปคู่ถัดไป
+ * เรียกใช้จาก: features/competition/application/generate-bracket.ts, features/competition/application/ports/competition-repository.ts
+ * ตามการทำงานต่อ: features/competition/domain/bracket-policy.ts
+ */
+
 import {
   assertSystemBracketEntryCount,
   validateOrderedPositions,
@@ -42,6 +49,7 @@ type BracketSource =
   | { kind: "MATCH"; matchKey: string }
   | null
 
+// สร้างลำดับ seed แบบเดิมสำหรับชุดข้อมูลสาธิต/การทดสอบที่ยังใช้เส้นทางนี้
 export function mirroredSeedOrder(size: number): number[] {
   if (!Number.isInteger(Math.log2(size)) || size < 2 || size > 32) {
     throw new Error("BRACKET_SIZE_INVALID")
@@ -54,6 +62,7 @@ export function mirroredSeedOrder(size: number): number[] {
   ])
 }
 
+/** วิธี seed แบบเดิม คงไว้สำหรับข้อมูล/การเรียกใช้เก่าที่ต้องอ่านได้ */
 export function generateSingleEliminationBracket(input: {
   entries: readonly BracketGenerationEntry[]
 }): GeneratedBracketPlan {
@@ -73,6 +82,7 @@ export function generateSingleEliminationBracket(input: {
   return buildBracketPlan(input.entries, bracketSize, sources)
 }
 
+/** สายปัจจุบันจับคู่ตำแหน่งติดกัน: 1-2, 3-4, ...  */
 export function generateOrderedSingleEliminationBracket(input: {
   entries: readonly OrderedBracketEntry[]
 }): GeneratedBracketPlan {
@@ -91,7 +101,7 @@ export function generateOrderedSingleEliminationBracket(input: {
 
   return buildBracketPlan(input.entries, input.entries.length, sources)
 }
-
+/** สร้างคู่ทีละรอบและเชื่อมผลชนะไปช่อง HOME/AWAY ของคู่ในรอบถัดไป */
 function buildBracketPlan(
   entries: readonly { entryId: string }[],
   bracketSize: number,
@@ -110,11 +120,12 @@ function buildBracketPlan(
 
   for (let roundSequence = 1; roundSequence <= roundCount; roundSequence += 1) {
     const nextSources: BracketSource[] = []
-
+    // ลูปวนทีละ 2 ทีม (index += 2) เพื่อเอามาจับคู่กัน
     for (let index = 0; index < currentSources.length; index += 2) {
-      const homeSource = currentSources[index] ?? null
-      const awaySource = currentSources[index + 1] ?? null
+      const homeSource = currentSources[index] ?? null    //ทีมเจ้าบ้าน (หรือทีมฝั่งบน)
+      const awaySource = currentSources[index + 1] ?? null // ทีมเยือน (หรือทีมฝั่งล่าง)
 
+      // ช่องว่างรองรับเส้นทาง seed เดิม; เส้นทาง ORDERED ปัจจุบันรับจำนวนทีมเต็มสายเท่านั้น
       if (!homeSource && !awaySource) {
         nextSources.push(null)
         continue
@@ -170,10 +181,12 @@ function buildBracketPlan(
   return plan
 }
 
+// หาขนาดสายกำลังสองที่ครอบจำนวนทีมสำหรับวิธี seed เดิมซึ่งรองรับบาย
 function nextPowerOfTwo(value: number): number {
   return 2 ** Math.ceil(Math.log2(value))
 }
 
+// ตั้งชื่อรอบจากจำนวนทีมที่เหลือ เช่น 2 ทีมคือ Final
 function getRoundName(teamCount: number): string {
   if (teamCount === 2) return "Final"
   if (teamCount === 4) return "Semi Final"
@@ -189,6 +202,7 @@ function sourceMatchKey(source: Exclude<BracketSource, null>): string | null {
   return source.kind === "MATCH" ? source.matchKey : null
 }
 
+// จำว่าทีมเริ่มเล่นรอบใด เพื่อรองรับแผนที่มีทีมบายจากวิธีเดิม
 function setEntryStart(
   entryStarts: Map<string, number>,
   source: Exclude<BracketSource, null>,
@@ -199,6 +213,7 @@ function setEntryStart(
   }
 }
 
+// เชื่อมคู่ก่อนหน้าให้รู้ว่าผู้ชนะจะไปคู่ไหนและอยู่ช่อง HOME หรือ AWAY
 function connectSourceToMatch(
   matchesByKey: Map<string, GeneratedMatchPlan>,
   source: Exclude<BracketSource, null>,
@@ -214,6 +229,7 @@ function connectSourceToMatch(
   sourceMatch.nextSlot = nextSlot
 }
 
+// ตรวจจำนวนคู่ n−1 คู่ชิงเพียงหนึ่งคู่ และปลายทางผู้ชนะที่อ้างถึงคู่ซึ่งมีอยู่จริง
 function assertPlanIntegrity(
   plan: GeneratedBracketPlan,
   entryCount: number,

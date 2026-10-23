@@ -1,3 +1,10 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * รับคำขอสมัคร ยกเลิก ตัดสิน หรือถอนทีม ตรวจ payload แล้วแปลงผล use case เป็น HTTP ภาษาไทย
+ * เรียกใช้จาก: app/api/organizer/tournaments/[id]/registrations/[registrationId]/decision/route.ts, app/api/organizer/tournaments/[id]/registrations/[registrationId]/withdraw/route.ts
+ * ตามการทำงานต่อ: features/tournament-operations/presentation/tournament-governance-error-response.ts
+ */
+
 import { randomUUID } from "node:crypto"
 
 import { z } from "zod"
@@ -65,6 +72,7 @@ interface WithdrawalHandlerDependencies extends RegistrationHandlerDiagnostics {
   withdraw: (input: WithdrawRegistrationInput, actor: Actor) => Promise<TournamentRegistration>
 }
 
+// ตรวจผู้ใช้และ JSON จาก API ก่อนส่งต่อให้ use case ตรวจสิทธิ์และเงื่อนไขสมัคร
 export async function handleApplyToTournament(
   tournamentId: string,
   request: Request,
@@ -112,6 +120,7 @@ export async function handleCancelRegistration(
   }
 }
 
+// รับผลอนุมัติ/ปฏิเสธจากผู้จัด แล้วแปลงข้อผิดพลาดของ use case เป็น HTTP response
 export async function handleDecideRegistration(
   tournamentId: string,
   registrationId: string,
@@ -223,6 +232,10 @@ function registrationFailureResponse(
     FORBIDDEN: { status: 403, message: "คุณไม่มีสิทธิ์ดำเนินการนี้" },
     NOT_FOUND: { status: 404, message: "ไม่พบรายการสมัคร" },
     REGISTRATION_ALREADY_ACTIVE: { status: 409, message: "ทีมนี้สมัครรายการนี้อยู่แล้ว" },
+    REGISTRATION_TEAM_NAME_TAKEN: {
+      status: 409,
+      message: "มีทีมชื่อนี้สมัครรายการแล้ว กรุณาเปลี่ยนชื่อทีมก่อนสมัคร",
+    },
     CONFLICT: { status: 409, message: "รายการสมัครมีการเปลี่ยนแปลง กรุณาลองใหม่" },
     INVALID_REGISTRATION_TRANSITION: { status: 409, message: "ไม่สามารถยกเลิกรายการสมัครนี้ได้" },
     TOURNAMENT_NOT_PUBLISHED: { status: 422, message: "ยังไม่เปิดรับสมัคร" },

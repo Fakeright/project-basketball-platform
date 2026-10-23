@@ -1,3 +1,8 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ทดสอบ features/tournament-operations/infrastructure/development-tournament-operations-repository.ts, features/tournament-operations/infrastructure/in-memory-tournament-operations-repository.ts, features/tournament-operations/infrastructure/tournament-operations-repository.ts โดยจำลอง dependencies ตามกรณี และตรวจผลสำเร็จ/ข้อผิดพลาดด้วย assertions
+ */
+
 import { beforeEach, describe, expect, expectTypeOf, it, vi } from "vitest"
 
 import { getDevelopmentTournamentOperationsRepository } from "@/features/tournament-operations/infrastructure/development-tournament-operations-repository"

@@ -1,3 +1,8 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ทดสอบ components/home-hero-image.tsx, components/ui/sheet.tsx, app/(public)/layout.tsx โดยจำลอง dependencies ตามกรณี และตรวจผลสำเร็จ/ข้อผิดพลาดด้วย assertions
+ */
+
 import { existsSync } from "node:fs"
 import { readFile } from "node:fs/promises"
 import { resolve } from "node:path"

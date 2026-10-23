@@ -1,3 +1,9 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * จุดเริ่มต้นสคริปต์สร้างข้อมูลสาธิตหลัก โดยตรวจ environment และใช้ขั้นตอน seed ที่กำหนดไว้
+ * ตามการทำงานต่อ: features/demo-data/infrastructure/prisma-demo-seed-port.ts, features/demo-data/infrastructure/demo-seed-orchestration.ts, features/demo-data/infrastructure/demo-seed-safety.ts
+ */
+
 import { PrismaPg } from "@prisma/adapter-pg"
 import { config } from "dotenv"
 

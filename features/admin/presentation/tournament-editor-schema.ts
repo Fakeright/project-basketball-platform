@@ -1,3 +1,10 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * กำหนดรูปแบบฟอร์มด้วย Zod รวมจังหวัด รุ่นอายุ จำนวนทีม และวันเวลา; รายละเอียดกับกติกาเว้นว่างได้
+ * เรียกใช้จาก: components/admin/tournament-editor.tsx, features/admin/presentation/save-tournament-handler.ts
+ * ตามการทำงานต่อ: features/admin/presentation/tournament-editor-time.ts, features/provinces/application/assert-province-code.ts
+ */
+
 import { z } from "zod"
 
 import { tournamentDateTimeToUtc } from "./tournament-editor-time"
@@ -26,7 +33,7 @@ const dateTime = (requiredMessage: string) =>
 export const tournamentEditorSchemaForMode = (allowLegacyCapacity: boolean) => z
   .object({
     title: requiredText("กรุณาระบุชื่อรายการ"),
-    description: requiredText("กรุณาระบุรายละเอียด"),
+    description: z.string().trim(),
     provinceCode: z.string().trim().refine(
       (value) => {
         try {
@@ -56,7 +63,7 @@ export const tournamentEditorSchemaForMode = (allowLegacyCapacity: boolean) => z
         (allowLegacyCapacity && isLegacyTournamentCapacity(capacity)), {
         message: tournamentCapacityMessage,
       }),
-    rules: requiredText("กรุณาระบุกติกา"),
+    rules: z.string().trim(),
     version: z.coerce.number().int().nonnegative().optional(),
   })
 

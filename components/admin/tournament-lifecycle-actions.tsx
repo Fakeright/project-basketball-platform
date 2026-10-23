@@ -1,5 +1,11 @@
 "use client"
 
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * แสดงคำสั่งเผยแพร่/ปิดรับสมัครตามสถานะ และส่งคำขอเปลี่ยนสถานะไป API
+ * เรียกใช้จาก: app/(admin)/organizer/tournaments/[id]/page.tsx
+ */
+
 import { useState } from "react"
 
 import type { TournamentOperationStatus } from "@/features/tournament-operations/domain/tournament-operation"
@@ -43,6 +49,7 @@ export function TournamentLifecycleActions({
 
   if (!action) return null
 
+  // ส่งคำสั่งเปลี่ยนสถานะรายการไป endpoint ที่ตรงกับ action แล้วรีเฟรชข้อมูล
   async function transition() {
     if (!action || !window.confirm(actionCopy[action].confirmation)) return
 

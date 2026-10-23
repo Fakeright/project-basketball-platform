@@ -1,3 +1,9 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * หน้า /admin/tournaments/[id]: แสดงข้อมูลรายการ สถานะกำกับ และคำสั่งที่แอดมินทำได้
+ * ตามการทำงานต่อ: features/identity/infrastructure/next-cookie-current-actor-provider.ts, features/tournament-operations/infrastructure/get-tournament-operations-repository.ts
+ */
+
 import { notFound } from "next/navigation"
 
 import {

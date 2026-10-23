@@ -1,3 +1,10 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ลงลายเซ็นและตรวจข้อมูล recovery ใน cookie แล้วใช้ nonce/วันหมดอายุควบคุมสิทธิ์เปลี่ยนรหัสผ่าน
+ * เรียกใช้จาก: features/identity/infrastructure/get-auth-handlers.ts
+ * ตามการทำงานต่อ: features/identity/application/manage-recovery-grant.ts
+ */
+
 import "server-only"
 
 import {

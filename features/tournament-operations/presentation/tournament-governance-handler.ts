@@ -1,3 +1,10 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ตรวจคำสั่งกำกับรายการและเหตุผลจากแอดมิน ก่อนเรียก use case
+ * เรียกใช้จาก: app/api/admin/tournaments/[id]/governance/route.ts
+ * ตามการทำงานต่อ: features/tournament-operations/application/govern-tournament.ts, features/shared/presentation/safe-http.ts, features/tournament-operations/presentation/tournament-governance-error-response.ts
+ */
+
 import { z } from "zod"
 
 import {

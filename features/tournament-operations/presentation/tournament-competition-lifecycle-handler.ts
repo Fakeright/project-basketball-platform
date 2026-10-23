@@ -1,3 +1,10 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ตรวจคำขอเริ่ม/จบการแข่งขันแล้วคืนรายการเงื่อนไขที่ยังขาดให้หน้าจอ
+ * เรียกใช้จาก: app/api/organizer/tournaments/[id]/complete/route.ts, app/api/organizer/tournaments/[id]/start/route.ts
+ * ตามการทำงานต่อ: features/shared/presentation/safe-http.ts, features/tournament-operations/presentation/tournament-governance-error-response.ts
+ */
+
 import { z } from "zod"
 
 import {

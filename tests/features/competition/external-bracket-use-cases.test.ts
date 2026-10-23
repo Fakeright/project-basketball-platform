@@ -1,10 +1,15 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ทดสอบ features/competition/application/publish-external-bracket.ts, features/competition/application/retire-external-bracket.ts, features/competition/application/select-bracket-mode.ts โดยจำลอง dependencies ตามกรณี และตรวจผลสำเร็จ/ข้อผิดพลาดด้วย assertions
+ */
+
 import { describe, expect, it, vi } from "vitest"
 
 import { publishExternalBracket } from "@/features/competition/application/publish-external-bracket"
 import { retireExternalBracket } from "@/features/competition/application/retire-external-bracket"
 import { selectBracketMode } from "@/features/competition/application/select-bracket-mode"
 import { uploadExternalBracket } from "@/features/competition/application/upload-external-bracket"
-import type { ExternalBracketRepository } from "@/features/competition/application/ports/external-bracket-repository"
+import type { ExternalBracketRepository, ExternalBracketWorkspaceContext } from "@/features/competition/application/ports/external-bracket-repository"
 import { ObjectStorageError } from "@/features/tournament-media/application/ports/object-storage"
 import type { Actor } from "@/features/identity/domain/actor"
 import { TournamentGovernancePolicyError } from "@/features/tournament-operations/domain/tournament-governance-policy"
@@ -23,7 +28,7 @@ const admin: Actor = {
   displayName: "Admin",
 }
 
-function workspace(overrides: Record<string, unknown> = {}) {
+function workspace(overrides: Partial<ExternalBracketWorkspaceContext> = {}): ExternalBracketWorkspaceContext {
   return {
     tournamentId: "t-1",
     tournamentTitle: "Bangkok Cup",
@@ -43,7 +48,7 @@ function workspace(overrides: Record<string, unknown> = {}) {
 
 function createDependencies(overrides: Record<string, unknown> = {}) {
   const externalBrackets = {
-    findWorkspace: vi.fn(async () => workspace()),
+    findWorkspace: vi.fn<ExternalBracketRepository["findWorkspace"]>(async () => workspace()),
     findModeSelectionContext: vi.fn(async () => ({
       ...workspace(),
       bracketMode: "SYSTEM_GENERATED" as const,

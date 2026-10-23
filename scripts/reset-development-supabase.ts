@@ -1,3 +1,8 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * สคริปต์ล้างข้อมูลพัฒนาที่ต้องผ่านการยืนยันและการตรวจเป้าหมายก่อนทำงาน
+ */
+
 import { spawn } from "node:child_process"
 import { fileURLToPath } from "node:url"
 

@@ -1,3 +1,8 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ทดสอบ lib/generated/prisma/client.ts, features/team-management/infrastructure/prisma-team-repository.ts โดยจำลอง dependencies ตามกรณี และตรวจผลสำเร็จ/ข้อผิดพลาดด้วย assertions
+ */
+
 import { describe, expect, it, vi } from "vitest"
 
 import type { PrismaClient } from "@/lib/generated/prisma/client"
@@ -71,6 +76,23 @@ function createPrismaMock() {
 }
 
 describe("PrismaTeamRepository", () => {
+  it("locks the team owner before checking another active team with the same normalized name", async () => {
+    const prisma = createPrismaMock()
+    prisma.$queryRaw
+      .mockResolvedValueOnce([{ id: "manager-1" }])
+      .mockResolvedValueOnce([{ id: "team-2" }])
+    const repository = new PrismaTeamRepository(prisma as unknown as PrismaClient)
+
+    const conflict = await repository.inTransaction((teams) =>
+      teams.hasActiveNameConflict("manager-1", " bangkok ballers ", "team-1"),
+    )
+
+    expect(conflict).toBe(true)
+    expect(prisma.$queryRaw.mock.calls[0][0].text).toMatch(/FROM "User"[\s\S]*FOR UPDATE/)
+    expect(prisma.$queryRaw.mock.calls[1][0].text).toContain('lower(btrim("name"))')
+    expect(prisma.$queryRaw.mock.calls[1][0].text).toContain('"isActive" = true')
+  })
+
   it("reports legacy reconciliation counts and registration statuses without selecting PII", async () => {
     const prisma = createPrismaMock()
     prisma.teamMember.groupBy.mockResolvedValue([

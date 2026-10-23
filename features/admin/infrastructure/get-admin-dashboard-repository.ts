@@ -1,3 +1,10 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ประกอบ repository สำหรับอ่านแดชบอร์ดจากฐานข้อมูลที่ตั้งค่าไว้
+ * เรียกใช้จาก: app/(admin)/admin/page.tsx
+ * ตามการทำงานต่อ: features/admin/infrastructure/prisma-admin-dashboard-repository.ts
+ */
+
 import "server-only"
 
 import { getPrismaClient } from "@/lib/server/prisma"

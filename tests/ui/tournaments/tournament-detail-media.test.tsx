@@ -1,3 +1,8 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ทดสอบ components/tournaments/tournament-document-list.tsx, components/tournaments/tournament-poster.tsx โดยจำลอง dependencies ตามกรณี และตรวจผลสำเร็จ/ข้อผิดพลาดด้วย assertions
+ */
+
 import { render, screen } from "@testing-library/react"
 import { describe, expect, it } from "vitest"
 

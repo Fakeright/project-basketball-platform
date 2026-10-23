@@ -1,3 +1,10 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * เพิ่มคู่แข่งขันสำหรับโหมดไฟล์สาย ตรวจทีม สนาม วันเวลา และสิทธิ์ก่อนบันทึก
+ * เรียกใช้จาก: app/api/organizer/tournaments/[id]/matches/route.ts, features/competition/presentation/competition-handler.ts
+ * ตามการทำงานต่อ: features/identity/application/authorize.ts
+ */
+
 import { authorize } from "@/features/identity/application/authorize"
 import type { Actor } from "@/features/identity/domain/actor"
 import type { MatchPurpose } from "@/features/competition/domain/competition"
@@ -21,6 +28,7 @@ export interface CreateExternalMatchInput {
   overrideReason?: string
 }
 
+// ตรวจว่าทีมอยู่ในรายการและเงื่อนไขตารางถูกต้อง ก่อนสร้างคู่ที่ผู้จัดกรอกเอง
 export async function createExternalMatch(
   input: CreateExternalMatchInput,
   actor: Actor,
@@ -80,7 +88,9 @@ export async function createExternalMatch(
       throw new Error("MATCH_TEAM_NOT_LOCKED")
     }
     if (context.sequenceTaken) throw new Error("MATCH_SEQUENCE_CONFLICT")
-    if (context.hasCourtConflict) throw new Error("MATCH_SCHEDULE_CONFLICT")
+    if (context.tournamentFormat === "FIVE_V_FIVE" && context.hasCourtConflict) {
+      throw new Error("MATCH_SCHEDULE_CONFLICT")
+    }
 
     const outsideTournament =
       scheduledAt < new Date(context.tournamentStartsAt) ||

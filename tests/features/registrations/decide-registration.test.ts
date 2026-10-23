@@ -1,3 +1,8 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ทดสอบ features/registrations/application/decide-registration.ts, features/registrations/application/ports/registration-repository.ts, features/registrations/domain/registration.ts โดยจำลอง dependencies ตามกรณี และตรวจผลสำเร็จ/ข้อผิดพลาดด้วย assertions
+ */
+
 import { describe, expect, it, vi } from "vitest"
 
 import { decideRegistration } from "@/features/registrations/application/decide-registration"

@@ -1,3 +1,10 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ตรวจข้อมูลฟอร์มและผู้ใช้ แล้วเลือกสร้างฉบับร่างหรือแก้รายการเดิม พร้อมแปลงข้อผิดพลาดเป็น HTTP
+ * เรียกใช้จาก: app/api/admin/tournaments/[id]/route.ts, app/api/admin/tournaments/route.ts
+ * ตามการทำงานต่อ: features/shared/presentation/safe-http.ts, features/tournament-operations/application/create-tournament.ts, features/tournament-operations/presentation/tournament-governance-error-response.ts
+ */
+
 import type { Actor } from "@/features/identity/domain/actor"
 import {
   parseJsonRequest,

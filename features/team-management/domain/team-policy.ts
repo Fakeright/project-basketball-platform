@@ -1,3 +1,9 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ตรวจจำนวนและสถานะผู้เล่นขั้นต่ำที่ทีมต้องมีเมื่อสมัครรายการ
+ * เรียกใช้จาก: features/registrations/application/ports/registration-repository.ts, features/registrations/domain/registration-policy.ts
+ */
+
 import type { TeamFormat, TeamPlayer } from "./team"
 
 export type RosterFormat = TeamFormat
@@ -11,6 +17,7 @@ export function getMinimumRosterSize(format: TeamFormat): number {
   return minimumPlayersByFormat[format]
 }
 
+// ตรวจรายชื่อที่ใช้สมัครว่าผ่านจำนวนขั้นต่ำและสถานะผู้เล่นตามรูปแบบทีม
 export function assertRosterEligibility(
   format: TeamFormat,
   players: readonly TeamPlayer[],
@@ -21,6 +28,7 @@ export function assertRosterEligibility(
   )
 }
 
+// ตรวจจำนวนผู้เล่นที่ยังใช้งานว่าพอสำหรับส่งสมัครตามรูปแบบทีม
 function assertMinimumActivePlayerCount(
   format: TeamFormat,
   activePlayerCount: number,

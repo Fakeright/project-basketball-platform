@@ -1,3 +1,10 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ประสานขั้นตอนสร้างข้อมูลตัวอย่างผ่าน port โดยตรวจขอบเขตข้อมูลก่อนเปลี่ยนชุด fixture
+ * เรียกใช้จาก: features/demo-data/infrastructure/prisma-demo-seed-port.ts, prisma/seed.ts
+ * ตามการทำงานต่อ: features/competition/infrastructure/demo-competition-fixtures.ts, features/demo-data/infrastructure/demo-workflow-fixtures.ts, features/demo-data/infrastructure/demo-seed-safety.ts
+ */
+
 import { createDemoCompetitionFixtures, type DemoCompetitionFixture } from "@/features/competition/infrastructure/demo-competition-fixtures"
 import { thaiProvinces } from "@/features/provinces/domain/thai-provinces"
 import type { TournamentFormat } from "@/lib/generated/prisma/client"
@@ -61,6 +68,7 @@ export interface DemoSeedPort {
   ): Promise<T>
 }
 
+// ตรวจขอบเขต fixture ก่อนสร้างชุดข้อมูลหลัก เพื่อไม่ทับข้อมูลอื่นโดยไม่ตั้งใจ
 export async function runBaseDemoSeed(port: DemoSeedPort): Promise<void> {
   await port.transaction(async (transaction) => {
     assertBaseDemoSeedPreflight(await transaction.readBaseSnapshot())
@@ -68,6 +76,7 @@ export async function runBaseDemoSeed(port: DemoSeedPort): Promise<void> {
   })
 }
 
+// ตรวจข้อมูลตั้งต้นก่อนเปลี่ยนชุดสาย/คู่/ผลของรายการสาธิต
 export async function runCompetitionDemoSeed(port: DemoSeedPort): Promise<void> {
   const fixtures = createDemoCompetitionFixtures()
 

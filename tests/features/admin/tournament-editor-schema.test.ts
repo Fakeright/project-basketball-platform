@@ -1,3 +1,8 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ทดสอบ features/admin/presentation/tournament-editor-schema.ts โดยจำลอง dependencies ตามกรณี และตรวจผลสำเร็จ/ข้อผิดพลาดด้วย assertions
+ */
+
 import { describe, expect, it } from "vitest"
 
 import {
@@ -19,6 +24,18 @@ const validInput = {
 }
 
 describe("tournamentEditorSchema capacity", () => {
+  it("accepts blank description and rules when documents provide them", () => {
+    const result = tournamentEditorSchema.safeParse({
+      ...validInput,
+      description: "  ",
+      rules: "",
+      capacity: "16",
+    })
+
+    expect(result.success).toBe(true)
+    if (result.success) expect(result.data).toMatchObject({ description: "", rules: "" })
+  })
+
   it.each([8, 16, 32])("accepts %i teams", (capacity) => {
     const result = tournamentEditorSchema.safeParse({
       ...validInput,

@@ -1,3 +1,9 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * หน้า /organizer/tournaments/[id]/bracket: อ่านพื้นที่ทำงานสายเพื่อจัดทีม สร้างสาย หรือจัดการเอกสารภายนอก
+ * ตามการทำงานต่อ: features/competition/application/get-organizer-external-bracket-workspace.ts, features/competition/application/get-organizer-competition.ts, features/competition/infrastructure/get-competition-repository.ts
+ */
+
 import { notFound, redirect } from "next/navigation"
 
 import { BracketWorkspace } from "@/components/organizer/bracket-workspace"
@@ -11,6 +17,7 @@ import { getExternalBracketRepository } from "@/features/competition/infrastruct
 import { createNextCookieCurrentActorProvider } from "@/features/identity/infrastructure/next-cookie-current-actor-provider"
 import { SupabaseObjectStorage } from "@/features/tournament-media/infrastructure/supabase-object-storage"
 
+/** โหลดพื้นที่จัดสายของเจ้าของรายการ แล้วแยก UI ตามโหมดระบบหรือไฟล์ภายนอก */
 export default async function OrganizerBracketPage({
   params,
 }: PageProps<"/organizer/tournaments/[id]/bracket">) {

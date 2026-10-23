@@ -1,5 +1,10 @@
 "use client"
 
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * รับข้อผิดพลาดจากการแสดงหน้าในขอบเขต /admin และให้ลองโหลดใหม่ผ่าน reset
+ */
+
 import { RotateCcw } from "lucide-react"
 
 export default function AdminDashboardError({

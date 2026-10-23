@@ -1,5 +1,12 @@
 "use client"
 
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * รับไฟล์สายและส่ง FormData ไป API อัปโหลด พร้อมสถานะรอและข้อผิดพลาด
+ * เรียกใช้จาก: components/organizer/external-bracket-workspace.tsx
+ * ตามการทำงานต่อ: components/ui/button.tsx, features/competition/domain/external-bracket-policy.ts
+ */
+
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Upload } from "lucide-react"
@@ -24,6 +31,7 @@ export function ExternalBracketUploader({
   const [pending, setPending] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
 
+  // เก็บไฟล์ที่ผู้ใช้เลือกและตรวจเงื่อนไขเบื้องต้นก่อนเปิดให้ส่งอัปโหลด
   function selectFile(selected: File | null) {
     setMessage(null)
     if (!selected) {
@@ -45,7 +53,7 @@ export function ExternalBracketUploader({
       )
     }
   }
-
+  //อัปโหลดไฟล์pdf
   async function upload() {
     if (!file || pending) return
     const body = new FormData()

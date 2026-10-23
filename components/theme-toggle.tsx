@@ -1,5 +1,12 @@
 "use client"
 
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ปุ่มเปลี่ยนธีมสว่าง/มืดโดยใช้สถานะจาก ThemeProvider
+ * เรียกใช้จาก: app/(admin)/layout.tsx, components/site-header.tsx
+ * ตามการทำงานต่อ: components/ui/button.tsx, components/ui/tooltip.tsx
+ */
+
 import { Moon, Sun } from "lucide-react"
 import { useTheme } from "next-themes"
 import { useSyncExternalStore } from "react"

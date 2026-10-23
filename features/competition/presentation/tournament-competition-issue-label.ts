@@ -1,3 +1,9 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * แปลงรหัสเงื่อนไขเริ่ม/จบการแข่งขันเป็นข้อความภาษาไทยสำหรับหน้าจอ
+ * เรียกใช้จาก: components/organizer/tournament-competition-lifecycle-panel.tsx, features/tournament-operations/presentation/organizer-workflow-guidance.ts
+ */
+
 import type { TournamentCompetitionIssueCode } from "@/features/competition/domain/tournament-competition-policy"
 
 const issueLabels: Record<TournamentCompetitionIssueCode, string> = {

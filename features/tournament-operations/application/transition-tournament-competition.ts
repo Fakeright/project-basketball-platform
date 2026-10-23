@@ -1,3 +1,10 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * เริ่มหรือจบการแข่งขันหลังตรวจความพร้อมของสาย ตาราง ผล และสิทธิ์ผู้ดำเนินการ
+ * เรียกใช้จาก: app/api/organizer/tournaments/[id]/complete/route.ts, app/api/organizer/tournaments/[id]/start/route.ts
+ * ตามการทำงานต่อ: features/identity/application/authorize.ts
+ */
+
 import {
   assertTournamentCanComplete,
   assertTournamentCanStart,

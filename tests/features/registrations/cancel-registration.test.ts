@@ -1,3 +1,8 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ทดสอบ features/registrations/application/cancel-registration.ts, features/registrations/application/ports/registration-repository.ts โดยจำลอง dependencies ตามกรณี และตรวจผลสำเร็จ/ข้อผิดพลาดด้วย assertions
+ */
+
 import { describe, expect, it, vi } from "vitest"
 
 import { cancelRegistration } from "@/features/registrations/application/cancel-registration"
@@ -15,6 +20,7 @@ function createRepository(
   const repository: RegistrationRepository = {
     getApplicationContext: vi.fn(),
     findActive: vi.fn(),
+    hasActiveNameConflict: vi.fn(async () => false),
     createPending: vi.fn(),
     findById: vi.fn(async () => ({
       id: "registration-1",

@@ -1,3 +1,10 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * แปลงสถานะและความพร้อมของรายการเป็นข้อความ/ลิงก์ขั้นถัดไปสำหรับผู้จัด
+ * เรียกใช้จาก: app/(admin)/organizer/page.tsx, components/organizer/tournament-competition-lifecycle-panel.tsx
+ * ตามการทำงานต่อ: features/competition/presentation/tournament-competition-issue-label.ts
+ */
+
 import type { TournamentCompetitionIssueCode } from "@/features/competition/domain/tournament-competition-policy"
 import { tournamentCompetitionIssueLabel } from "@/features/competition/presentation/tournament-competition-issue-label"
 import type { WorkflowGuidanceView } from "@/features/workflow-guidance/presentation/workflow-guidance-view"

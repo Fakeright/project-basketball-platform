@@ -1,3 +1,9 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * เลือกสื่อของรายการที่ผู้ชมมีสิทธิ์เห็น แล้วเตรียม URL สำหรับโปสเตอร์และเอกสาร
+ * เรียกใช้จาก: components/tournaments/tournament-document-list.tsx
+ */
+
 import type { TournamentMediaRepository } from "@/features/tournament-media/application/ports/tournament-media-repository"
 import type { ObjectStorage } from "@/features/tournament-media/application/ports/object-storage"
 import type { TournamentOperation } from "@/features/tournament-operations/domain/tournament-operation"
@@ -23,6 +29,7 @@ const visibleStatuses = new Set<TournamentOperation["status"]>([
   "ARCHIVED",
 ])
 
+// อ่านเฉพาะสื่อที่เปิดเผยได้และเตรียมลิงก์ที่ component ใช้แสดง
 export async function getPublicTournamentMedia(
   tournament: Pick<
     TournamentOperation,

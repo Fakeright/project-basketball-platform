@@ -1,3 +1,9 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * API PATCH/DELETE /api/teams/[id]: รับคำขอ HTTP แล้วส่งต่อ handleUpdateTeam, handleRemoveOrDeactivateTeam
+ * ตามการทำงานต่อ: features/team-management/application/update-team.ts, features/team-management/application/remove-or-deactivate-team.ts, features/team-management/infrastructure/get-team-repository.ts
+ */
+
 import { updateTeam } from "@/features/team-management/application/update-team"
 import { removeOrDeactivateTeam } from "@/features/team-management/application/remove-or-deactivate-team"
 import { getTeamRepository } from "@/features/team-management/infrastructure/get-team-repository"

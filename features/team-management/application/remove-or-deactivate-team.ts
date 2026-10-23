@@ -1,3 +1,10 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ตรวจชื่อยืนยันและการอ้างอิงก่อนลบทีมที่ลบได้ หรือปิดใช้งานทีมที่ต้องเก็บประวัติ
+ * เรียกใช้จาก: app/api/teams/[id]/route.ts, features/team-management/presentation/team-handler.ts
+ * ตามการทำงานต่อ: features/team-management/application/team-access.ts
+ */
+
 import type { Actor } from "@/features/identity/domain/actor"
 
 import type { TeamRepository } from "./ports/team-repository"
@@ -16,6 +23,7 @@ export interface RemoveOrDeactivateTeamResult {
 
 const blockingRegistrationStatuses = new Set(["PENDING", "APPROVED"])
 
+// ยืนยันชื่อทีมและ version แล้วเลือกวิธีลบ/ปิดสถานะจากข้อมูลที่ยังอ้างอิงทีมอยู่
 export async function removeOrDeactivateTeam(
   input: RemoveOrDeactivateTeamInput,
   actor: Actor,

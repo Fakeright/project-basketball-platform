@@ -1,3 +1,10 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ตรวจสิทธิ์และไฟล์โปสเตอร์/เอกสาร แล้วเก็บไฟล์ใน object storage และ metadata ใน repository
+ * เรียกใช้จาก: app/api/admin/tournaments/[id]/media/route.ts, features/admin/presentation/tournament-media-handler.ts
+ * ตามการทำงานต่อ: features/tournament-media/application/ports/object-storage.ts, features/tournament-media/application/media-cleanup.ts, features/tournament-media/application/authorize-tournament-media.ts
+ */
+
 import type { Actor } from "@/features/identity/domain/actor"
 import type { TournamentOperationsRepository } from "@/features/tournament-operations/infrastructure/tournament-operations-repository"
 import type { MediaAssetKind, TournamentMediaAsset } from "@/features/tournament-media/domain/media-asset"
@@ -36,6 +43,7 @@ interface UploadTournamentMediaDependencies {
   cleanupLogger?: MediaCleanupLogger
 }
 
+// ตรวจไฟล์และเจ้าของรายการก่อนอัปโหลด แล้วเก็บ metadata ให้ผูกกับรายการถูกต้อง
 export async function uploadTournamentMedia(
   input: UploadTournamentMediaInput,
   actor: Actor,

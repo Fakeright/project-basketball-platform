@@ -1,3 +1,10 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * อ่าน สร้าง และเชื่อมโปรไฟล์ PostgreSQL กับ Supabase user ID พร้อมจัดการข้อมูลซ้ำ
+ * เรียกใช้จาก: features/identity/infrastructure/get-user-profile-repository.ts
+ * ตามการทำงานต่อ: features/identity/application/ports/user-profile-repository.ts
+ */
+
 import { UserProfileConflictError } from "@/features/identity/application/ports/user-profile-repository"
 import type {
   CreateUserProfileInput,
@@ -38,6 +45,7 @@ interface UserProfileDatabaseClient {
 export class PrismaUserProfileRepository implements UserProfileRepository {
   constructor(private readonly prisma: UserProfileDatabaseClient) {}
 
+  // ใช้ Supabase user ID หาโปรไฟล์และบทบาทในตาราง User ของ PostgreSQL
   async findBySupabaseUserId(supabaseUserId: string) {
     const user = await this.prisma.user.findUnique({
       where: { supabaseUserId },

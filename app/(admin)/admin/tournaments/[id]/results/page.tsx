@@ -1,3 +1,9 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * หน้า /admin/tournaments/[id]/results: ให้แอดมินอ่านผลและเปิดกระบวนการแก้ไขผลที่ยืนยันแล้ว
+ * ตามการทำงานต่อ: features/competition/application/get-organizer-competition.ts, features/competition/infrastructure/get-competition-repository.ts, features/identity/infrastructure/next-cookie-current-actor-provider.ts
+ */
+
 import Link from "next/link"
 import { notFound } from "next/navigation"
 

@@ -1,3 +1,8 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ทดสอบ features/tournaments/application/get-tournament-by-slug.ts, features/tournaments/infrastructure/mock-tournament-repository.ts โดยจำลอง dependencies ตามกรณี และตรวจผลสำเร็จ/ข้อผิดพลาดด้วย assertions
+ */
+
 import { getTournamentBySlug } from "@/features/tournaments/application/get-tournament-by-slug"
 import { MockTournamentRepository } from "@/features/tournaments/infrastructure/mock-tournament-repository"
 import { expect, test } from "vitest"

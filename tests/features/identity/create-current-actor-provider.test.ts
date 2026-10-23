@@ -1,3 +1,8 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ทดสอบ features/identity/application/ports/user-profile-repository.ts, features/identity/infrastructure/create-current-actor-provider.ts, features/identity/infrastructure/next-cookie-current-actor-provider.ts โดยจำลอง dependencies ตามกรณี และตรวจผลสำเร็จ/ข้อผิดพลาดด้วย assertions
+ */
+
 import { describe, expect, it } from "vitest"
 
 import type { UserProfileRepository } from "@/features/identity/application/ports/user-profile-repository"

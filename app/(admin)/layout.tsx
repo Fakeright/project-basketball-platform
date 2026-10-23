@@ -1,3 +1,9 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * วางกรอบหลังบ้านและเมนูตามบัญชีให้หน้าแอดมิน ผู้จัด และทีม
+ * ตามการทำงานต่อ: features/identity/infrastructure/next-cookie-current-actor-provider.ts
+ */
+
 import type { ReactNode } from "react"
 import { redirect } from "next/navigation"
 

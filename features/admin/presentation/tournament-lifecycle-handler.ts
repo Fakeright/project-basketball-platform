@@ -1,3 +1,10 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * รับคำขอเผยแพร่หรือปิดรับสมัคร ตรวจตัวตน แล้วส่งต่อ use case ที่เปลี่ยนสถานะ
+ * เรียกใช้จาก: app/api/admin/tournaments/[id]/close-registration/route.ts, app/api/admin/tournaments/[id]/publish/route.ts
+ * ตามการทำงานต่อ: features/shared/presentation/safe-http.ts, features/tournament-operations/application/transition-tournament-lifecycle.ts, features/tournament-operations/presentation/tournament-governance-error-response.ts
+ */
+
 import { z } from "zod"
 
 import type { CurrentActorProvider } from "@/features/identity/domain/actor"

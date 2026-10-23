@@ -1,3 +1,10 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * แสดงสถานะกำกับรายการและคำสั่งที่แอดมินทำได้จากข้อมูลบริบท
+ * เรียกใช้จาก: app/(admin)/admin/tournaments/[id]/page.tsx
+ * ตามการทำงานต่อ: components/admin/tournament-governance-dialog.tsx
+ */
+
 import Link from "next/link"
 import { ArrowLeft, Edit3, GitBranch, ShieldCheck } from "lucide-react"
 

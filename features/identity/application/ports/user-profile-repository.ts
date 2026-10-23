@@ -1,3 +1,9 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * กำหนดข้อมูลโปรไฟล์และบทบาทที่สมัครเองได้ พร้อมสัญญาเชื่อมบัญชี Supabase กับผู้ใช้ในแอป
+ * เรียกใช้จาก: features/identity/application/provision-auth-profile.ts, features/identity/infrastructure/create-current-actor-provider.ts
+ */
+
 import type { Actor, Role } from "@/features/identity/domain/actor"
 
 export const selfAssignableRoles = [

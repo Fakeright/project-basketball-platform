@@ -1,9 +1,16 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * อ่าน body เป็นส่วน ๆ พร้อมจำกัดขนาด เพื่อหยุดคำขอไฟล์ใหญ่ก่อนใช้หน่วยความจำเกินขอบเขต
+ * เรียกใช้จาก: features/admin/presentation/tournament-media-handler.ts, features/competition/presentation/external-bracket-handler.ts
+ */
+
 export class RequestBodyTooLargeError extends Error {
   constructor() {
     super("REQUEST_BODY_TOO_LARGE")
   }
 }
 
+// อ่าน stream และนับ byte ระหว่างอ่าน; หยุดทันทีเมื่อเกินขนาดที่กำหนด
 export async function readRequestBodyWithLimit(
   request: Request,
   maximumBytes: number,

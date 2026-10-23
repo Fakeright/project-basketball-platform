@@ -1,3 +1,9 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * หน้า /: หน้าแรก แสดงรายการเปิดรับสมัครและตัวกรองค้นหา
+ * ตามการทำงานต่อ: features/tournaments/application/search-tournaments.ts, features/tournaments/infrastructure/get-tournament-repository.ts
+ */
+
 import Link from "next/link"
 import { connection } from "next/server"
 
@@ -7,6 +13,7 @@ import { TournamentRow } from "@/components/tournament-row"
 import { searchTournaments } from "@/features/tournaments/application/search-tournaments"
 import { getTournamentRepository } from "@/features/tournaments/infrastructure/get-tournament-repository"
 
+/** หน้าแรกโหลดรายการ OPEN ณ เวลาที่มีคำขอ ไม่ใช้ข้อมูลตัวอย่างที่เขียนค้างไว้ */
 export default async function HomePage() {
   await connection()
   const repository = getTournamentRepository()

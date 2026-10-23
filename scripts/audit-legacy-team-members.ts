@@ -1,3 +1,9 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * อ่านและรายงานสมาชิกแบบเก่าที่ต่างจากรายชื่อผู้เล่นปัจจุบันเพื่อใช้ตรวจข้อมูล
+ * ตามการทำงานต่อ: features/team-management/application/legacy-team-reconciliation.ts, features/team-management/infrastructure/prisma-team-repository.ts
+ */
+
 import { PrismaPg } from "@prisma/adapter-pg"
 import { config } from "dotenv"
 import { PrismaClient } from "../lib/generated/prisma/client"

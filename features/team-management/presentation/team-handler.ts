@@ -1,3 +1,10 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ตรวจ JSON และข้อมูลฟอร์มทีม/ผู้เล่นด้วย Zod ก่อนเรียก use case และคืนข้อความผิดพลาดภาษาไทย
+ * เรียกใช้จาก: app/api/teams/[id]/players/[playerId]/route.ts, app/api/teams/[id]/players/batch/route.ts
+ * ตามการทำงานต่อ: features/shared/presentation/safe-http.ts, features/provinces/application/assert-province-code.ts
+ */
+
 import { z } from "zod"
 
 import type { Actor, CurrentActorProvider } from "@/features/identity/domain/actor"
@@ -129,6 +136,7 @@ interface RemoveOrDeactivateTeamHandlerDependencies extends SafeHttpDiagnostics 
   ) => Promise<RemoveOrDeactivateTeamResult>
 }
 
+// ตรวจ session และรูปแบบข้อมูลจาก API; กฎสิทธิ์/จำนวนผู้เล่นอยู่ใน createTeam
 export async function handleCreateTeam(
   request: Request,
   dependencies: CreateTeamHandlerDependencies,
@@ -372,6 +380,14 @@ function teamFailureResponse(error: unknown): Response | null {
       message: "จำนวนผู้เล่นเกินกำหนด ทีม 5v5 มีได้สูงสุด 15 คน และทีม 3v3 มีได้สูงสุด 4 คน",
     },
     TEAM_INACTIVE: { status: 409, message: "ทีมนี้ปิดใช้งานแล้ว" },
+    TEAM_NAME_TAKEN: {
+      status: 409,
+      message: "คุณมีทีมที่ใช้ชื่อนี้อยู่แล้ว กรุณาใช้ชื่อทีมอื่น",
+    },
+    TEAM_NAME_CHANGE_BLOCKED: {
+      status: 409,
+      message: "ไม่สามารถเปลี่ยนชื่อทีมที่มีใบสมัครรอพิจารณาหรืออนุมัติแล้ว กรุณายกเลิกหรือถอนใบสมัครก่อน",
+    },
     TEAM_NAME_CONFIRMATION_MISMATCH: {
       status: 422,
       message: "ชื่อทีมที่ยืนยันไม่ตรงกัน กรุณาพิมพ์ชื่อทีมให้ตรงทุกตัวอักษร",

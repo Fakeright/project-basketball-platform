@@ -1,3 +1,8 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ทดสอบ features/competition/application/get-external-bracket-view.ts, features/competition/application/ports/external-bracket-repository.ts, features/tournament-media/application/ports/object-storage.ts โดยจำลอง dependencies ตามกรณี และตรวจผลสำเร็จ/ข้อผิดพลาดด้วย assertions
+ */
+
 import { describe, expect, it, vi } from "vitest"
 
 import { getExternalBracketView } from "@/features/competition/application/get-external-bracket-view"

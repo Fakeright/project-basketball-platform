@@ -1,5 +1,10 @@
 // @vitest-environment node
 
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ทดสอบ features/competition/presentation/external-bracket-handler.ts โดยจำลอง dependencies ตามกรณี และตรวจผลสำเร็จ/ข้อผิดพลาดด้วย assertions
+ */
+
 import { describe, expect, it, vi } from "vitest"
 
 import { handleUploadExternalBracket } from "@/features/competition/presentation/external-bracket-handler"

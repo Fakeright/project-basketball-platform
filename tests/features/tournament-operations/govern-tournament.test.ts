@@ -1,3 +1,8 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ทดสอบ features/tournament-operations/application/govern-tournament.ts, features/tournament-operations/domain/tournament-governance-policy.ts, features/tournament-operations/infrastructure/in-memory-tournament-operations-repository.ts โดยจำลอง dependencies ตามกรณี และตรวจผลสำเร็จ/ข้อผิดพลาดด้วย assertions
+ */
+
 import { describe, expect, it, vi } from "vitest"
 
 import { governTournament } from "@/features/tournament-operations/application/govern-tournament"
@@ -158,7 +163,7 @@ describe("governTournament", () => {
         { now },
       ),
     ).rejects.toEqual(
-      expect.objectContaining<TournamentGovernancePolicyError>({
+      expect.objectContaining<Partial<TournamentGovernancePolicyError>>({
         issues: ["GOVERNANCE_REASON_REQUIRED"],
       }),
     )
@@ -182,7 +187,7 @@ describe("governTournament", () => {
         { now },
       ),
     ).rejects.toEqual(
-      expect.objectContaining<TournamentGovernancePolicyError>({
+      expect.objectContaining<Partial<TournamentGovernancePolicyError>>({
         issues: ["GOVERNANCE_STATUS_INVALID", "TOURNAMENT_STATUS_INVALID"],
       }),
     )

@@ -1,3 +1,9 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * วางกรอบหน้าสาธารณะและส่วนหัวร่วมกัน
+ * ตามการทำงานต่อ: features/identity/infrastructure/get-current-actor.ts
+ */
+
 import { SiteHeader } from "@/components/site-header"
 import { getCurrentActor } from "@/features/identity/infrastructure/get-current-actor"
 

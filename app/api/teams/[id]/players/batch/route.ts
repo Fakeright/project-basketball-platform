@@ -1,3 +1,9 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * API POST /api/teams/[id]/players/batch: รับคำขอ HTTP แล้วส่งต่อ handleAddTeamPlayers
+ * ตามการทำงานต่อ: features/identity/infrastructure/next-cookie-current-actor-provider.ts, features/team-management/application/add-team-players.ts, features/team-management/infrastructure/get-team-repository.ts
+ */
+
 import { createNextCookieCurrentActorProvider } from "@/features/identity/infrastructure/next-cookie-current-actor-provider"
 import { addTeamPlayers } from "@/features/team-management/application/add-team-players"
 import { getTeamRepository } from "@/features/team-management/infrastructure/get-team-repository"

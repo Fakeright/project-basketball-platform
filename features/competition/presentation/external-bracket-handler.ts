@@ -1,3 +1,10 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * รับคำขอเลือกโหมด อัปโหลด เผยแพร่ และเลิกใช้ไฟล์สาย พร้อมตรวจฟอร์มและแปลงข้อผิดพลาด
+ * เรียกใช้จาก: app/api/organizer/tournaments/[id]/bracket/external/publication/route.ts, app/api/organizer/tournaments/[id]/bracket/external/revisions/[revisionId]/route.ts
+ * ตามการทำงานต่อ: features/tournament-media/application/ports/object-storage.ts, features/shared/presentation/limited-request-body.ts, features/shared/presentation/safe-http.ts
+ */
+
 import { z } from "zod"
 
 import type { Actor, CurrentActorProvider } from "@/features/identity/domain/actor"

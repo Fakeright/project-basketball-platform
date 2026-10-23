@@ -1,3 +1,10 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * กำหนดหน้าที่คู่แข่งขันในโหมดไฟล์ เช่น คู่ทั่วไปหรือชิงชนะเลิศ โดยตรวจเงื่อนไขผลและเวอร์ชัน
+ * เรียกใช้จาก: app/api/organizer/tournaments/[id]/matches/[matchId]/purpose/route.ts, features/competition/presentation/competition-handler.ts
+ * ตามการทำงานต่อ: features/identity/application/authorize.ts
+ */
+
 import { authorize } from "@/features/identity/application/authorize"
 import type { Actor } from "@/features/identity/domain/actor"
 import type { MatchPurpose } from "@/features/competition/domain/competition"
@@ -16,6 +23,7 @@ export interface UpdateExternalMatchPurposeInput {
   overrideReason?: string
 }
 
+// แก้ชนิดคู่แข่งขันในโหมดเอกสาร เช่น คู่ชิง โดยตรวจ version และข้อจำกัดของผลเดิม
 export async function updateExternalMatchPurpose(
   input: UpdateExternalMatchPurposeInput,
   actor: Actor,

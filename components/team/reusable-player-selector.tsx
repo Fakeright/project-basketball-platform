@@ -1,5 +1,11 @@
 "use client"
 
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ค้นหาและติ๊กเลือกผู้เล่นจากประวัติทีมของบัญชี เพื่อส่งรายชื่อที่เลือกให้ฟอร์มสร้างทีม
+ * เรียกใช้จาก: components/team/team-creation-roster-editor.tsx
+ */
+
 import { useEffect, useMemo, useRef, useState } from "react"
 
 import type { ReusableTeamPlayer } from "@/features/team-management/domain/team-player-history"
@@ -38,6 +44,7 @@ export function ReusablePlayerSelector({
   const visibleGroups = useMemo(() => groupPlayersBySourceTeam(visiblePlayers), [visiblePlayers])
   const visibleKeys = useMemo(() => uniqueVisibleKeys(visibleGroups), [visibleGroups])
 
+  // ปรับชุดผู้เล่นที่เลือกและส่งผลกลับ component แม่ โดยยังไม่สร้างระเบียนในฐานข้อมูล
   function updateSelection(keys: readonly string[]) {
     const nextKeys = new Set(selectedKeys)
     const allSelected = keys.length > 0 && keys.every((key) => nextKeys.has(key))
@@ -71,6 +78,7 @@ export function ReusablePlayerSelector({
     onSelectionChange(nextKeys)
   }
 
+  // เลือกหรือยกเลิกผู้เล่นหนึ่งคน พร้อมตรวจเพดานจำนวนที่เลือกได้
   function togglePlayer(key: string) {
     if (selectedKeys.has(key)) {
       const nextKeys = new Set(selectedKeys)
@@ -199,6 +207,7 @@ export function ReusablePlayerSelector({
   )
 }
 
+// ตั้งสถานะ indeterminate ให้ checkbox เมื่อเลือกผู้เล่นเพียงบางคนในกลุ่ม
 function IndeterminateCheckbox({
   ariaLabel,
   checked,
@@ -237,6 +246,7 @@ function matchesSearch(player: ReusableTeamPlayer, query: string) {
   )
 }
 
+// จัดตัวเลือกผู้เล่นเป็นกลุ่มตามทีมต้นทางเพื่อให้ติ๊กเลือกทั้งกลุ่มได้
 function groupPlayersBySourceTeam(players: readonly ReusableTeamPlayer[]): VisibleTeamGroup[] {
   const groups = new Map<string, VisibleTeamGroup>()
 
@@ -263,6 +273,7 @@ function groupPlayersBySourceTeam(players: readonly ReusableTeamPlayer[]): Visib
     .sort((left, right) => compareStrings(left.id, right.id))
 }
 
+// รวบรวมคีย์ผู้เล่นที่มองเห็นโดยตัดคนซ้ำจากหลายกลุ่มออก
 function uniqueVisibleKeys(groups: readonly VisibleTeamGroup[]) {
   const keys = new Set<string>()
   for (const group of groups) {
@@ -271,10 +282,12 @@ function uniqueVisibleKeys(groups: readonly VisibleTeamGroup[]) {
   return [...keys]
 }
 
+// ตรวจว่าผู้เล่นทุกคนในกลุ่มถูกเลือกแล้ว เพื่อแสดง checkbox แบบเลือกครบ
 function allKeysSelected(keys: readonly string[], selectedKeys: ReadonlySet<string>) {
   return keys.length > 0 && keys.every((key) => selectedKeys.has(key))
 }
 
+// ตรวจว่ามีผู้เล่นบางคนถูกเลือก เพื่อแสดง checkbox แบบเลือกบางส่วน
 function someKeysSelected(keys: readonly string[], selectedKeys: ReadonlySet<string>) {
   const selectedCount = keys.filter((key) => selectedKeys.has(key)).length
   return selectedCount > 0 && selectedCount < keys.length

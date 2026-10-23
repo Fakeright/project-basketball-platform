@@ -1,3 +1,9 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * เก็บ metadata สื่อสำหรับโหมดพัฒนาโดยไม่ต้องใช้ฐานข้อมูลจริง
+ * เรียกใช้จาก: features/tournament-media/infrastructure/get-tournament-media-repository.ts
+ */
+
 import "server-only"
 
 import { mkdir, readFile, writeFile } from "node:fs/promises"

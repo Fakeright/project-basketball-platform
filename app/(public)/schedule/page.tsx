@@ -1,3 +1,9 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * หน้า /schedule: อ่านคู่แข่งขันของรายการที่เลือกแล้วแสดงตามวันเวลาและสนาม
+ * ตามการทำงานต่อ: features/tournaments/application/get-tournament-competition-by-slug.ts, features/tournaments/infrastructure/get-tournament-repository.ts, features/competition/application/get-competition-summary.ts
+ */
+
 import Link from "next/link"
 
 import { ScheduleTable } from "@/components/schedule-table"
@@ -7,6 +13,7 @@ import { getTournamentCompetitionBySlug } from "@/features/tournaments/applicati
 import { getTournamentRepository } from "@/features/tournaments/infrastructure/get-tournament-repository"
 import { getCompetitionSummary } from "@/features/competition/application/get-competition-summary"
 
+/** แสดงเฉพาะคู่แข่งขันที่มีวันเวลาแล้วของรายการที่เลือก */
 export default async function SchedulePage({ searchParams }: PageProps<"/schedule">) {
   const repository = getTournamentRepository()
   const { tournament: requestedTournament } = await searchParams

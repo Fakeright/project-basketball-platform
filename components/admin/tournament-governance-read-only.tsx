@@ -1,3 +1,9 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * แจ้งว่ารายการอยู่ในสถานะอ่านอย่างเดียว พร้อมข้อมูลสถานะและเหตุผล
+ * เรียกใช้จาก: app/(admin)/organizer/tournaments/[id]/bracket/page.tsx, app/(admin)/organizer/tournaments/[id]/page.tsx
+ */
+
 import { ShieldAlert } from "lucide-react"
 
 export function TournamentGovernanceNotice({

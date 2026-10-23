@@ -1,3 +1,8 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ทดสอบ features/competition/application/confirm-match-result.ts, features/competition/application/create-external-match.ts, features/competition/application/update-external-match-purpose.ts โดยจำลอง dependencies ตามกรณี และตรวจผลสำเร็จ/ข้อผิดพลาดด้วย assertions
+ */
+
 import { describe, expect, it, vi } from "vitest"
 
 import { confirmMatchResult } from "@/features/competition/application/confirm-match-result"
@@ -9,6 +14,37 @@ import { createTestActor } from "@/tests/fixtures/actor"
 const organizer = createTestActor("organizer-1", "TOURNAMENT_ORGANIZER")
 
 describe("createExternalMatch", () => {
+  it.each([
+    ["FIVE_V_FIVE", true],
+    ["THREE_V_THREE", false],
+  ] as const)("applies the court conflict rule to %s", async (format, rejectsConflict) => {
+    const { repository, transaction } = repositoryWithContext({
+      tournamentFormat: format,
+      hasCourtConflict: true,
+    })
+    const operation = createExternalMatch(
+      {
+        tournamentId: "tournament-1",
+        roundName: "Final",
+        sequence: 1,
+        homeTeamId: "team-1",
+        awayTeamId: "team-2",
+        scheduledAt: "2026-08-20T09:00:00.000Z",
+        court: "สนาม A",
+        expectedVersion: 3,
+      },
+      organizer,
+      { competitions: repository, now: () => new Date() },
+    )
+
+    if (rejectsConflict) {
+      await expect(operation).rejects.toThrow("MATCH_SCHEDULE_CONFLICT")
+      expect(transaction.createExternalMatch).not.toHaveBeenCalled()
+    } else {
+      await expect(operation).resolves.toMatchObject({ id: "match-1" })
+    }
+  })
+
   it("creates a scheduled match from two distinct locked teams", async () => {
     const { repository, transaction } = repositoryWithContext()
 
@@ -78,7 +114,7 @@ describe("createExternalMatch", () => {
           roundName: "Final",
           sequence: 1,
           homeTeamId: "team-1",
-          awayTeamId: override.awayTeamId ?? "team-2",
+          awayTeamId: "awayTeamId" in override ? override.awayTeamId : "team-2",
           scheduledAt: "2026-08-20T06:00:00.000Z",
           court: "สนาม A",
           expectedVersion: 3,
@@ -254,6 +290,7 @@ function repositoryWithContext(override: Record<string, unknown> = {}) {
     tournamentId: "tournament-1",
     organizerId: organizer.id,
     tournamentGovernanceStatus: "ACTIVE",
+    tournamentFormat: "FIVE_V_FIVE",
     tournamentStartsAt: "2026-08-20T00:00:00.000Z",
     tournamentEndsAt: "2026-08-22T12:00:00.000Z",
     bracketId: "bracket-1",

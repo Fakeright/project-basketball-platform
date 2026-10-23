@@ -1,3 +1,10 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * สร้างทีมของผู้จัดการพร้อมรายชื่อเริ่มต้น ตรวจชื่อซ้ำในบัญชีและจำนวนผู้เล่นก่อนบันทึก
+ * เรียกใช้จาก: app/api/teams/route.ts, features/team-management/application/update-team.ts
+ * ตามการทำงานต่อ: features/identity/application/authorize.ts, features/provinces/application/assert-province-code.ts
+ */
+
 import { authorize } from "@/features/identity/application/authorize"
 import type { Actor } from "@/features/identity/domain/actor"
 import type {
@@ -10,10 +17,12 @@ import { projectTeamPlayerBatchAuditSnapshot } from "@/features/team-management/
 import { assertTeamPlayerBatch } from "@/features/team-management/domain/team-player-batch-policy"
 import { assertProvinceCode } from "@/features/provinces/application/assert-province-code"
 
+// นำเข้าประเภทคลังข้อมูล (Repository Interfaces) สำหรับสั่งการและบันทึกข้อมูลทีม
 import type {
   TeamMutationRepository,
   TeamRepository,
 } from "./ports/team-repository"
+
 
 export interface CreateTeamInput {
   name: string
@@ -32,14 +41,20 @@ export async function createTeam(
   actor: Actor,
   dependencies: { teams: TeamRepository },
 ): Promise<CreateTeamResult> {
+
   assertProvinceCode(input.provinceCode)
   authorize(actor, "team.create", { organizerId: actor.id })
   const initialPlayers = input.players ?? []
   assertTeamPlayerBatch(initialPlayers, { allowEmpty: true, format: input.format })
+  const name = input.name.trim()
 
+  //คำสั่งสร้างทีม: บันทึกข้อมูล ชื่อทีม, รหัสจังหวัด, รูปแบบการแข่ง และเก็บไอดีผู้สร้างไว้ในฐานะเจ้าของทีม (ownerId)
   return dependencies.teams.inTransaction(async (teams) => {
+    if (await teams.hasActiveNameConflict(actor.id, name)) {
+      throw new Error("TEAM_NAME_TAKEN")
+    }
     const team = await teams.create({
-      name: input.name,
+      name,
       provinceCode: input.provinceCode,
       format: input.format,
       ownerId: actor.id,

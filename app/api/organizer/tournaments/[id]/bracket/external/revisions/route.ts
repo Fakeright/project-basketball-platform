@@ -1,3 +1,9 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * API POST /api/organizer/tournaments/[id]/bracket/external/revisions: รับคำขอ HTTP แล้วส่งต่อ handleUploadExternalBracket
+ * ตามการทำงานต่อ: features/competition/application/upload-external-bracket.ts, features/competition/infrastructure/get-external-bracket-repository.ts, features/competition/infrastructure/bracket-file-probe.ts
+ */
+
 import { randomUUID } from "node:crypto"
 
 import { uploadExternalBracket } from "@/features/competition/application/upload-external-bracket"

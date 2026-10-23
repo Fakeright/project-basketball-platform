@@ -1,3 +1,8 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ทดสอบ features/identity/infrastructure/prisma-auth-recovery-grant-repository.ts โดยจำลอง dependencies ตามกรณี และตรวจผลสำเร็จ/ข้อผิดพลาดด้วย assertions
+ */
+
 import { describe, expect, it, vi } from "vitest"
 
 import { PrismaAuthRecoveryGrantRepository } from "@/features/identity/infrastructure/prisma-auth-recovery-grant-repository"

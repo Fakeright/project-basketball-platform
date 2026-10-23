@@ -1,3 +1,9 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * API POST /api/organizer/tournaments/[id]/complete: รับคำขอ HTTP แล้วส่งต่อ handleTournamentCompetitionLifecycle
+ * ตามการทำงานต่อ: features/tournament-operations/application/transition-tournament-competition.ts, features/tournament-operations/infrastructure/get-tournament-operations-repository.ts, features/tournament-operations/presentation/tournament-competition-lifecycle-handler.ts
+ */
+
 import { completeTournamentCompetition } from "@/features/tournament-operations/application/transition-tournament-competition"
 import { getTournamentOperationsRepository } from "@/features/tournament-operations/infrastructure/get-tournament-operations-repository"
 import { handleTournamentCompetitionLifecycle } from "@/features/tournament-operations/presentation/tournament-competition-lifecycle-handler"

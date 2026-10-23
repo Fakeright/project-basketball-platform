@@ -1,3 +1,10 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ตรวจผู้ใช้และความพร้อมของทีม/รายการ เพื่อสร้างตัวเลือกทีมที่นำไปสมัครได้
+ * เรียกใช้จาก: app/(public)/tournaments/[slug]/page.tsx, components/tournaments/tournament-registration-action.tsx
+ * ตามการทำงานต่อ: features/team-management/application/list-owned-teams.ts
+ */
+
 import type { Actor } from "@/features/identity/domain/actor"
 import { listOwnedTeams } from "@/features/team-management/application/list-owned-teams"
 import type { TeamRepository } from "@/features/team-management/application/ports/team-repository"
@@ -22,6 +29,7 @@ interface RegistrationAvailability {
   teams: RegistrationOption[]
 }
 
+// ประกอบทีมที่ผู้ใช้ส่งสมัครได้และเหตุผลที่บางทีมยังไม่พร้อม
 export async function getTournamentRegistrationOptions(
   tournament: Pick<Tournament, "id" | "status" | "format">,
   actor: Actor | null,
@@ -38,6 +46,7 @@ export async function getTournamentRegistrationOptions(
   return availability.teams
 }
 
+// ตัดสินสถานะปุ่มสมัครจากบัญชีและสถานะการรับสมัครของรายการ
 export async function getTournamentRegistrationAvailability(
   tournament: Pick<Tournament, "id" | "status" | "format">,
   actor: Actor | null,

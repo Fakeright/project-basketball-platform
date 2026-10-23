@@ -1,3 +1,10 @@
+// ยอมให้ตรึงทีมเมื่อปิดรับสมัครแล้ว และจำนวนทีมที่อนุมัติไม่ซ้ำ/ไม่เกินความจุ
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * รวมกฎตรึงทีม ลำดับทีม และข้อจำกัดการแก้สาย; สายระบบปัจจุบันใช้ 8, 16 หรือ 32 ทีม
+ * เรียกใช้จาก: features/competition/application/generate-bracket.ts, features/competition/application/lock-bracket-entries.ts
+ */
+
 export function assertEntriesCanBeLocked(input: {
   tournamentStatus: string
   approvedTeamIds: readonly string[]
@@ -23,6 +30,7 @@ export function assertEntriesCanBeLocked(input: {
   }
 }
 
+// ห้ามเปลี่ยนโครงสร้างสายหลังมีคู่เริ่มแข่ง เพื่อรักษาความหมายของผลเดิม
 export function assertBracketStructureMutable(input: {
   hasStartedMatch: boolean
 }): void {
@@ -31,12 +39,14 @@ export function assertBracketStructureMutable(input: {
   }
 }
 
+// จำกัดโหมดจัดสายปัจจุบันไว้ที่ 8, 16, 32 ทีม เพื่อจับคู่ครบโดยไม่ต้องมีบาย
 export function assertSystemBracketEntryCount(count: number): void {
   if (count !== 8 && count !== 16 && count !== 32) {
     throw new Error("BRACKET_ENTRY_COUNT_UNSUPPORTED")
   }
 }
 
+// ตรวจ ID ทีมและตำแหน่งว่าไม่ซ้ำ และตำแหน่งอยู่ครบในช่วง 1 ถึงจำนวนทีม
 export function validateOrderedPositions(
   entries: readonly { entryId: string; position: number }[],
 ): void {
@@ -52,6 +62,7 @@ export function validateOrderedPositions(
   }
 }
 
+// ตรวจ seed ต่อเนื่องและไม่ซ้ำสำหรับเส้นทางจัดสายแบบเดิม
 export function validateSeeds(
   entries: readonly { entryId: string; seed: number }[],
 ): void {

@@ -1,3 +1,9 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * API POST /api/organizer/tournaments/[id]/registrations/[registrationId]/withdraw: รับคำขอ HTTP แล้วส่งต่อ handleWithdrawRegistration
+ * ตามการทำงานต่อ: features/registrations/application/withdraw-registration.ts, features/registrations/infrastructure/get-registration-repository.ts, features/registrations/presentation/registration-handler.ts
+ */
+
 import { withdrawRegistration } from "@/features/registrations/application/withdraw-registration"
 import { getRegistrationRepository } from "@/features/registrations/infrastructure/get-registration-repository"
 import { handleWithdrawRegistration } from "@/features/registrations/presentation/registration-handler"

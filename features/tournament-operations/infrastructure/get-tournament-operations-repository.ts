@@ -1,3 +1,10 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * เลือก Prisma เมื่อมีฐานข้อมูล หรือ adapter พัฒนาเมื่อไม่ได้รัน production
+ * เรียกใช้จาก: app/(admin)/admin/reviews/[id]/page.tsx, app/(admin)/admin/reviews/page.tsx
+ * ตามการทำงานต่อ: features/tournament-operations/infrastructure/development-tournament-operations-repository.ts, features/tournament-operations/infrastructure/prisma-tournament-operations-repository.ts
+ */
+
 import "server-only"
 
 import { getPrismaClient } from "@/lib/server/prisma"

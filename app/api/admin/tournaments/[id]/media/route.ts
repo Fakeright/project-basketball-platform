@@ -1,3 +1,9 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * API POST /api/admin/tournaments/[id]/media: รับคำขอ HTTP แล้วส่งต่อ handleTournamentMediaUpload
+ * ตามการทำงานต่อ: features/admin/presentation/tournament-media-handler.ts, features/identity/infrastructure/next-cookie-current-actor-provider.ts, features/shared/presentation/safe-http.ts
+ */
+
 import { randomUUID } from "node:crypto"
 
 import { handleTournamentMediaUpload } from "@/features/admin/presentation/tournament-media-handler"

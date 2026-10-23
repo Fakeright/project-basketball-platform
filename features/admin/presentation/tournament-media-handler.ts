@@ -1,3 +1,10 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ตรวจ multipart/form-data สำหรับอัปโหลดและคำขอลบสื่อ แล้วแปลงผลจาก use case เป็น HTTP
+ * เรียกใช้จาก: app/api/admin/tournaments/[id]/media/[assetId]/route.ts, app/api/admin/tournaments/[id]/media/route.ts
+ * ตามการทำงานต่อ: features/shared/presentation/limited-request-body.ts, features/shared/presentation/safe-http.ts, features/tournament-media/application/ports/object-storage.ts
+ */
+
 import type { Actor, CurrentActorProvider } from "@/features/identity/domain/actor"
 import { readRequestBodyWithLimit, RequestBodyTooLargeError } from "@/features/shared/presentation/limited-request-body"
 import {

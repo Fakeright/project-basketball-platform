@@ -1,3 +1,8 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ทดสอบ features/team-management/presentation/team-handler.ts, features/team-management/application/ports/team-repository.ts, features/team-management/application/remove-or-deactivate-team.ts โดยจำลอง dependencies ตามกรณี และตรวจผลสำเร็จ/ข้อผิดพลาดด้วย assertions
+ */
+
 import { describe, expect, it, vi } from "vitest"
 
 import {
@@ -23,7 +28,7 @@ const validPlayer = {
   nickname: "ชาย",
   birthDate: "2008-01-01",
   jerseyNumber: 8,
-  position: "PG",
+  position: "PG" as const,
   phone: "0812345678",
 }
 const storedPlayer = {
@@ -56,6 +61,21 @@ function jsonRequest(body: unknown): Request {
 }
 
 describe("team route handlers", () => {
+  it("returns 409 when the account already has an active team with that name", async () => {
+    const response = await handleCreateTeam(
+      jsonRequest({ name: "Bangkok Ballers", provinceCode: "10", format: "FIVE_V_FIVE" }),
+      {
+        actorProvider: { getCurrentActor: vi.fn(async () => teamManager) },
+        create: vi.fn(async () => { throw new Error("TEAM_NAME_TAKEN") }),
+      },
+    )
+
+    expect(response.status).toBe(409)
+    await expect(response.json()).resolves.toEqual({
+      message: "คุณมีทีมที่ใช้ชื่อนี้อยู่แล้ว กรุณาใช้ชื่อทีมอื่น",
+    })
+  })
+
   it("returns 401 when team creation has no actor", async () => {
     const response = await handleCreateTeam(jsonRequest({}), {
       actorProvider: anonymous,

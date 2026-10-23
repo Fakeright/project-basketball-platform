@@ -1,3 +1,9 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * กำหนดข้อมูลสรุปและสัญญาการอ่านแดชบอร์ด ให้ use case ไม่ต้องผูกกับ Prisma
+ * เรียกใช้จาก: features/admin/application/get-admin-dashboard.ts, features/admin/infrastructure/get-admin-dashboard-repository.ts
+ */
+
 export interface AdminDashboardMetrics {
   tournaments: number
   pendingReviews: number

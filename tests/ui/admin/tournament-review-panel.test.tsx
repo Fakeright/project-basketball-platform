@@ -1,3 +1,8 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ทดสอบ components/admin/tournament-review-panel.tsx โดยจำลอง dependencies ตามกรณี และตรวจผลสำเร็จ/ข้อผิดพลาดด้วย assertions
+ */
+
 import { cleanup, render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { afterEach, describe, expect, it, vi } from "vitest"
@@ -94,16 +99,16 @@ describe("TournamentReviewPanel", () => {
     const successMessage = screen.getByRole("status")
     expect(successMessage.textContent).toContain("อนุมัติรายการแล้ว")
     expect(successMessage.getAttribute("aria-live")).toBeNull()
-    expect(screen.getByLabelText("เหตุผลประกอบการพิจารณา").disabled).toBe(
+    expect(screen.getByLabelText("เหตุผลประกอบการพิจารณา").hasAttribute("disabled")).toBe(
       true,
     )
-    expect(screen.getByRole("button", { name: "อนุมัติ" }).disabled).toBe(
+    expect(screen.getByRole("button", { name: "อนุมัติ" }).hasAttribute("disabled")).toBe(
       true,
     )
-    expect(screen.getByRole("button", { name: "ขอแก้ไข" }).disabled).toBe(
+    expect(screen.getByRole("button", { name: "ขอแก้ไข" }).hasAttribute("disabled")).toBe(
       true,
     )
-    expect(screen.getByRole("button", { name: "ปฏิเสธ" }).disabled).toBe(
+    expect(screen.getByRole("button", { name: "ปฏิเสธ" }).hasAttribute("disabled")).toBe(
       true,
     )
   })

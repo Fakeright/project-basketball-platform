@@ -1,3 +1,10 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * แสดงทีมของบัญชีพร้อมสถานะ รูปแบบการแข่งขัน และทางไปจัดการ/ค้นหารายการ
+ * เรียกใช้จาก: app/(admin)/team/page.tsx
+ * ตามการทำงานต่อ: components/workflow/workflow-next-action.tsx
+ */
+
 import Link from "next/link"
 
 import type { TeamSummary } from "@/features/team-management/domain/team"

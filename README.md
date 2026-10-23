@@ -9,21 +9,21 @@ COURTSIDE คือแพลตฟอร์มการแข่งขันบ�
 dependencies สำหรับ runtime ที่ติดตั้งมีดังนี้:
 
 - `@base-ui/react` `^1.6.0`
-- `@prisma/adapter-pg` `7.10.0`, `@prisma/client` `7.10.0` และ `pg` `^8.22.0`
+- `@prisma/adapter-pg` `7.10.1`, `@prisma/client` `7.10.1` และ `pg` `^8.22.0`
 - `@supabase/ssr` `^0.12.4` และ `@supabase/supabase-js` `^2.110.8`
 - `class-variance-authority` `^0.7.1`, `clsx` `^2.1.1`, `lucide-react` `^1.26.0`, `tailwind-merge` `^3.6.0` และ `zod` `^4.4.3`
-- Next.js `16.4.0` พร้อม App Router, React `19.2.4` และ React DOM `19.2.4`
+- Next.js `16.4.2` พร้อม App Router, React `19.2.4` และ React DOM `19.2.4`
 - `next-themes` `^0.4.6` และ `tw-animate-css` `^1.4.0`
-- `pdfjs-dist` `^6.2.108` และ `sharp` `0.35.5` สำหรับตรวจโครงสร้าง PDF และรูปภาพสายการแข่งขันฝั่ง server
+- `pdf-lib` `^1.17.1` และ `sharp` `0.35.5` สำหรับตรวจโครงสร้าง PDF และรูปภาพสายการแข่งขันฝั่ง server
 
 dependencies สำหรับการพัฒนาที่ติดตั้งมีดังนี้:
 
 - `@tailwindcss/postcss` `^4` และ Tailwind CSS `^4`
 - `@testing-library/react` `^16.3.2`, `@testing-library/user-event` `^14.6.1` และ JSDOM `^29.1.1`
 - type packages สำหรับ Node, PostgreSQL, React และ React DOM: `@types/node` `^20`, `@types/pg` `^8.20.0`, `@types/react` `^19`, และ `@types/react-dom` `^19`
-- `dotenv` `^17.4.2`, `tsx` `^4.23.1` และ `vite-tsconfig-paths` `^6.1.1`
-- ESLint `^9` พร้อม `eslint-config-next` `16.4.0`
-- Prisma CLI `7.10.0`, shadcn CLI `^4.14.1`, TypeScript `^5` และ Vitest `^4.1.10`
+- `dotenv` `^17.4.2` และ `tsx` `^4.23.1`
+- ESLint `^9` พร้อม `eslint-config-next` `16.4.2`
+- Prisma CLI `7.10.1`, shadcn CLI `^4.14.1`, TypeScript `^5` และ Vitest `^4.1.12`
 
 สถาปัตยกรรมใช้ทิศทางการพึ่งพาดังนี้:
 
@@ -49,7 +49,7 @@ infrastructure -> application/domain contracts
 
 ผู้จัดเลือกรูปแบบได้หลังล็อกรายชื่อทีมและก่อนเริ่มแข่งขัน:
 
-- `สร้างอัตโนมัติ` สร้างสายแพ้คัดออกแบบกำหนด Seed หรือสุ่ม ระบบเลื่อนผู้ชนะไปคู่ถัดไปเมื่อยืนยันผล
+- `สร้างในระบบ` รองรับ 8, 16 หรือ 32 ทีม โดยเรียงตำแหน่งทีมเองหรือสุ่มตำแหน่ง ระบบจับคู่ทีมที่อยู่ติดกันและเลื่อนผู้ชนะไปคู่ถัดไปเมื่อยืนยันผล
 - `ใช้ไฟล์ภายนอก` อัปโหลด PDF หรือ JPG/PNG/WebP สูงสุด 4 MB ต่อไฟล์ ระบบตรวจ MIME, ขนาด และโครงสร้างไฟล์ฝั่ง server
 
 ไฟล์ภายนอกเก็บเป็น revision และยังไม่เปลี่ยนหน้าสาธารณะจนผู้จัดกดเผยแพร่ revision ที่เลือก ไฟล์อยู่ใน private bucket `tournament-brackets` และเปิดผ่าน signed URL อายุ 10 นาที Revision เดิมยังอยู่ในประวัติเมื่อเผยแพร่ฉบับใหม่
@@ -65,6 +65,8 @@ infrastructure -> application/domain contracts
 - Platform Admin ดำเนินการเริ่มหรือจบรายการแทนเจ้าของได้เมื่อระบุเหตุผล และระบบบันทึก audit พร้อม optimistic concurrency
 
 Schema สำหรับประเภทคู่และ unique placement constraints อยู่ใน migration `20260820090000_add_match_purpose`
+
+แผนที่ไฟล์หน้าเว็บและเส้นทางการทำงานสำหรับอธิบายโค้ดอยู่ที่ [`docs/CODE-TOUR.md`](docs/CODE-TOUR.md)
 
 ## ทีมและรายชื่อผู้เล่น
 
@@ -123,12 +125,15 @@ npm run dev
 ## การตรวจสอบคุณภาพ
 
 ```powershell
+npm run prisma:generate
+npm run typecheck
 npm run test
 npm run lint
 npm run build
 ```
 
 - `npm run test` รันชุดทดสอบ Vitest
+- `npm run typecheck` สร้างชนิดข้อมูล route แล้วตรวจ TypeScript ทั้ง source และ tests
 - `npm run lint` ตรวจสอบโครงการด้วย ESLint
 - `npm run build` สร้าง Prisma Client ก่อนสร้าง production build โดยอัตโนมัติ
 - `npm run test:ci` จำกัดงานทดสอบพร้อมกันเพื่อให้ CI เสถียร
@@ -137,7 +142,11 @@ npm run build
 
 CI ที่ `.github/workflows/ci.yml` ใช้ Node.js 24 และ PostgreSQL ชั่วคราวสำหรับทดสอบ migrations โดยไม่ใช้ฐาน Supabase ของโครงการ
 
+ผลตรวจล่าสุดและคำเตือน dependency ที่ยังต้องติดตาม: [VERIFICATION-AND-PUBLISH.md](docs/VERIFICATION-AND-PUBLISH.md)
+
 ## ผังโครงการ
+
+คู่มือสำหรับอ่านโค้ดและเตรียมสอบ: [EXAM-CODE-GUIDE.md](docs/EXAM-CODE-GUIDE.md) อธิบายเส้นทางจากหน้าเว็บถึงฐานข้อมูล พร้อมสารบัญไฟล์/ฟังก์ชันและลิงก์บรรทัดในเครื่อง ส่วน [CODE-CLEANUP-REVIEW.md](docs/CODE-CLEANUP-REVIEW.md) บันทึกส่วนที่ตัด/ปรับและผลตรวจของรอบนี้
 
 - `app/` - หน้า layouts สถานะ loading/error และ Route Handlers ของ Next.js App Router
 - `components/` - presentation components และ UI primitives ที่ใช้ร่วมกัน

@@ -1,3 +1,9 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * แสดงสถานะ คำอธิบาย และปุ่มขั้นถัดไปจาก WorkflowGuidanceView
+ * เรียกใช้จาก: app/(admin)/organizer/page.tsx, components/team/team-list.tsx
+ */
+
 import Link from "next/link"
 import { CircleAlert } from "lucide-react"
 

@@ -1,3 +1,9 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * แจ้งความต่างของสมาชิกเก่าที่ควรตรวจ โดยรับผลสรุปจาก use case และไม่แก้ข้อมูลเอง
+ * เรียกใช้จาก: components/team/team-workspace-manager.tsx
+ */
+
 import type { LegacyTeamReconciliationSummary } from "@/features/team-management/application/legacy-team-reconciliation"
 
 export function LegacyTeamReconciliationNotice({

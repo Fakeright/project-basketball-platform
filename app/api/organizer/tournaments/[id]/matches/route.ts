@@ -1,3 +1,9 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * API POST /api/organizer/tournaments/[id]/matches: รับคำขอ HTTP แล้วส่งต่อ handleCreateExternalMatch
+ * ตามการทำงานต่อ: features/competition/application/create-external-match.ts, features/competition/infrastructure/get-competition-repository.ts, features/competition/presentation/competition-handler.ts
+ */
+
 import { createExternalMatch } from "@/features/competition/application/create-external-match"
 import { getCompetitionRepository } from "@/features/competition/infrastructure/get-competition-repository"
 import { handleCreateExternalMatch } from "@/features/competition/presentation/competition-handler"

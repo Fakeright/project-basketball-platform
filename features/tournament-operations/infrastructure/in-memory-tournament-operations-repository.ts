@@ -1,3 +1,9 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * จำลองรายการและการเปลี่ยนสถานะในหน่วยความจำเพื่อใช้ทดสอบกฎงาน
+ * ตามการทำงานต่อ: features/provinces/domain/thai-provinces.ts, features/competition/domain/tournament-competition-policy.ts, features/tournament-operations/domain/tournament-governance-policy.ts
+ */
+
 import type {
   TournamentOperation,
   TournamentOperationInput,

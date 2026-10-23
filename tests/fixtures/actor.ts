@@ -1,3 +1,8 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * กำหนดผู้ใช้จำลองแต่ละบทบาทให้เทสต์ใช้ข้อมูลชุดเดียวกัน
+ */
+
 import type { Actor, Role } from "@/features/identity/domain/actor"
 
 export function createTestActor<const T extends Role>(

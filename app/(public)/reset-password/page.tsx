@@ -1,3 +1,9 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * หน้า /reset-password: เปิดฟอร์มตั้งรหัสผ่านใหม่สำหรับกระบวนการ recovery
+ * ตามการทำงานต่อ: components/auth/auth-form-layout.tsx, components/auth/reset-password-form.tsx
+ */
+
 import Link from "next/link"
 
 import { AuthFormLayout } from "@/components/auth/auth-form-layout"

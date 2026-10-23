@@ -1,5 +1,13 @@
 "use client"
 
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ช่องเลือกจังหวัดแบบค้นหาได้จาก 77 จังหวัด โดยส่งรหัสจังหวัดในฟอร์มและควบคุมค่าที่เลือกด้วย state
+ * เรียกใช้จาก: components/admin/tournament-editor.tsx, components/team/team-editor.tsx
+ * ตามการทำงานต่อ: features/provinces/domain/thai-provinces.ts, lib/utils.ts
+ */
+
+import { useState } from "react"
 import { Combobox } from "@base-ui/react/combobox"
 import { ChevronDown } from "lucide-react"
 
@@ -28,7 +36,16 @@ type ProvinceComboboxProps = {
   required?: boolean
 }
 
-export function ProvinceCombobox({
+export function ProvinceCombobox(props: ProvinceComboboxProps) {
+  return (
+    <ProvinceComboboxControl
+      key={`${props.allowEmpty ?? false}:${props.defaultValue ?? ""}`}
+      {...props}
+    />
+  )
+}
+
+function ProvinceComboboxControl({
   allowEmpty = false,
   className,
   defaultValue,
@@ -45,6 +62,7 @@ export function ProvinceCombobox({
     : allowEmpty
       ? allProvincesChoice
       : null
+  const [value, setValue] = useState<ProvinceChoice | null>(selectedProvince)
 
   return (
     <div className={cn("grid gap-1.5", className)}>
@@ -53,13 +71,14 @@ export function ProvinceCombobox({
       </label>
       <Combobox.Root
         autoHighlight
-        defaultValue={selectedProvince}
         filter={matchesProvince}
         itemToStringLabel={formatProvinceLabel}
         itemToStringValue={(province) => province.code}
         items={provinces}
         name={name}
+        onValueChange={setValue}
         required={required}
+        value={value}
       >
         <Combobox.InputGroup className="flex h-10 w-full items-center border border-input bg-background focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/50">
           <Combobox.Input

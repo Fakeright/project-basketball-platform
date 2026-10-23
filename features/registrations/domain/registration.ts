@@ -1,3 +1,9 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * กำหนดสถานะและข้อมูลใบสมัครที่ใช้ร่วมกันระหว่าง use case, repository และหน้าจอ
+ * เรียกใช้จาก: components/organizer/registration-review-list.tsx, components/team/team-registration-list.tsx
+ */
+
 export type RegistrationStatus =
   | "PENDING"
   | "APPROVED"

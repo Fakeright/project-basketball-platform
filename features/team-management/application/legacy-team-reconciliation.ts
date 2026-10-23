@@ -1,3 +1,9 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ตรวจความต่างระหว่างสมาชิกแบบเดิมกับรายชื่อผู้เล่นปัจจุบัน เพื่อแจ้งรายการที่ต้องทบทวน
+ * เรียกใช้จาก: components/team/legacy-team-reconciliation-notice.tsx, components/team/team-workspace-manager.tsx
+ */
+
 import type {
   LegacyTeamReconciliationContext,
   TeamRepository,

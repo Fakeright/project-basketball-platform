@@ -1,3 +1,10 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ต่ออายุ session และประสาน cookie ระหว่าง request/response ก่อนเข้าหน้าเว็บ
+ * เรียกใช้จาก: proxy.ts
+ * ตามการทำงานต่อ: features/identity/application/auth-errors.ts
+ */
+
 import { createServerClient, type CookieMethodsServer } from "@supabase/ssr"
 import { NextResponse, type NextRequest } from "next/server"
 import { getPublicSupabaseConfiguration } from "./config"

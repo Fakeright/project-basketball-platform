@@ -1,3 +1,9 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * หน้า /register: เปิดฟอร์มสมัครบัญชีพร้อมบทบาทที่ผู้สมัครเลือกเองได้
+ * ตามการทำงานต่อ: components/auth/auth-form-layout.tsx, components/auth/register-form.tsx
+ */
+
 import Link from "next/link"
 
 import { AuthFormLayout } from "@/components/auth/auth-form-layout"

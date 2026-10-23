@@ -1,5 +1,12 @@
 "use client"
 
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ห่อ dialog แบบเลื่อนจากขอบจอ ใช้กับเมนู/พื้นที่ควบคุมบนจอเล็ก
+ * เรียกใช้จาก: components/site-header.tsx
+ * ตามการทำงานต่อ: lib/utils.ts, components/ui/button.tsx, components/ui/tooltip.tsx
+ */
+
 import * as React from "react"
 import { Dialog as SheetPrimitive } from "@base-ui/react/dialog"
 

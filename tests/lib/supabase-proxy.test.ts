@@ -1,3 +1,8 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ทดสอบ lib/supabase/proxy.ts, features/identity/presentation/auth-handler.ts โดยจำลอง dependencies ตามกรณี และตรวจผลสำเร็จ/ข้อผิดพลาดด้วย assertions
+ */
+
 import { NextRequest } from "next/server"
 import { describe, expect, it, vi } from "vitest"
 

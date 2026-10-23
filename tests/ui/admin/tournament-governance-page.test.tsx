@@ -1,3 +1,8 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ทดสอบ app/(admin)/admin/tournaments/[id]/page.tsx โดยจำลอง dependencies ตามกรณี และตรวจผลสำเร็จ/ข้อผิดพลาดด้วย assertions
+ */
+
 import { cleanup, render, screen } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
@@ -100,7 +105,7 @@ afterEach(() => {
 describe("AdminTournamentGovernancePage", () => {
   it("loads governance context and presents status, dependencies, and actions", async () => {
     render(
-      await AdminTournamentGovernancePage({
+      await AdminTournamentGovernancePage({ searchParams: Promise.resolve({}),
         params: Promise.resolve({ id: tournament.id }),
       }),
     )
@@ -137,7 +142,7 @@ describe("AdminTournamentGovernancePage", () => {
     })
 
     await expect(
-      AdminTournamentGovernancePage({
+      AdminTournamentGovernancePage({ searchParams: Promise.resolve({}),
         params: Promise.resolve({ id: tournament.id }),
       }),
     ).rejects.toThrow("NEXT_NOT_FOUND")

@@ -1,3 +1,9 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * กำหนดสัญญาสิทธิ์กู้รหัสผ่าน การใช้สิทธิ์ครั้งเดียว และบริการตรวจ recovery transaction
+ * เรียกใช้จาก: features/identity/application/manage-recovery-grant.ts, features/identity/infrastructure/hmac-recovery-grant-service.ts
+ */
+
 export interface CreateAuthRecoveryGrantInput {
   nonceHash: string
   userId: string

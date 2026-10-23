@@ -1,3 +1,9 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * API PATCH/DELETE /api/teams/[id]/players/[playerId]: รับคำขอ HTTP แล้วส่งต่อ handleUpdateTeamPlayer, handleDeactivateTeamPlayer
+ * ตามการทำงานต่อ: features/identity/infrastructure/next-cookie-current-actor-provider.ts, features/team-management/application/deactivate-team-player.ts, features/team-management/application/update-team-player.ts
+ */
+
 import { createNextCookieCurrentActorProvider } from "@/features/identity/infrastructure/next-cookie-current-actor-provider"
 import { deactivateTeamPlayer } from "@/features/team-management/application/deactivate-team-player"
 import { updateTeamPlayer } from "@/features/team-management/application/update-team-player"

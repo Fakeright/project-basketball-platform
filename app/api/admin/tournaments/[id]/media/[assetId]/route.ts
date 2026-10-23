@@ -1,3 +1,9 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * API DELETE /api/admin/tournaments/[id]/media/[assetId]: รับคำขอ HTTP แล้วส่งต่อ handleTournamentMediaDelete
+ * ตามการทำงานต่อ: features/admin/presentation/tournament-media-handler.ts, features/identity/infrastructure/next-cookie-current-actor-provider.ts, features/shared/presentation/safe-http.ts
+ */
+
 import { handleTournamentMediaDelete } from "@/features/admin/presentation/tournament-media-handler"
 import { createNextCookieCurrentActorProvider } from "@/features/identity/infrastructure/next-cookie-current-actor-provider"
 import { withSafeRouteBoundary } from "@/features/shared/presentation/safe-http"

@@ -1,3 +1,10 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * อ่านและบันทึก metadata ของสื่อใน PostgreSQL ผ่าน Prisma
+ * เรียกใช้จาก: features/tournament-media/infrastructure/get-tournament-media-repository.ts
+ * ตามการทำงานต่อ: features/tournament-operations/infrastructure/prisma-tournament-governance-lock.ts
+ */
+
 import type {
   MediaAsset,
   Prisma,
@@ -202,6 +209,7 @@ function isPrismaUniqueError(error: unknown) {
   )
 }
 
+// แปลงข้อมูลให้เก็บในช่อง JSON ของ Prisma ได้ เช่น snapshot ใน audit
 function toJsonValue(value: unknown): Prisma.InputJsonValue {
   return JSON.parse(JSON.stringify(value)) as Prisma.InputJsonValue
 }

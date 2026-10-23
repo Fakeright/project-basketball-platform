@@ -1,5 +1,12 @@
 "use client"
 
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ฟอร์มสร้าง/แก้ทีมและแนบผู้เล่นเริ่มต้น ส่ง API แล้วคืนข้อมูลทีมล่าสุดให้พื้นที่จัดการ
+ * เรียกใช้จาก: app/(admin)/team/new/page.tsx, components/team/team-workspace-manager.tsx
+ * ตามการทำงานต่อ: components/province-combobox.tsx, components/team/team-creation-roster-editor.tsx, components/team/team-player-fields.tsx
+ */
+
 import type { FormEvent } from "react"
 import { useState } from "react"
 import Link from "next/link"
@@ -84,6 +91,7 @@ export function TeamEditor({
     )
   }
 
+  // อ่านข้อมูลทีมและรายชื่อเริ่มต้น แล้วส่งสร้าง/แก้ทีมผ่าน API; นำข้อผิดพลาดรายผู้เล่นกลับไปแสดงที่แถว
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (uncertainCreate) return
@@ -117,6 +125,7 @@ export function TeamEditor({
       }
     }
 
+    // สร้างทีมส่ง POST /api/teams พร้อมผู้เล่น; แก้ทีมส่ง PATCH /api/teams/:id พร้อม version
     setPending(true)
     try {
       const response = await fetch(
@@ -269,6 +278,7 @@ interface PlayerIssue {
   message: string
 }
 
+// ผูกข้อผิดพลาดผู้เล่นจาก API กับตำแหน่งแถว/field ของฟอร์ม
 function applyServerPlayerIssues(
   rows: readonly TeamCreationPlayerRow[],
   submittedRows: readonly TeamCreationPlayerRow[],

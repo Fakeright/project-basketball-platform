@@ -1,3 +1,9 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * แสดงผู้ชนะ รองชนะเลิศ และสถานะความครบถ้วนของผลที่สรุปจากการแข่งขัน
+ * เรียกใช้จาก: app/(public)/bracket/page.tsx, app/(public)/results/page.tsx
+ */
+
 import type { CompetitionSummary } from "@/features/competition/application/get-competition-summary"
 
 export function CompetitionResultSummary({

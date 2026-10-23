@@ -1,3 +1,10 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * รวมกฎสมัครและตารางเปลี่ยนสถานะใบสมัคร รวมวันปิดรับ ความจุ รูปแบบทีม อายุ และเหตุผล
+ * เรียกใช้จาก: features/registrations/application/apply-to-tournament.ts, features/registrations/application/cancel-registration.ts
+ * ตามการทำงานต่อ: features/team-management/domain/team-policy.ts, features/registrations/domain/player-age-policy.ts
+ */
+
 import type { TeamPlayer, TeamSummary } from "@/features/team-management/domain/team"
 import {
   assertRosterEligibility,
@@ -53,6 +60,7 @@ const transitions: Record<
   WITHDRAWN: {},
 }
 
+// กฎฝั่ง server: รับสมัครอยู่ ทีมเป็นเจ้าของ รูปแบบ/อายุ/จำนวนผู้เล่นตรง และยังไม่สมัครซ้ำ
 export function assertCanApply(input: RegistrationApplicationEligibility): void {
   if (input.tournament.status !== "PUBLISHED") {
     throw new Error("TOURNAMENT_NOT_PUBLISHED")
@@ -88,6 +96,7 @@ export function assertCanApply(input: RegistrationApplicationEligibility): void 
   }
 }
 
+// จำกัดการเปลี่ยนสถานะใบสมัคร และบังคับเหตุผลเมื่อปฏิเสธหรือถอนทีม
 export function transitionRegistration(
   status: RegistrationStatus,
   action: RegistrationAction,

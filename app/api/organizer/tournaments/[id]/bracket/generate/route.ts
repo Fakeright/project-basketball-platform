@@ -1,3 +1,9 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * API POST /api/organizer/tournaments/[id]/bracket/generate: รับคำขอ HTTP แล้วส่งต่อ handleGenerateBracket
+ * ตามการทำงานต่อ: features/competition/application/generate-bracket.ts, features/competition/infrastructure/get-competition-repository.ts, features/competition/infrastructure/tokenized-bracket-shuffle.ts
+ */
+
 import { randomUUID } from "node:crypto"
 
 import { generateBracketDraft } from "@/features/competition/application/generate-bracket"
@@ -7,6 +13,7 @@ import { handleGenerateBracket } from "@/features/competition/presentation/compe
 import { createNextCookieCurrentActorProvider } from "@/features/identity/infrastructure/next-cookie-current-actor-provider"
 import { withSafeRouteBoundary } from "@/features/shared/presentation/safe-http"
 
+/** รับคำสั่งเรียง/สุ่มสายและประกอบ use case กับ repository และตัวสุ่มที่ใช้ token */
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> },

@@ -1,3 +1,9 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * แสดงรายชื่อผู้เล่นของทีมที่สมัคร พร้อมข้อมูลที่ผู้จัดใช้ตรวจทีม
+ * เรียกใช้จาก: components/organizer/registration-review-list.tsx
+ */
+
 import type { RegistrationReviewPlayer } from "@/features/registrations/application/ports/registration-repository"
 
 export function RegistrationTeamRoster({

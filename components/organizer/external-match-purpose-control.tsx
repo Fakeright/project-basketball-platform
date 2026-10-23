@@ -1,5 +1,12 @@
 "use client"
 
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * เลือกว่าคู่แข่งขันเป็นคู่ทั่วไปหรือคู่ตัดสินอันดับ แล้วส่งคำขอแก้ไป API
+ * เรียกใช้จาก: components/organizer/match-result-editor.tsx
+ * ตามการทำงานต่อ: components/ui/button.tsx, components/ui/select.tsx
+ */
+
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Save } from "lucide-react"
@@ -36,6 +43,7 @@ export function ExternalMatchPurposeControl({
   const [pending, setPending] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
 
+  // ส่งชนิดคู่แข่งขันและ version ไป API purpose เพื่อให้เซิร์ฟเวอร์ตรวจและบันทึก
   async function updatePurpose() {
     setPending(true)
     setMessage(null)

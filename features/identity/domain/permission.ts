@@ -1,3 +1,9 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * กำหนดชื่อสิทธิ์แต่ละคำสั่งและตารางสิทธิ์ของบทบาท เพื่อใช้ตรวจใน use case
+ * เรียกใช้จาก: features/identity/application/authorize.ts, features/team-management/application/team-access.ts
+ */
+
 import type { Role } from "@/features/identity/domain/actor";
 
 export const permissions = [

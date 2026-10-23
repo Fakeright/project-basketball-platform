@@ -1,3 +1,8 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ทดสอบ features/registrations/presentation/registration-handler.ts, features/tournament-operations/domain/tournament-governance-policy.ts โดยจำลอง dependencies ตามกรณี และตรวจผลสำเร็จ/ข้อผิดพลาดด้วย assertions
+ */
+
 import { afterEach, describe, expect, it, vi } from "vitest"
 
 import {

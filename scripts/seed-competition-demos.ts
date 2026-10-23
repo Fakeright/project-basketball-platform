@@ -1,3 +1,9 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * จุดเริ่มต้นสร้างชุดการแข่งขันสาธิตจาก fixture ที่กำหนด ID คงที่
+ * ตามการทำงานต่อ: features/demo-data/infrastructure/prisma-demo-seed-port.ts, features/demo-data/infrastructure/demo-seed-orchestration.ts, features/demo-data/infrastructure/demo-seed-safety.ts
+ */
+
 import { PrismaPg } from "@prisma/adapter-pg"
 import { config } from "dotenv"
 

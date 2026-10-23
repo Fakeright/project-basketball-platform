@@ -1,3 +1,9 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * แสดงรอบและคู่แข่งขันของสายที่ระบบสร้าง รวมทางเชื่อมไปคู่ถัดไปและการเลื่อนดูบนมือถือ
+ * เรียกใช้จาก: app/(public)/bracket/page.tsx
+ */
+
 import type { Match } from "@/features/tournaments/domain/tournament"
 
 function formatScore(score: number | null) {

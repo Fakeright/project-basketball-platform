@@ -1,3 +1,10 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * อ่าน/ล็อกข้อมูลและบันทึกสาย ตาราง คะแนน และผู้ชนะผ่าน Prisma โดยรักษา transaction และ version
+ * เรียกใช้จาก: features/competition/infrastructure/get-competition-repository.ts
+ * ตามการทำงานต่อ: features/tournament-operations/infrastructure/prisma-tournament-governance-lock.ts
+ */
+
 import { randomUUID } from "node:crypto"
 
 import type { Prisma, PrismaClient } from "@/lib/generated/prisma/client"
@@ -29,7 +36,10 @@ import type {
   UpdateExternalMatchPurposeMutation,
   UpdatedExternalMatchPurpose,
 } from "@/features/competition/application/ports/competition-repository"
-import { lockActiveTournamentForMutation } from "@/features/tournament-operations/infrastructure/prisma-tournament-governance-lock"
+import {
+  lockActiveTournamentForMutation,
+  lockTournamentGovernanceRow,
+} from "@/features/tournament-operations/infrastructure/prisma-tournament-governance-lock"
 import { MAX_TOURNAMENT_CAPACITY } from "@/features/tournament-operations/domain/tournament-capacity"
 
 type CompetitionDatabaseClient = Pick<
@@ -50,6 +60,7 @@ export class PrismaCompetitionRepository implements CompetitionRepository {
     private readonly createId: () => string = randomUUID,
   ) {}
 
+  // ส่ง adapter ที่ผูกกับ transaction ให้ use case เพื่อรวมการอ่าน/เขียนที่ต้องสำเร็จหรือย้อนกลับพร้อมกัน
   async inTransaction<T>(
     operation: (repository: CompetitionRepositoryTransaction) => Promise<T>,
   ): Promise<T> {
@@ -214,6 +225,7 @@ export class PrismaCompetitionRepository implements CompetitionRepository {
     ).findExternalMatchCreationContext(input)
   }
 
+  // ตรวจว่าทีมอยู่ในรายการและเงื่อนไขตารางถูกต้อง ก่อนสร้างคู่ที่ผู้จัดกรอกเอง
   createExternalMatch(input: CreateExternalMatchMutation) {
     return this.prisma.$transaction((transaction) =>
       new PrismaCompetitionOperations(
@@ -233,6 +245,7 @@ export class PrismaCompetitionRepository implements CompetitionRepository {
     ).findExternalMatchPurposeContext(input)
   }
 
+  // แก้ชนิดคู่แข่งขันในโหมดเอกสาร เช่น คู่ชิง โดยตรวจ version และข้อจำกัดของผลเดิม
   updateExternalMatchPurpose(input: UpdateExternalMatchPurposeMutation) {
     return this.prisma.$transaction((transaction) =>
       new PrismaCompetitionOperations(
@@ -678,6 +691,7 @@ class PrismaCompetitionOperations implements CompetitionRepositoryTransaction {
             organizerId: true,
             governanceStatus: true,
             status: true,
+            format: true,
             startsAt: true,
             endsAt: true,
           },
@@ -685,6 +699,8 @@ class PrismaCompetitionOperations implements CompetitionRepositoryTransaction {
       },
     })
     if (!bracket) return null
+
+    await lockTournamentGovernanceRow(this.prisma, input.tournamentId)
 
     const conflict = await this.prisma.match.findFirst({
       where: {
@@ -700,6 +716,7 @@ class PrismaCompetitionOperations implements CompetitionRepositoryTransaction {
       tournamentId: bracket.tournament.id,
       organizerId: bracket.tournament.organizerId,
       tournamentGovernanceStatus: bracket.tournament.governanceStatus,
+      tournamentFormat: bracket.tournament.format,
       tournamentStartsAt: bracket.tournament.startsAt.toISOString(),
       tournamentEndsAt: bracket.tournament.endsAt.toISOString(),
       bracketId: bracket.id,
@@ -712,6 +729,7 @@ class PrismaCompetitionOperations implements CompetitionRepositoryTransaction {
     }
   }
 
+  // ตรวจว่าทีมอยู่ในรายการและเงื่อนไขตารางถูกต้อง ก่อนสร้างคู่ที่ผู้จัดกรอกเอง
   async createExternalMatch(
     input: CreateExternalMatchMutation,
   ): Promise<CreatedExternalMatch> {
@@ -841,6 +859,7 @@ class PrismaCompetitionOperations implements CompetitionRepositoryTransaction {
     }
   }
 
+  // แก้ชนิดคู่แข่งขันในโหมดเอกสาร เช่น คู่ชิง โดยตรวจ version และข้อจำกัดของผลเดิม
   async updateExternalMatchPurpose(
     input: UpdateExternalMatchPurposeMutation,
   ): Promise<UpdatedExternalMatchPurpose> {
@@ -913,6 +932,7 @@ class PrismaCompetitionOperations implements CompetitionRepositoryTransaction {
             organizerId: true,
             governanceStatus: true,
             status: true,
+            format: true,
             startsAt: true,
             endsAt: true,
           },
@@ -920,6 +940,8 @@ class PrismaCompetitionOperations implements CompetitionRepositoryTransaction {
       },
     })
     if (!match) return null
+
+    await lockTournamentGovernanceRow(this.prisma, input.tournamentId)
 
     const conflict = await this.prisma.match.findFirst({
       where: {
@@ -936,6 +958,7 @@ class PrismaCompetitionOperations implements CompetitionRepositoryTransaction {
       tournamentId: match.tournament.id,
       organizerId: match.tournament.organizerId,
       tournamentGovernanceStatus: match.tournament.governanceStatus,
+      tournamentFormat: match.tournament.format,
       tournamentStatus: match.tournament.status,
       tournamentStartsAt: match.tournament.startsAt.toISOString(),
       tournamentEndsAt: match.tournament.endsAt.toISOString(),
@@ -1358,6 +1381,7 @@ function requiredId<TKey>(map: Map<TKey, string>, key: TKey): string {
   return id
 }
 
+// แปลงข้อมูลให้เก็บในช่อง JSON ของ Prisma ได้ เช่น snapshot ใน audit
 function toJsonValue(value: unknown): Prisma.InputJsonValue {
   return JSON.parse(JSON.stringify(value)) as Prisma.InputJsonValue
 }

@@ -1,3 +1,9 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * API POST /api/admin/tournaments/[id]/submit: รับคำขอ HTTP แล้วส่งต่อ submitTournamentHandler
+ * ตามการทำงานต่อ: features/admin/presentation/submit-tournament-handler.ts, features/identity/infrastructure/next-cookie-current-actor-provider.ts, features/shared/presentation/safe-http.ts
+ */
+
 import { submitTournamentHandler } from "@/features/admin/presentation/submit-tournament-handler"
 import { createNextCookieCurrentActorProvider } from "@/features/identity/infrastructure/next-cookie-current-actor-provider"
 import { withSafeRouteBoundary } from "@/features/shared/presentation/safe-http"

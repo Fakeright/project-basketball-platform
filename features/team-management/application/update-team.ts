@@ -1,3 +1,10 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * แก้ชื่อ จังหวัด และรูปแบบทีมโดยตรวจ version ชื่อซ้ำ จำนวนผู้เล่น และข้อจำกัดเมื่อมีใบสมัคร
+ * เรียกใช้จาก: app/api/teams/[id]/route.ts, features/team-management/presentation/team-handler.ts
+ * ตามการทำงานต่อ: features/provinces/application/assert-province-code.ts, features/team-management/application/team-access.ts
+ */
+
 import type { Actor } from "@/features/identity/domain/actor"
 import type { TeamSummary } from "@/features/team-management/domain/team"
 import { getMaximumTeamPlayerCount } from "@/features/team-management/domain/team-player-batch-policy"
@@ -12,6 +19,7 @@ export interface UpdateTeamInput extends CreateTeamInput {
   expectedVersion: number
 }
 
+// ตรวจ version ชื่อซ้ำ ใบสมัคร และจำนวนผู้เล่นก่อนเปลี่ยนข้อมูลทีม
 export async function updateTeam(
   input: UpdateTeamInput,
   actor: Actor,
@@ -26,11 +34,21 @@ export async function updateTeam(
     if (team.version !== input.expectedVersion) throw new Error("CONFLICT")
     if (!team.isActive) throw new Error("TEAM_INACTIVE")
 
+    const name = input.name.trim()
+    const nameChanged = name.toLowerCase() !== team.name.trim().toLowerCase()
     if (
-      team.format !== input.format &&
+      (team.format !== input.format || nameChanged) &&
       (await teams.hasActiveRegistration(team.id))
     ) {
+      if (nameChanged) throw new Error("TEAM_NAME_CHANGE_BLOCKED")
       throw new Error("TEAM_FORMAT_CHANGE_BLOCKED")
+    }
+
+    if (
+      nameChanged &&
+      (await teams.hasActiveNameConflict(team.ownerId, name, team.id))
+    ) {
+      throw new Error("TEAM_NAME_TAKEN")
     }
 
     if (team.format !== input.format) {
@@ -41,7 +59,7 @@ export async function updateTeam(
     }
 
     const updated = await teams.update(team.id, {
-      name: input.name,
+      name,
       provinceCode: input.provinceCode,
       format: input.format,
       expectedVersion: input.expectedVersion,

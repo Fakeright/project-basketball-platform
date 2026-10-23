@@ -1,3 +1,8 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ทดสอบ features/registrations/domain/registration-policy.ts, features/team-management/domain/team.ts โดยจำลอง dependencies ตามกรณี และตรวจผลสำเร็จ/ข้อผิดพลาดด้วย assertions
+ */
+
 import { describe, expect, it } from "vitest"
 
 import { assertCanApply, transitionRegistration } from "@/features/registrations/domain/registration-policy"
@@ -39,12 +44,13 @@ const eligibleApplication = {
     format: "FIVE_V_FIVE" as const,
     ageGroup: "Open",
     startsAt: "2026-11-15T02:00:00.000Z",
-    status: "PUBLISHED",
+    status: "PUBLISHED" as const,
     registrationDeadline: "2026-07-26T12:00:00.000Z",
     capacity: 8,
     approvedCount: 7,
   },
   hasActiveRegistration: false,
+  hasActiveNameConflict: false,
   now: new Date("2026-07-26T11:59:59.999Z"),
 }
 

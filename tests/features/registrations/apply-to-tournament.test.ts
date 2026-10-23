@@ -1,3 +1,8 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ทดสอบ features/registrations/application/apply-to-tournament.ts, features/registrations/application/ports/registration-repository.ts โดยจำลอง dependencies ตามกรณี และตรวจผลสำเร็จ/ข้อผิดพลาดด้วย assertions
+ */
+
 import { describe, expect, it, vi } from "vitest"
 
 import { applyToTournament } from "@/features/registrations/application/apply-to-tournament"
@@ -52,6 +57,7 @@ function createRepository(overrides: Partial<RegistrationRepository> = {}): Regi
   const repository: RegistrationRepository = {
     getApplicationContext: vi.fn(async () => context),
     findActive: vi.fn(async () => null),
+    hasActiveNameConflict: vi.fn(async () => false),
     createPending: vi.fn(async () => ({
       id: "registration-1",
       tournamentId: "tournament-1",
@@ -82,6 +88,19 @@ function createRepository(overrides: Partial<RegistrationRepository> = {}): Regi
 }
 
 describe("applyToTournament", () => {
+  it("rejects another team with the same name in an active registration", async () => {
+    const repository = createRepository({
+      hasActiveNameConflict: vi.fn(async () => true),
+    })
+
+    await expect(applyToTournament(
+      { tournamentId: "tournament-1", teamId: "team-1" },
+      teamManager,
+      { registrations: repository, now: () => new Date("2026-10-01T00:00:00Z") },
+    )).rejects.toThrow("REGISTRATION_TEAM_NAME_TAKEN")
+    expect(repository.createPending).not.toHaveBeenCalled()
+  })
+
   it("does not count active legacy members toward TeamPlayer eligibility", async () => {
     const repository = createRepository({
       getApplicationContext: vi.fn(async () => ({

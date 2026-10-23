@@ -1,3 +1,9 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * กำหนดข้อมูลรายการฝั่งจัดการ สถานะการตรวจ และชนิดเหตุการณ์ที่เก็บใน audit
+ * เรียกใช้จาก: app/(admin)/admin/tournaments/[id]/page.tsx, app/(admin)/admin/tournaments/page.tsx
+ */
+
 import type { TournamentFormat } from "@/features/tournaments/domain/tournament"
 import type { TournamentGovernanceStatus } from "./tournament-governance-policy"
 

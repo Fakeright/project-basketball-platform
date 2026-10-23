@@ -1,3 +1,10 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ตรวจสิทธิ์ก่อนนำสื่อออกจากรายการและจัดการไฟล์ใน storage ตามเงื่อนไข
+ * เรียกใช้จาก: app/api/admin/tournaments/[id]/media/[assetId]/route.ts
+ * ตามการทำงานต่อ: features/tournament-media/application/ports/object-storage.ts, features/tournament-media/application/media-cleanup.ts, features/tournament-media/application/authorize-tournament-media.ts
+ */
+
 import type { Actor } from "@/features/identity/domain/actor"
 import type { TournamentOperationsRepository } from "@/features/tournament-operations/infrastructure/tournament-operations-repository"
 
@@ -19,6 +26,7 @@ interface DeleteTournamentMediaDependencies {
   cleanupLogger?: MediaCleanupLogger
 }
 
+// ตรวจสิทธิ์และความสัมพันธ์ของ asset กับรายการก่อนนำสื่อออก
 export async function deleteTournamentMedia(
   input: { tournamentId: string; assetId: string },
   actor: Actor,

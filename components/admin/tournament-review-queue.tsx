@@ -1,5 +1,11 @@
 "use client"
 
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * แสดงรายการรอตรวจพร้อมลิงก์ไปตรวจรายละเอียดแต่ละรายการ
+ * เรียกใช้จาก: app/(admin)/admin/reviews/page.tsx
+ */
+
 import Link from "next/link"
 
 export interface ReviewQueueItem {

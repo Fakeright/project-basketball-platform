@@ -1,3 +1,9 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ตรวจชนิด/ขนาดไฟล์สาย เงื่อนไขเปลี่ยนโหมด และสถานะไฟล์ที่เก่ากว่าผลแข่งขันล่าสุด
+ * เรียกใช้จาก: components/organizer/external-bracket-uploader.tsx, features/competition/application/get-organizer-external-bracket-workspace.ts
+ */
+
 import type { BracketMode } from "./competition"
 
 export const externalBracketContentTypes = [

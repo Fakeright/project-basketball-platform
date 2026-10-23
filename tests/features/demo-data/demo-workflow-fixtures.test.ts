@@ -1,3 +1,8 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ทดสอบ features/demo-data/infrastructure/demo-workflow-fixtures.ts โดยจำลอง dependencies ตามกรณี และตรวจผลสำเร็จ/ข้อผิดพลาดด้วย assertions
+ */
+
 import { describe, expect, it } from "vitest"
 
 import {
@@ -81,7 +86,7 @@ describe("workflow demo fixtures", () => {
     expect(() => assertDemoEnvironment({ NODE_ENV: "production" })).toThrow(
       "DEMO_SEED_PRODUCTION_BLOCKED",
     )
-    expect(() => assertDemoEnvironment({ VERCEL_ENV: "production" })).toThrow(
+    expect(() => assertDemoEnvironment({ NODE_ENV: "test", VERCEL_ENV: "production" })).toThrow(
       "DEMO_SEED_PRODUCTION_BLOCKED",
     )
   })

@@ -1,3 +1,9 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ตรวจประวัติผู้เล่นเพื่อหาระเบียน audit ที่ยังมีข้อมูลส่วนบุคคลตามกฎตรวจ
+ * ตามการทำงานต่อ: lib/generated/prisma/client.ts, features/team-management/domain/team-player-audit.ts
+ */
+
 import { PrismaPg } from "@prisma/adapter-pg"
 import { config } from "dotenv"
 import { PrismaClient } from "../lib/generated/prisma/client"

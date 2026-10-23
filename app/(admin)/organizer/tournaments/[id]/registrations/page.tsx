@@ -1,3 +1,9 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * หน้า /organizer/tournaments/[id]/registrations: อ่านใบสมัครและรายชื่อสมาชิกให้ผู้จัดเจ้าของรายการพิจารณา
+ * ตามการทำงานต่อ: features/identity/infrastructure/next-cookie-current-actor-provider.ts, features/registrations/application/list-tournament-registrations.ts, features/registrations/infrastructure/get-registration-repository.ts
+ */
+
 import { notFound, redirect } from "next/navigation"
 
 import { RegistrationReviewList } from "@/components/organizer/registration-review-list"
@@ -15,6 +21,7 @@ const submittedDateFormatter = new Intl.DateTimeFormat("th-TH", {
   timeStyle: "short",
 })
 
+/** โหลดใบสมัครของรายการที่ผู้จัดมีสิทธิ์ดู แล้วส่งให้ UI ตรวจรับ/ปฏิเสธ */
 export default async function TournamentRegistrationsPage({
   params,
 }: PageProps<"/organizer/tournaments/[id]/registrations">) {

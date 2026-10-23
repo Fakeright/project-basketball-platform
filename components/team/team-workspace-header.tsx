@@ -1,3 +1,9 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * แสดงชื่อทีม รูปแบบ จำนวนผู้เล่น และลิงก์ที่เกี่ยวข้องในหัวพื้นที่ทีม
+ * เรียกใช้จาก: app/(admin)/team/page.tsx
+ */
+
 import Link from "next/link"
 
 import type { Role } from "@/features/identity/domain/actor"

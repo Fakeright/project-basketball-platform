@@ -1,3 +1,8 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ทดสอบ lib/generated/prisma/client.ts, features/team-management/infrastructure/prisma-admin-team-read-repository.ts โดยจำลอง dependencies ตามกรณี และตรวจผลสำเร็จ/ข้อผิดพลาดด้วย assertions
+ */
+
 import type { PrismaClient } from "@/lib/generated/prisma/client"
 import { describe, expect, it, vi } from "vitest"
 

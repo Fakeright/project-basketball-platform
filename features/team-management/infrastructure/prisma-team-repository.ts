@@ -1,3 +1,10 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * เก็บทีมและผู้เล่นผ่าน Prisma พร้อมล็อกแถว ตรวจชื่อ/เบอร์เสื้อซ้ำ version และ audit
+ * เรียกใช้จาก: app/api/teams/route.ts, features/team-management/infrastructure/get-team-repository.ts
+ * ตามการทำงานต่อ: lib/generated/prisma/client.ts
+ */
+
 import {
   Prisma,
   type PrismaClient,
@@ -41,6 +48,7 @@ export class PrismaTeamRepository implements TeamRepository {
     this.mutations = new PrismaTeamMutationRepository(prisma)
   }
 
+  // ส่ง Prisma transaction ให้ createTeam ใช้ เพื่อบันทึกทีม ผู้เล่น และ audit ร่วมกัน
   async inTransaction<T>(
     operation: (repository: TeamMutationRepository) => Promise<T>,
   ): Promise<T> {
@@ -53,8 +61,14 @@ export class PrismaTeamRepository implements TeamRepository {
     return this.mutations.create(input)
   }
 
+  // ล็อกแถวก่อนอ่านข้อมูลที่กำลังจะเปลี่ยน เพื่อให้คำสั่งที่แก้ระเบียนเดียวกันรอกัน
   findByIdForUpdate(id: string) {
     return this.mutations.findByIdForUpdate(id)
+  }
+
+  // ตรวจชื่อที่ normalize แล้วในขอบเขตเจ้าของทีมหรือรายการ โดยไม่นับระเบียนที่ไม่อยู่ในสถานะใช้งาน
+  hasActiveNameConflict(ownerId: string, name: string, excludedTeamId?: string) {
+    return this.mutations.hasActiveNameConflict(ownerId, name, excludedTeamId)
   }
 
   async findById(id: string) {
@@ -215,6 +229,7 @@ export class PrismaTeamRepository implements TeamRepository {
     return this.mutations.deactivatePlayer(teamId, playerId, at)
   }
 
+  // เก็บผู้กระทำ คำสั่ง และข้อมูลก่อน/หลังที่จำเป็นไว้ตรวจสอบย้อนหลัง
   appendAuditEvent(
     input: Parameters<TeamMutationRepository["appendAuditEvent"]>[0],
   ) {
@@ -239,6 +254,29 @@ function legacyMemberCount(
 class PrismaTeamMutationRepository implements TeamMutationRepository {
   constructor(private readonly prisma: TeamDatabaseClient) {}
 
+  // ตรวจชื่อที่ normalize แล้วในขอบเขตเจ้าของทีมหรือรายการ โดยไม่นับระเบียนที่ไม่อยู่ในสถานะใช้งาน
+  async hasActiveNameConflict(ownerId: string, name: string, excludedTeamId = "") {
+    const owners = await this.prisma.$queryRaw<Array<{ id: string }>>(
+      Prisma.sql`
+        SELECT "id" FROM "User" WHERE "id" = ${ownerId} FOR UPDATE
+      `,
+    )
+    if (!owners[0]) throw new Error("NOT_FOUND")
+
+    const teams = await this.prisma.$queryRaw<Array<{ id: string }>>(
+      Prisma.sql`
+        SELECT "id" FROM "Team"
+        WHERE "ownerId" = ${ownerId}
+          AND "isActive" = true
+          AND "id" <> ${excludedTeamId}
+          AND lower(btrim("name")) = lower(btrim(${name}))
+        LIMIT 1
+      `,
+    )
+    return teams.length > 0
+  }
+
+  // ล็อกแถวก่อนอ่านข้อมูลที่กำลังจะเปลี่ยน เพื่อให้คำสั่งที่แก้ระเบียนเดียวกันรอกัน
   async findByIdForUpdate(id: string) {
     const lockedTeams = await this.prisma.$queryRaw<Array<{ id: string }>>(
       Prisma.sql`
@@ -439,6 +477,7 @@ class PrismaTeamMutationRepository implements TeamMutationRepository {
     }
   }
 
+  // เก็บผู้กระทำ คำสั่ง และข้อมูลก่อน/หลังที่จำเป็นไว้ตรวจสอบย้อนหลัง
   async appendAuditEvent(
     input: Parameters<TeamMutationRepository["appendAuditEvent"]>[0],
   ) {
@@ -455,6 +494,7 @@ class PrismaTeamMutationRepository implements TeamMutationRepository {
   }
 }
 
+// แปลงข้อมูลที่อ่านจากฐานข้อมูลเป็นรูปแบบทีมที่ application และ UI ใช้
 function mapTeam(team: Team & { province: { nameTh: string } }): TeamSummary {
   return {
     id: team.id,
@@ -469,6 +509,7 @@ function mapTeam(team: Team & { province: { nameTh: string } }): TeamSummary {
   }
 }
 
+// แปลงแถวผู้เล่นเป็นข้อมูล domain รวมรูปแบบวันที่และค่าที่เว้นว่างได้
 function mapPlayer(player: PrismaTeamPlayer): TeamPlayer {
   return {
     id: player.id,
@@ -515,6 +556,7 @@ function createRegistrationStatusCounts(): Record<RegistrationStatus, number> {
   ) as Record<RegistrationStatus, number>
 }
 
+// แปลงข้อมูลให้เก็บในช่อง JSON ของ Prisma ได้ เช่น snapshot ใน audit
 function toJsonValue(value: unknown): Prisma.InputJsonValue | undefined {
   if (value === undefined) return undefined
   return JSON.parse(JSON.stringify(value)) as Prisma.InputJsonValue

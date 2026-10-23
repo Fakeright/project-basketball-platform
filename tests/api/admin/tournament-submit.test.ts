@@ -1,3 +1,8 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ทดสอบ features/admin/presentation/save-tournament-handler.ts, features/admin/presentation/submit-tournament-handler.ts, features/tournament-operations/infrastructure/tournament-operations-repository.ts โดยจำลอง dependencies ตามกรณี และตรวจผลสำเร็จ/ข้อผิดพลาดด้วย assertions
+ */
+
 import { describe, expect, it, vi } from "vitest"
 
 import { saveTournamentHandler } from "@/features/admin/presentation/save-tournament-handler"

@@ -1,3 +1,9 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * จำลองการเก็บโหมดและเวอร์ชันไฟล์สายในสภาพแวดล้อมพัฒนา พร้อมตรวจเวอร์ชันและประวัติ
+ * เรียกใช้จาก: features/competition/infrastructure/get-external-bracket-repository.ts
+ */
+
 import "server-only"
 
 import { mkdir, readFile, writeFile } from "node:fs/promises"
@@ -314,6 +320,7 @@ function requireWorkspace(
   return workspace
 }
 
+// ตรวจว่า version จากคำขอตรงกับข้อมูลปัจจุบันก่อนเขียน เพื่อไม่ทับการแก้ไขที่ใหม่กว่า
 function assertVersion(
   workspace: DevelopmentExternalBracketWorkspace,
   expectedVersion: number,

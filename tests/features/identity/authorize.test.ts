@@ -1,3 +1,8 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ทดสอบ features/identity/application/authorize.ts, features/identity/domain/actor.ts, features/identity/domain/permission.ts โดยจำลอง dependencies ตามกรณี และตรวจผลสำเร็จ/ข้อผิดพลาดด้วย assertions
+ */
+
 import { describe, expect, it } from "vitest";
 
 import { authorize } from "@/features/identity/application/authorize";

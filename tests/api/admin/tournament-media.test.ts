@@ -1,3 +1,8 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ทดสอบ features/admin/presentation/tournament-media-handler.ts, features/tournament-media/application/delete-tournament-media.ts, features/tournament-media/application/ports/object-storage.ts โดยจำลอง dependencies ตามกรณี และตรวจผลสำเร็จ/ข้อผิดพลาดด้วย assertions
+ */
+
 import { describe, expect, it, vi } from "vitest"
 
 import {
@@ -8,6 +13,7 @@ import { deleteTournamentMedia } from "@/features/tournament-media/application/d
 import { ObjectStorageError } from "@/features/tournament-media/application/ports/object-storage"
 import { TournamentGovernancePolicyError } from "@/features/tournament-operations/domain/tournament-governance-policy"
 import { createTestActor } from "@/tests/fixtures/actor"
+import { createTestTournamentOperation } from "@/tests/fixtures/tournament-operation"
 
 const organizer = createTestActor("organizer-1", "TOURNAMENT_ORGANIZER")
 
@@ -186,7 +192,7 @@ describe("handleTournamentMediaDelete", () => {
               findActiveAsset: vi.fn(async () => ({
                 id: "asset-1",
                 tournamentId: "tournament-1",
-                kind: "DOCUMENT",
+                kind: "DOCUMENT" as const,
                 bucket: "tournament-documents",
                 objectPath:
                   "tournaments/tournament-1/documents/asset-1.pdf",
@@ -200,7 +206,7 @@ describe("handleTournamentMediaDelete", () => {
               retireWithAudit,
             },
             tournaments: {
-              findById: vi.fn(async () => ({
+              findById: vi.fn(async () => createTestTournamentOperation({
                 organizerId: organizer.id,
               })),
             },

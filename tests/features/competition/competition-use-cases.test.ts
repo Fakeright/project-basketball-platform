@@ -1,3 +1,8 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ทดสอบ features/competition/application/lock-bracket-entries.ts, features/competition/application/generate-bracket.ts, features/competition/application/get-organizer-competition.ts โดยจำลอง dependencies ตามกรณี และตรวจผลสำเร็จ/ข้อผิดพลาดด้วย assertions
+ */
+
 import { describe, expect, it, vi } from "vitest"
 
 import { lockBracketEntries } from "@/features/competition/application/lock-bracket-entries"
@@ -12,7 +17,8 @@ import { recordMatchScore } from "@/features/competition/application/record-matc
 import { confirmMatchResult } from "@/features/competition/application/confirm-match-result"
 import { correctMatchResult } from "@/features/competition/application/correct-match-result"
 import { generateSingleEliminationBracket } from "@/features/competition/domain/bracket-generator"
-import type { CompetitionRepository } from "@/features/competition/application/ports/competition-repository"
+import type { CompetitionRepository, CompetitionRepositoryTransaction, BracketGenerationContext } from "@/features/competition/application/ports/competition-repository"
+import type { LockedBracketEntry } from "@/features/competition/domain/competition"
 import { createTestActor } from "@/tests/fixtures/actor"
 
 const organizer = createTestActor("organizer-1", "TOURNAMENT_ORGANIZER")
@@ -21,7 +27,18 @@ const admin = createTestActor("admin-1", "PLATFORM_ADMIN")
 function createRepository(
   context: Awaited<ReturnType<CompetitionRepository["findLockContext"]>>,
 ): CompetitionRepository {
-  const transaction = {
+  const transaction: CompetitionRepositoryTransaction = {
+    findExternalMatchCreationContext: vi.fn(),
+    createExternalMatch: vi.fn(),
+    findExternalMatchPurposeContext: vi.fn(),
+    updateExternalMatchPurpose: vi.fn(),
+    findMatchScheduleContext: vi.fn(),
+    scheduleMatch: vi.fn(),
+    findResultContext: vi.fn(),
+    recordScore: vi.fn(),
+    confirmResultAndAdvance: vi.fn(),
+    findResultCorrectionContext: vi.fn(),
+    correctResult: vi.fn(),
     findLockContext: vi.fn(async () => context),
     lockEntries: vi.fn(async () => ({
       id: "bracket-1",
@@ -40,11 +57,7 @@ function createRepository(
   return {
     ...transaction,
     findOrganizerWorkspace: vi.fn(),
-    inTransaction: vi.fn(
-      async (
-        operation: (repository: typeof transaction) => Promise<unknown>,
-      ) => operation(transaction),
-    ),
+    inTransaction: async (operation) => operation(transaction),
   }
 }
 
@@ -135,7 +148,7 @@ describe("generateBracketDraft", () => {
     const transaction = {
       findLockContext: vi.fn(),
       lockEntries: vi.fn(),
-      findGenerationContext: vi.fn(async () => ({
+      findGenerationContext: vi.fn(async (): Promise<BracketGenerationContext> => ({
         tournamentId: "tournament-1",
         organizerId: organizer.id,
         tournamentGovernanceStatus: "ACTIVE",
@@ -151,7 +164,7 @@ describe("generateBracketDraft", () => {
           lockedEntry(`entry-${index + 1}`, `team-${index + 1}`, index + 1),
         ),
       })),
-      persistGeneratedPlan: vi.fn(async () => ({
+      persistGeneratedPlan: vi.fn<CompetitionRepository["persistGeneratedPlan"]>(async () => ({
         id: "bracket-1",
         tournamentId: "tournament-1",
         version: 3,
@@ -262,7 +275,7 @@ describe("generateBracketDraft", () => {
 
   it("uses an injected shuffle and persists its draw token", async () => {
     const { repository, transaction } = generationRepository()
-    const shuffle = vi.fn((entries: readonly { id: string }[]) => [...entries].reverse())
+    const shuffle = vi.fn((entries: readonly LockedBracketEntry[]) => [...entries].reverse())
 
     await generateBracketDraft(
       {
@@ -304,7 +317,7 @@ describe("generateBracketDraft", () => {
       generationMethod: "RANDOM_ORDERED",
       drawToken: "previous-token",
     })
-    const shuffle = vi.fn((entries: readonly { id: string }[]) => [...entries].reverse())
+    const shuffle = vi.fn((entries: readonly LockedBracketEntry[]) => [...entries].reverse())
     const dependencies = {
       competitions: repository,
       now: () => new Date(),
@@ -346,7 +359,7 @@ describe("generateBracketDraft", () => {
 
   it.each([
     ["published", { bracketStatus: "PUBLISHED" }, "BRACKET_GENERATION_UNAVAILABLE"],
-    ["external", { bracketMode: "EXTERNAL_DOCUMENT" }, "BRACKET_GENERATION_UNAVAILABLE"],
+    ["external", { bracketMode: "EXTERNAL_DOCUMENT" as const }, "BRACKET_GENERATION_UNAVAILABLE"],
     ["scheduled", { hasScheduledMatch: true }, "BRACKET_STRUCTURE_LOCKED"],
   ])("blocks %s bracket regeneration", async (_label, override, errorCode) => {
     const { repository, transaction } = generationRepository()
@@ -684,6 +697,7 @@ describe("scheduleMatch", () => {
         tournamentId: "tournament-1",
         organizerId: organizer.id,
         tournamentGovernanceStatus: "ACTIVE",
+        tournamentFormat: "FIVE_V_FIVE",
         tournamentStartsAt: "2026-11-15T02:00:00.000Z",
         tournamentEndsAt: "2026-11-16T11:00:00.000Z",
         tournamentStatus: "REGISTRATION_CLOSED",
@@ -753,6 +767,28 @@ describe("scheduleMatch", () => {
         { competitions: repository, now: () => new Date() },
       ),
     ).rejects.toThrow(errorCode)
+  })
+
+  it("allows 3v3 matches to share a court and start time", async () => {
+    const { repository, transaction } = scheduleRepository({
+      tournamentFormat: "THREE_V_THREE",
+      hasCourtConflict: true,
+    })
+
+    await expect(
+      scheduleMatch(
+        {
+          tournamentId: "tournament-1",
+          matchId: "match-1",
+          scheduledAt: "2026-11-15T05:00:00.000Z",
+          court: "Court A",
+          expectedVersion: 1,
+        },
+        organizer,
+        { competitions: repository, now: () => new Date() },
+      ),
+    ).resolves.toMatchObject({ id: "match-1" })
+    expect(transaction.scheduleMatch).toHaveBeenCalledOnce()
   })
 
   it("rejects organizer scheduling outside the tournament range", async () => {

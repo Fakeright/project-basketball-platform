@@ -1,3 +1,9 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * จุดที่ Next.js เรียกก่อน route เพื่อประสาน session ผ่านตัวช่วย Supabase
+ * ตามการทำงานต่อ: features/identity/application/auth-errors.ts
+ */
+
 import { randomUUID } from "node:crypto"
 
 import { NextResponse, type NextRequest } from "next/server"

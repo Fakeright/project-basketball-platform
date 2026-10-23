@@ -1,3 +1,9 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * หน้า /admin: ตรวจบทบาทแอดมินก่อนอ่านและแสดง dashboard
+ * ตามการทำงานต่อ: features/admin/application/get-admin-dashboard.ts, features/admin/infrastructure/get-admin-dashboard-repository.ts, features/admin/presentation/admin-dashboard-view-model.ts
+ */
+
 import { notFound } from "next/navigation"
 
 import { AdminDashboard } from "@/components/admin/admin-dashboard"

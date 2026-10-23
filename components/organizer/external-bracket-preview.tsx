@@ -1,3 +1,9 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * แสดงตัวอย่าง PDF/ภาพของเวอร์ชันไฟล์สายที่เลือก
+ * เรียกใช้จาก: components/organizer/external-bracket-workspace.tsx
+ */
+
 import Image from "next/image"
 import { ExternalLink } from "lucide-react"
 

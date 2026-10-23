@@ -1,3 +1,9 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * API DELETE /api/organizer/tournaments/[id]/bracket/external/revisions/[revisionId]: รับคำขอ HTTP แล้วส่งต่อ handleRetireExternalBracket
+ * ตามการทำงานต่อ: features/competition/application/retire-external-bracket.ts, features/competition/infrastructure/get-external-bracket-repository.ts, features/competition/presentation/external-bracket-handler.ts
+ */
+
 import { retireExternalBracket } from "@/features/competition/application/retire-external-bracket"
 import { getExternalBracketRepository } from "@/features/competition/infrastructure/get-external-bracket-repository"
 import { handleRetireExternalBracket } from "@/features/competition/presentation/external-bracket-handler"

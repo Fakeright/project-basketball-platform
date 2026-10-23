@@ -1,5 +1,12 @@
 "use client"
 
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ขอยืนยันชื่อทีมก่อนลบ/ปิดใช้งาน ส่ง version ไป API และแสดงผลตามวิธีที่เซิร์ฟเวอร์อนุญาต
+ * เรียกใช้จาก: app/(admin)/team/[id]/page.tsx
+ * ตามการทำงานต่อ: components/ui/button.tsx
+ */
+
 import { Dialog as DialogPrimitive } from "@base-ui/react/dialog"
 import { Trash2 } from "lucide-react"
 import { useRouter } from "next/navigation"
@@ -26,6 +33,7 @@ export function TeamDeleteDialog({ team }: { team: RemovableTeam }) {
     if (!nextOpen) setConfirmationName("")
   }
 
+  // ส่งชื่อยืนยันและ version ไป API ทีม แล้วนำทางตามผลลบหรือปิดใช้งานที่เซิร์ฟเวอร์คืน
   async function removeTeam() {
     if (confirmationName !== team.name || pending) return
 

@@ -1,3 +1,10 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * เชื่อม cookie ของ Next.js เข้ากับตัวอ่าน session จริงหรือโหมดพัฒนาตาม configuration
+ * เรียกใช้จาก: app/(admin)/admin/page.tsx, app/(admin)/admin/reviews/[id]/page.tsx
+ * ตามการทำงานต่อ: features/identity/infrastructure/create-current-actor-provider.ts, features/identity/infrastructure/get-user-profile-repository.ts, features/identity/application/auth-errors.ts
+ */
+
 import "server-only"
 
 import { cookies } from "next/headers"
@@ -9,6 +16,7 @@ import { getUserProfileRepository } from "./get-user-profile-repository"
 import type { AuthenticatedUserReader } from "./supabase-current-actor-provider"
 import { AuthDependencyUnavailableError } from "@/features/identity/application/auth-errors"
 
+// อ่าน configuration และ cookie ของ Next.js แล้วสร้าง provider สำหรับ session ที่เปิดใช้อยู่
 export function createNextCookieCurrentActorProvider(
   authenticatedUserReader?: AuthenticatedUserReader,
 ) {
@@ -37,6 +45,7 @@ export function createNextCookieCurrentActorProvider(
   })
 }
 
+// เลือกโหมด session จาก environment และป้องกันการใช้โหมดจำลองใน production
 export function resolveIdentitySessionMode(
   environment: "development" | "test" | "production",
   hasSupabaseConfiguration: boolean,
@@ -75,6 +84,7 @@ interface CurrentActorSupabaseClient {
   }
 }
 
+// สร้างตัวอ่านผู้ใช้จาก Supabase เพื่อให้ provider ไม่ผูกกับรายละเอียด cookie ของ Next.js
 export function createSupabaseAuthenticatedUserReader(
   createClient: () => Promise<CurrentActorSupabaseClient> =
     createServerComponentSupabaseClient,

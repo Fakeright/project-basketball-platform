@@ -1,5 +1,12 @@
 "use client"
 
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * แก้วันเวลาและสนามของคู่แข่งขัน พร้อมส่ง version และแสดงข้อผิดพลาดจากการตรวจตาราง
+ * เรียกใช้จาก: app/(admin)/organizer/tournaments/[id]/schedule/page.tsx
+ * ตามการทำงานต่อ: features/admin/presentation/tournament-editor-time.ts
+ */
+
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { CalendarClock, Save } from "lucide-react"
@@ -20,6 +27,7 @@ export interface EditableMatchSchedule {
   version: number
 }
 
+/** ฟอร์มแก้เวลาและสนามของแต่ละคู่ โดยส่ง expectedVersion กันการเขียนทับข้อมูลใหม่ */
 export function MatchScheduleEditor({
   tournamentId,
   matches,
@@ -31,6 +39,7 @@ export function MatchScheduleEditor({
   const [pendingMatchId, setPendingMatchId] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
 
+  // ค่าจาก datetime-local เป็นเวลาไทย; API รับค่า UTC เพื่อจัดเก็บให้สอดคล้องกัน
   async function saveMatch(match: EditableMatchSchedule, form: HTMLFormElement) {
     const formData = new FormData(form)
     const scheduledAt = String(formData.get("scheduledAt") ?? "")

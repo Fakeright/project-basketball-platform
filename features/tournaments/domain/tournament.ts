@@ -1,3 +1,9 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * กำหนดข้อมูลรายการ คู่แข่งขัน สื่อ และตัวกรองที่หน้าสาธารณะใช้
+ * เรียกใช้จาก: components/bracket-view.tsx, components/schedule-table.tsx
+ */
+
 export type TournamentStatus = "OPEN" | "CLOSED" | "ONGOING" | "COMPLETED"
 export type TournamentFormat = "FIVE_V_FIVE" | "THREE_V_THREE"
 

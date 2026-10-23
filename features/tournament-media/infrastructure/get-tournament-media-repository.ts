@@ -1,3 +1,10 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * เลือก repository ของสื่อให้ตรงกับฐานข้อมูลหรือโหมดพัฒนา
+ * เรียกใช้จาก: app/(admin)/admin/reviews/[id]/page.tsx, app/(admin)/organizer/tournaments/[id]/page.tsx
+ * ตามการทำงานต่อ: features/tournament-media/infrastructure/development-tournament-media-repository.ts, features/tournament-media/infrastructure/prisma-tournament-media-repository.ts
+ */
+
 import "server-only"
 
 import { getPrismaClient } from "@/lib/server/prisma"

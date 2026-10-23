@@ -1,3 +1,8 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * แสดงสถานะกำลังโหลดในขอบเขต /tournaments ระหว่าง Next.js รอข้อมูลหน้า
+ */
+
 export default function TournamentLoading() {
   return (
     <div

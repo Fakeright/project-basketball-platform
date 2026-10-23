@@ -1,3 +1,8 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ทดสอบ features/competition/application/get-organizer-external-bracket-workspace.ts, features/competition/application/ports/external-bracket-repository.ts, features/tournament-media/application/ports/object-storage.ts โดยจำลอง dependencies ตามกรณี และตรวจผลสำเร็จ/ข้อผิดพลาดด้วย assertions
+ */
+
 import { describe, expect, it, vi } from "vitest"
 
 import { getOrganizerExternalBracketWorkspace } from "@/features/competition/application/get-organizer-external-bracket-workspace"

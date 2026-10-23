@@ -1,3 +1,8 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ทดสอบ features/tournament-operations/application/create-tournament.ts, features/tournament-operations/application/review-tournament.ts, features/tournament-operations/infrastructure/in-memory-tournament-operations-repository.ts โดยจำลอง dependencies ตามกรณี และตรวจผลสำเร็จ/ข้อผิดพลาดด้วย assertions
+ */
+
 import { describe, expect, it, vi } from "vitest"
 
 import { createTournament } from "@/features/tournament-operations/application/create-tournament"

@@ -1,3 +1,10 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ตรวจสิทธิ์ เวอร์ชัน วันเวลา และสนามก่อนบันทึกตาราง; 5v5 ห้ามสนามชนเวลาเดียวกัน ส่วน 3v3 อนุญาต
+ * เรียกใช้จาก: app/api/organizer/tournaments/[id]/matches/[matchId]/schedule/route.ts, features/competition/presentation/competition-handler.ts
+ * ตามการทำงานต่อ: features/identity/application/authorize.ts
+ */
+
 import { authorize } from "@/features/identity/application/authorize"
 import type { Actor } from "@/features/identity/domain/actor"
 import { assertTournamentGovernanceAllowsOperation } from "@/features/tournament-operations/domain/tournament-governance-policy"
@@ -16,6 +23,7 @@ export interface ScheduleMatchInput {
   overrideReason?: string
 }
 
+/** ตรวจสิทธิ์ สายที่เผยแพร่ สถานะคู่ สนามชนกัน และช่วงวันที่ก่อนบันทึกตาราง */
 export async function scheduleMatch(
   input: ScheduleMatchInput,
   actor: Actor,
@@ -58,7 +66,9 @@ export async function scheduleMatch(
     if (context.matchStatus !== "SCHEDULED") {
       throw new Error("MATCH_SCHEDULE_LOCKED")
     }
-    if (context.hasCourtConflict) throw new Error("MATCH_SCHEDULE_CONFLICT")
+    if (context.tournamentFormat === "FIVE_V_FIVE" && context.hasCourtConflict) {
+      throw new Error("MATCH_SCHEDULE_CONFLICT")
+    }
 
     const outsideTournament =
       scheduledAt < new Date(context.tournamentStartsAt) ||

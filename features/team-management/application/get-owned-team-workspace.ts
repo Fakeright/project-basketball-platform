@@ -1,3 +1,10 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ประกอบข้อมูลทีม ผู้เล่น และข้อมูลสมาชิกเก่า หลังตรวจสิทธิ์เข้าถึงทีม
+ * เรียกใช้จาก: app/(admin)/team/[id]/page.tsx, app/(admin)/team/page.tsx
+ * ตามการทำงานต่อ: features/team-management/application/team-access.ts, features/team-management/application/legacy-team-reconciliation.ts
+ */
+
 import type { Actor } from "@/features/identity/domain/actor"
 import type {
   TeamPlayer,
@@ -17,6 +24,7 @@ export interface OwnedTeamWorkspace {
   legacyReconciliation: LegacyTeamReconciliationSummary | null
 }
 
+// ตรวจสิทธิ์แล้วประกอบทีม รายชื่อปัจจุบัน และข้อมูลเปรียบเทียบสมาชิกเดิมให้หน้า workspace
 export async function getOwnedTeamWorkspace(
   teamId: string,
   actor: Actor,

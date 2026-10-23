@@ -1,5 +1,12 @@
 "use client"
 
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * แสดงประวัติการสมัครของทีม สถานะ เหตุผล และคำสั่งยกเลิกที่ยังทำได้
+ * เรียกใช้จาก: app/(admin)/team/[id]/page.tsx
+ * ตามการทำงานต่อ: components/ui/button.tsx
+ */
+
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Dialog as DialogPrimitive } from "@base-ui/react/dialog"
@@ -60,6 +67,7 @@ export function TeamRegistrationList({
   const [registrationToCancel, setRegistrationToCancel] =
     useState<TeamRegistrationListItem | null>(null)
 
+  // ส่งคำขอยกเลิกใบสมัครไป API แล้วอัปเดตสถานะรายการบนหน้าจอ
   async function cancelRegistration() {
     const registration = registrationToCancel
     if (!registration) return

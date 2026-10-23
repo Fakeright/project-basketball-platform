@@ -1,3 +1,10 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * เลือกเวอร์ชันไฟล์สายที่ผ่านเงื่อนไขให้เป็นไฟล์เผยแพร่ พร้อมบันทึกผู้ดำเนินการ
+ * เรียกใช้จาก: app/api/organizer/tournaments/[id]/bracket/external/publication/route.ts
+ * ตามการทำงานต่อ: features/competition/application/external-bracket-access.ts
+ */
+
 import type { Actor } from "@/features/identity/domain/actor"
 
 import { assertExternalBracketAccess } from "./external-bracket-access"
@@ -10,6 +17,7 @@ interface Input {
   reason?: string
 }
 
+// ตรวจสิทธิ์และเวอร์ชันก่อนกำหนดไฟล์สายที่เลือกให้เป็นฉบับเผยแพร่
 export async function publishExternalBracket(
   input: Input,
   actor: Actor,

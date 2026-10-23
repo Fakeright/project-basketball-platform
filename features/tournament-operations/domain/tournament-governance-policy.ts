@@ -1,3 +1,9 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * รวมกฎกำกับรายการ ระงับ คืนสถานะ เก็บถาวร และลบ โดยคืนเหตุผลที่ยังทำคำสั่งไม่ได้
+ * เรียกใช้จาก: app/(admin)/admin/tournaments/[id]/page.tsx, components/admin/tournament-governance-dialog.tsx
+ */
+
 import type { TournamentOperationStatus } from "./tournament-operation"
 
 export type TournamentGovernanceStatus = "ACTIVE" | "SUSPENDED" | "REMOVED"

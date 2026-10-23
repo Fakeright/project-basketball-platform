@@ -1,8 +1,18 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * หน้า /admin/reviews/[id]: อ่านรายละเอียด โปสเตอร์ และเอกสารของรายการที่ส่งตรวจ พร้อมฟอร์มตัดสิน
+ * ตามการทำงานต่อ: features/identity/infrastructure/next-cookie-current-actor-provider.ts, features/tournament-media/application/get-admin-review-media.ts, features/tournament-media/infrastructure/get-tournament-media-repository.ts
+ */
+
 import Link from "next/link"
 import { notFound } from "next/navigation"
 
 import { TournamentReviewPanel } from "@/components/admin/tournament-review-panel"
+import { TournamentReviewMedia } from "@/components/admin/tournament-review-media"
 import { createNextCookieCurrentActorProvider } from "@/features/identity/infrastructure/next-cookie-current-actor-provider"
+import { getAdminReviewMedia } from "@/features/tournament-media/application/get-admin-review-media"
+import { getTournamentMediaRepository } from "@/features/tournament-media/infrastructure/get-tournament-media-repository"
+import { SupabaseObjectStorage } from "@/features/tournament-media/infrastructure/supabase-object-storage"
 import { getTournamentOperationsRepository } from "@/features/tournament-operations/infrastructure/get-tournament-operations-repository"
 
 export default async function AdminReviewDetailPage({
@@ -15,6 +25,10 @@ export default async function AdminReviewDetailPage({
   const repository = await getTournamentOperationsRepository()
   const tournament = await repository.findById(id)
   if (!tournament || tournament.status !== "SUBMITTED") notFound()
+  const media = await getAdminReviewMedia(tournament, actor, {
+    media: await getTournamentMediaRepository(),
+    storage: new SupabaseObjectStorage(),
+  })
 
   const dateFormatter = new Intl.DateTimeFormat("th-TH", {
     dateStyle: "medium",
@@ -70,6 +84,11 @@ export default async function AdminReviewDetailPage({
           </p>
         </div>
       </section>
+      <TournamentReviewMedia
+        media={media}
+        tournamentId={tournament.id}
+        tournamentTitle={tournament.title}
+      />
       <TournamentReviewPanel
         tournament={{
           id: tournament.id,

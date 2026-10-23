@@ -1,5 +1,10 @@
 // @vitest-environment node
 
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ทดสอบ features/competition/infrastructure/bracket-file-probe.ts โดยจำลอง dependencies ตามกรณี และตรวจผลสำเร็จ/ข้อผิดพลาดด้วย assertions
+ */
+
 import { readFile } from "node:fs/promises"
 import { resolve } from "node:path"
 

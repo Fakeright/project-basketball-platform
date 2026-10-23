@@ -1,5 +1,12 @@
 "use client"
 
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ฟอร์มสร้าง/แก้ฉบับร่างและส่งตรวจ; ตรวจ Zod ก่อนเรียก API แล้วอัปเดต id/version สำหรับคำสั่งถัดไป
+ * เรียกใช้จาก: app/(admin)/organizer/tournaments/[id]/page.tsx, app/(admin)/organizer/tournaments/new/page.tsx
+ * ตามการทำงานต่อ: features/admin/presentation/tournament-editor-schema.ts
+ */
+
 import type { FormEvent } from "react"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
@@ -46,6 +53,7 @@ export function TournamentEditor({
       ? tournament.ageGroup
       : ""
 
+  // อ่าน FormData และตรวจ schema; บันทึกร่างใช้ POST/PUT ส่วนส่งตรวจใช้ endpoint submit แล้วเก็บ id/version ที่เซิร์ฟเวอร์คืน
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setMessage(null)
@@ -213,11 +221,13 @@ export function TournamentEditor({
           defaultValue={tournament?.description}
           label="รายละเอียด"
           name="description"
+          placeholder="หากใช้เอกสาร ไม่จำเป็นต้องกรอกข้อมูล"
         />
         <TextArea
           defaultValue={tournament?.rules}
           label="กติกา"
           name="rules"
+          placeholder="หากใช้เอกสาร ไม่จำเป็นต้องกรอกข้อมูล"
         />
       </div>
 
@@ -336,6 +346,7 @@ interface TournamentMutationResponse {
   }
 }
 
+// ตรวจว่า API คืน id และ version ครบก่อนนำข้อมูลไปใช้ส่งคำสั่งครั้งถัดไป
 function hasTournamentIdentity(
   tournament: TournamentMutationResponse["tournament"],
 ): tournament is Partial<EditableTournament> & {
@@ -382,10 +393,12 @@ function TextArea({
   label,
   name,
   defaultValue,
+  placeholder,
 }: {
   label: string
   name: string
   defaultValue?: string
+  placeholder?: string
 }) {
   return (
     <label className="space-y-2 text-sm">
@@ -394,6 +407,7 @@ function TextArea({
         className={`${fieldClassName} min-h-32 resize-y`}
         defaultValue={defaultValue}
         name={name}
+        placeholder={placeholder}
       />
     </label>
   )

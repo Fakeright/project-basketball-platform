@@ -1,3 +1,10 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ตรวจอายุเต็มปี ณ วันเริ่มรายการตามเวลาไทย; รุ่น U ต้องอายุต่ำกว่าตัวเลขรุ่น ส่วน Open ไม่จำกัด
+ * เรียกใช้จาก: features/registrations/domain/registration-policy.ts, features/registrations/presentation/registration-handler.ts
+ * ตามการทำงานต่อ: features/tournament-operations/domain/tournament-age-group.ts, features/tournaments/domain/tournament-calendar.ts
+ */
+
 import type { TeamPlayer } from "@/features/team-management/domain/team"
 import {
   TOURNAMENT_AGE_GROUPS,
@@ -34,6 +41,7 @@ const maximumAgeByGroup: Record<Exclude<TournamentAgeGroup, "Open">, number> = {
   U23: 23,
 }
 
+// เปรียบเทียบอายุเต็มปีในวันเริ่มแข่ง; เช่น U18 ต้องอายุต่ำกว่า 18 ปี ส่วน Open ข้ามการตรวจอายุ
 export function assertRosterAgeEligibility(
   ageGroup: string,
   startsAt: string,
@@ -57,6 +65,7 @@ function parseTournamentAgeGroup(value: string): TournamentAgeGroup {
   return ageGroup
 }
 
+// คำนวณอายุเต็มปีและหักหนึ่งปีหากวันเกิดในปีนั้นยังมาไม่ถึง
 function completedCalendarYears(birthDate: string, onDate: Date): number {
   const birth = dateOnlyToUtc(birthDate)
   let years = onDate.getUTCFullYear() - birth.getUTCFullYear()

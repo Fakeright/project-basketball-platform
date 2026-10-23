@@ -1,3 +1,9 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * แสดงไฟล์สายที่ผู้จัดเผยแพร่ พร้อมทางเปิดเอกสาร/ภาพและสถานะของไฟล์
+ * เรียกใช้จาก: app/(public)/bracket/page.tsx
+ */
+
 import Image from "next/image"
 import { ExternalLink } from "lucide-react"
 

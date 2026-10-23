@@ -1,3 +1,10 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * สร้าง Supabase client ที่อ่าน/เขียน cookie ของคำขอ Next.js เพื่อจัดการ session
+ * เรียกใช้จาก: features/identity/infrastructure/get-auth-handlers.ts, features/identity/infrastructure/next-cookie-current-actor-provider.ts
+ * ตามการทำงานต่อ: lib/supabase/config.ts
+ */
+
 import "server-only"
 
 import {
@@ -87,6 +94,7 @@ export async function createRouteHandlerSupabaseContext() {
   }
 }
 
+// สร้าง Supabase client ผูกกับ cookie ของคำขอ เพื่ออ่านและอัปเดต session
 export async function createServerSupabaseClient() {
   return createServerComponentSupabaseClient()
 }

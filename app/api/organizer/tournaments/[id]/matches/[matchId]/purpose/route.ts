@@ -1,3 +1,9 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * API PATCH /api/organizer/tournaments/[id]/matches/[matchId]/purpose: รับคำขอ HTTP แล้วส่งต่อ handleUpdateExternalMatchPurpose
+ * ตามการทำงานต่อ: features/competition/application/update-external-match-purpose.ts, features/competition/infrastructure/get-competition-repository.ts, features/competition/presentation/competition-handler.ts
+ */
+
 import { updateExternalMatchPurpose } from "@/features/competition/application/update-external-match-purpose"
 import { getCompetitionRepository } from "@/features/competition/infrastructure/get-competition-repository"
 import { handleUpdateExternalMatchPurpose } from "@/features/competition/presentation/competition-handler"

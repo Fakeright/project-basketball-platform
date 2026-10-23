@@ -1,3 +1,9 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * กำหนดข้อมูล metadata ของสื่อ รวมชนิด bucket object path และขนาดไฟล์
+ * เรียกใช้จาก: features/admin/presentation/tournament-media-handler.ts, features/competition/application/ports/external-bracket-repository.ts
+ */
+
 export const mediaAssetKinds = [
   "POSTER",
   "DOCUMENT",

@@ -1,3 +1,9 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * แยกข้อผิดพลาดการยืนยันตัวตนที่ผู้ใช้แก้ได้ออกจากกรณีบริการยืนยันตัวตนไม่พร้อม
+ * เรียกใช้จาก: features/identity/infrastructure/get-auth-handlers.ts, features/identity/infrastructure/next-cookie-current-actor-provider.ts
+ */
+
 export type AuthRejectionReason =
   | "GENERIC"
   | "EMAIL_INVALID"

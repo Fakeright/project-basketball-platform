@@ -1,3 +1,10 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ห่อช่องกรอกพื้นฐานให้ขนาด สี และสถานะ focus/disabled สอดคล้องกัน
+ * เรียกใช้จาก: components/admin/match-result-correction-dialog.tsx, components/admin/tournament-governance-dialog.tsx
+ * ตามการทำงานต่อ: lib/utils.ts
+ */
+
 import * as React from "react"
 import { Input as InputPrimitive } from "@base-ui/react/input"
 

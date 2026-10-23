@@ -1,5 +1,12 @@
 "use client"
 
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ให้ผู้จัดการเลือกทีมที่พร้อมสมัคร ส่งคำขอสมัครรายการ และแสดงเหตุผลเมื่อยังสมัครไม่ได้
+ * เรียกใช้จาก: app/(public)/tournaments/[slug]/page.tsx
+ * ตามการทำงานต่อ: components/ui/button.tsx
+ */
+
 import { useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
@@ -72,6 +79,7 @@ function TournamentRegistrationActionState({
   const submittedAllTeams =
     availableTeams.length === 0 && feedback.startsWith("ส่งใบสมัครเรียบร้อยแล้ว")
 
+  // ส่งทีมที่เลือกไป POST /api/tournaments/:id/registrations แล้วรีเฟรชสถานะจาก server
   async function submitRegistration() {
     if (!validSelectedTeamId || isPending) return
 
@@ -94,6 +102,7 @@ function TournamentRegistrationActionState({
         )
       }
 
+      // ซ่อนทีมที่เพิ่งสมัครทันที ระหว่างรอข้อมูลหน้าใหม่จาก router.refresh()
       setOptimisticSubmissions((current) => ({
         ...current,
         ids: new Set(current.ids).add(validSelectedTeamId),

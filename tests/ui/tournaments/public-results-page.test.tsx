@@ -1,3 +1,8 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ทดสอบ app/(public)/results/page.tsx, features/tournaments/domain/tournament.ts โดยจำลอง dependencies ตามกรณี และตรวจผลสำเร็จ/ข้อผิดพลาดด้วย assertions
+ */
+
 import { cleanup, render, screen } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
@@ -96,7 +101,7 @@ describe("public ResultsPage", () => {
 })
 
 function renderPage(slug?: string) {
-  return ResultsPage({
+  return ResultsPage({ params: Promise.resolve({}),
     searchParams: Promise.resolve(slug ? { tournament: slug } : {}),
   })
 }

@@ -1,5 +1,10 @@
 // @vitest-environment node
 
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ทดสอบ external-bracket-route-import โดยจำลอง dependencies ตามกรณี และตรวจผลสำเร็จ/ข้อผิดพลาดด้วย assertions
+ */
+
 import { describe, expect, it, vi } from "vitest"
 
 vi.mock("pdfjs-dist/legacy/build/pdf.mjs", () => {

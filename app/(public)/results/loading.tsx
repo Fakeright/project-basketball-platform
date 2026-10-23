@@ -1,3 +1,8 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * แสดงสถานะกำลังโหลดในขอบเขต /results ระหว่าง Next.js รอข้อมูลหน้า
+ */
+
 export default function ResultsLoading() {
   return (
     <div aria-live="polite" className="py-8 sm:py-12" role="status">

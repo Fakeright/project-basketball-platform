@@ -1,3 +1,9 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * หน้า /tournaments/[slug]: อ่านรายละเอียดรายการที่เลือก พร้อมโปสเตอร์ เอกสาร และตัวเลือกสมัคร
+ * ตามการทำงานต่อ: features/identity/infrastructure/next-cookie-current-actor-provider.ts, features/registrations/infrastructure/get-registration-repository.ts, features/team-management/infrastructure/get-team-repository.ts
+ */
+
 import Link from "next/link"
 import { notFound } from "next/navigation"
 
@@ -27,6 +33,7 @@ const statusLabels = {
   COMPLETED: "แข่งขันจบแล้ว",
 } as const
 
+/** หน้าแสดงรายการสาธารณะ พร้อมตรวจว่าบัญชีปัจจุบันสมัครทีมได้หรือไม่ */
 export default async function TournamentDetailPage({
   params,
 }: PageProps<"/tournaments/[slug]">) {

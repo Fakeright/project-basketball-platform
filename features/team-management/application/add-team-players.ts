@@ -1,16 +1,24 @@
-import { authorize } from "@/features/identity/application/authorize"
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * เพิ่มผู้เล่นหลายคนในทีม ตรวจสิทธิ์ จำนวนสูงสุด และรายชื่อเดิม แล้วบันทึกผู้เล่นกับ audit ร่วมกัน
+ * เรียกใช้จาก: app/api/teams/[id]/players/batch/route.ts, features/team-management/presentation/team-handler.ts
+ * ตามการทำงานต่อ: features/identity/application/authorize.ts
+ */
+
 import type { Actor } from "@/features/identity/domain/actor"
 import type { TeamPlayer, TeamPlayerDraft } from "@/features/team-management/domain/team"
 import { projectTeamPlayerBatchAuditSnapshot } from "@/features/team-management/domain/team-player-audit"
 import { assertTeamPlayerBatch } from "@/features/team-management/domain/team-player-batch-policy"
 
 import type { TeamRepository } from "./ports/team-repository"
+import { authorizePlayerRosterAccess } from "./team-access"
 
 export interface AddTeamPlayersInput {
   teamId: string
   players: readonly TeamPlayerDraft[]
 }
 
+// ล็อกทีมก่อนตรวจผู้เล่นเดิมและจำนวน แล้วเพิ่ม/เปิดใช้ผู้เล่นพร้อมบันทึก audit ใน transaction เดียว
 export async function addTeamPlayers(
   input: AddTeamPlayersInput,
   actor: Actor,
@@ -62,9 +70,4 @@ export async function addTeamPlayers(
 
     return players
   })
-}
-
-function authorizePlayerRosterAccess(actor: Actor, ownerId: string): boolean {
-  authorize(actor, "team.roster.manage", { organizerId: ownerId })
-  return actor.role === "PLATFORM_ADMIN" && actor.id !== ownerId
 }

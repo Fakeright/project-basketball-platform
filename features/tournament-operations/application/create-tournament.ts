@@ -1,3 +1,10 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ตรวจจังหวัดและข้อมูลรายการ แล้วสร้างฉบับร่างหรือแก้ข้อมูลตามสิทธิ์เจ้าของและ version
+ * เรียกใช้จาก: features/admin/presentation/save-tournament-handler.ts, features/admin/presentation/submit-tournament-handler.ts
+ * ตามการทำงานต่อ: features/identity/application/authorize.ts, features/provinces/application/assert-province-code.ts
+ */
+
 import type { Actor } from "@/features/identity/domain/actor"
 import { authorize } from "@/features/identity/application/authorize"
 import type { TournamentOperation, TournamentOperationInput } from "@/features/tournament-operations/domain/tournament-operation"
@@ -6,6 +13,7 @@ import type { TournamentOperationsRepository } from "@/features/tournament-opera
 import { assertProvinceCode } from "@/features/provinces/application/assert-province-code"
 import { assertTournamentGovernanceAllowsOperation } from "@/features/tournament-operations/domain/tournament-governance-policy"
 
+/** ตรวจจังหวัด ข้อมูลรายการ และสิทธิ์ก่อนบันทึกรายการใหม่พร้อม audit */
 export async function createTournament(repository: TournamentOperationsRepository, input: TournamentOperationInput, actor: Actor): Promise<TournamentOperation> {
   assertProvinceCode(input.provinceCode)
   validateTournamentInput(input)
@@ -20,6 +28,7 @@ export async function createTournament(repository: TournamentOperationsRepositor
   )
 }
 
+/** แก้ได้เฉพาะสถานะที่อนุญาต และใช้ version ป้องกันการบันทึกทับกัน */
 export async function updateTournament(
   repository: TournamentOperationsRepository,
   id: string,
@@ -46,6 +55,7 @@ export async function updateTournament(
   })
 }
 
+/** ส่งร่างให้แอดมินตรวจ โดยตรวจเจ้าของ สถานะ และบันทึกเหตุการณ์ */
 export async function submitTournament(repository: TournamentOperationsRepository, id: string, actor: Actor): Promise<TournamentOperation> {
   const tournament = await repository.findById(id)
   if (!tournament) throw new Error("NOT_FOUND")
