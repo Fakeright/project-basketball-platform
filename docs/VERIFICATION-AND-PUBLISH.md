@@ -51,3 +51,5 @@
 รวม source, tests, configuration และคู่มือโครงการที่เกี่ยวข้อง ไม่รวม `.env`, generated Prisma client, build output, `.agents`, `.claude`, `.windsurf`, `skills-lock.json` หรือการเปลี่ยน AGENTS.md ที่ค้างอยู่เดิม
 
 การ push ยืนยันเฉพาะการส่ง commit ไป GitHub ไม่ถือเป็นหลักฐานว่า Vercel deploy สำเร็จหรือเว็บจริงผ่านการทดสอบครบเส้นทาง
+
+วันที่ 24 ตุลาคม 2026 ส่ง commit งาน `b6d3e07438e78879917544fa6eed63c915dc67fe` ไป `origin/feat/courtside-public-platform` สำเร็จ และตรวจ remote ref แล้วตรงกัน ไฟล์ที่เหลือในเครื่องเป็น AGENTS.md และเครื่องมือส่วนตัวที่ตั้งใจไม่รวม
