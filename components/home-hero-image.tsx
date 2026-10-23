@@ -1,0 +1,20 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * แสดงภาพหลักหน้าแรกด้วยขนาดและการโหลดที่เหมาะกับพื้นที่แสดงผล
+ * เรียกใช้จาก: app/(public)/page.tsx
+ */
+
+import Image from "next/image"
+
+export function HomeHeroImage() {
+  return (
+    <Image
+      alt="สนามบาสเกตบอลในร่มพร้อมห่วงและเส้นสนามในประเทศไทย"
+      className="object-cover"
+      fill
+      preload
+      sizes="(max-width: 1023px) 100vw, 22rem"
+      src="/images/courtside-hero.jpg"
+    />
+  )
+}

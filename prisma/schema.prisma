@@ -1,0 +1,482 @@
+// COURTSIDE: คำอธิบายไฟล์
+// กำหนดตาราง ความสัมพันธ์ enum index และข้อจำกัดของ PostgreSQL ที่ Prisma ใช้สร้าง client
+
+// สร้าง client จาก schema นี้; ไฟล์ใน lib/generated/prisma เป็นผลลัพธ์ ไม่แก้ด้วยมือ
+generator client {
+  provider = "prisma-client"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// บทบาทปัจจุบัน: ผู้จัดการและโค้ชเป็นบทบาทเดียวกัน; สิทธิ์รายคำสั่งอยู่ใน permission.ts
+enum Role {
+  PLATFORM_ADMIN
+  TOURNAMENT_ORGANIZER
+  TEAM_MANAGER_COACH
+  PLAYER
+}
+
+// รูปแบบทีม/รายการ ใช้ตรวจให้ทีมสมัครรายการรูปแบบเดียวกัน
+enum TournamentFormat {
+  FIVE_V_FIVE
+  THREE_V_THREE
+}
+
+// วงจรรายการตั้งแต่ร่าง ส่งตรวจ เผยแพร่ แข่งขัน จนจบ/เก็บถาวร
+enum TournamentStatus {
+  DRAFT
+  SUBMITTED
+  CHANGES_REQUESTED
+  APPROVED
+  PUBLISHED
+  REGISTRATION_CLOSED
+  IN_PROGRESS
+  COMPLETED
+  ARCHIVED
+  REJECTED
+  SUSPENDED
+}
+
+// สถานะกำกับของแอดมิน แยกจากความคืบหน้าการแข่งขัน เพื่อพักรายการโดยไม่ลบประวัติ
+enum TournamentGovernanceStatus {
+  ACTIVE
+  SUSPENDED
+  REMOVED
+}
+
+// ผลตรวจที่แอดมินส่งกลับผู้จัด; ไม่ใช่สถานะการแข่งขัน
+enum ReviewDecision {
+  APPROVED
+  CHANGES_REQUESTED
+  REJECTED
+}
+
+// PENDING/APPROVED คือใบสมัครที่ยัง active; สถานะอื่นเก็บไว้เป็นประวัติ
+enum RegistrationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+  WITHDRAWN
+}
+
+// ใช้กับสมาชิกแบบเดิมที่เชื่อมบัญชีผู้ใช้; รายชื่อผู้เล่นปัจจุบันเก็บใน TeamPlayer
+enum TeamMemberRole {
+  PLAYER
+  COACH
+}
+
+// ตำแหน่งผู้เล่นบนสนาม; ผู้จัดการ/โค้ชเป็นบทบาทบัญชี ไม่ใช่ตำแหน่งนี้
+enum BasketballPosition {
+  PG
+  SG
+  SF
+  PF
+  C
+}
+
+// สายร่างยังไม่เผยแพร่ ผู้ชมอ่านได้เมื่อเป็น PUBLISHED
+enum BracketStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+// สายที่ระบบสร้าง หรือไฟล์สายจากภายนอกที่ใช้เปิดดูโดยไม่แปลงไฟล์เป็นคู่แข่งขัน
+enum BracketMode {
+  SYSTEM_GENERATED
+  EXTERNAL_DOCUMENT
+}
+
+// ORDERED/RANDOM_ORDERED ใช้กับหน้าจัดสายปัจจุบัน; SEEDED/RANDOM เก็บเพื่อข้อมูลเดิม
+enum BracketGenerationMethod {
+  SEEDED
+  RANDOM
+  ORDERED
+  RANDOM_ORDERED
+}
+
+// ระบุช่องของคู่ถัดไปที่ผู้ชนะจากคู่ก่อนหน้าจะเข้าไปอยู่
+enum MatchSlot {
+  HOME
+  AWAY
+}
+
+// หน้าที่ของคู่ใช้หาผู้ชนะ/รองชนะเลิศ/อันดับสาม โดยเฉพาะโหมดไฟล์ที่ผู้จัดเพิ่มคู่เอง
+enum MatchPurpose {
+  STANDARD
+  THIRD_PLACE
+  CHAMPIONSHIP
+}
+
+// สถานะรายคู่ ไม่ใช่สถานะรายการทั้งหมด
+enum MatchStatus {
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+}
+
+// แยกประเภทไฟล์เพื่อใช้กฎชนิด/ขนาดไฟล์และการแสดงผลให้ถูกต้อง
+enum MediaAssetKind {
+  POSTER
+  DOCUMENT
+  BRACKET_DOCUMENT
+}
+
+// แต่ละไฟล์สายมีเวอร์ชันและสถานะของตัวเอง จึงเก็บประวัติฉบับเก่าได้
+enum ExternalBracketRevisionStatus {
+  DRAFT
+  PUBLISHED
+  RETIRED
+}
+
+// โปรไฟล์และสิทธิ์ของแอป; supabaseUserId เชื่อมกับบัญชี Auth โดยไม่เก็บรหัสผ่านไว้ในตารางนี้
+model User {
+  id                       String                    @id @default(cuid())
+  supabaseUserId           String?                   @unique
+  email                    String                    @unique
+  displayName              String
+  role                     Role                      @default(PLAYER)
+  organizerProfile         OrganizerProfile?
+  teamMemberships          TeamMember[]
+  ownedTeams               Team[]                    @relation("TeamOwner")
+  organizedTournaments     Tournament[]              @relation("TournamentOrganizer")
+  reviews                  TournamentReview[]        @relation("ReviewAuthor")
+  auditEvents              AuditLog[]                @relation("AuditActor")
+  mediaAssets              MediaAsset[]              @relation("MediaAssetCreator")
+  externalBracketRevisions ExternalBracketRevision[] @relation("ExternalBracketRevisionCreator")
+  authRecoveryGrants       AuthRecoveryGrant[]
+  createdAt                DateTime                  @default(now())
+  updatedAt                DateTime                  @updatedAt
+}
+
+// สิทธิ์เปลี่ยนรหัสผ่านครั้งเดียว: เก็บ hash ของ nonce, เวลาหมดอายุ และเวลาที่ใช้สิทธิ์แล้ว
+model AuthRecoveryGrant {
+  id         String    @id @default(cuid())
+  nonceHash  String    @unique
+  userId     String
+  expiresAt  DateTime
+  consumedAt DateTime?
+  createdAt  DateTime  @default(now())
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, consumedAt, expiresAt])
+  @@index([expiresAt])
+}
+
+// ข้อมูลประกอบบัญชีผู้จัดแบบหนึ่งต่อหนึ่งกับ User; verifiedAt เป็นข้อมูลการยืนยันเมื่อมีการใช้งาน
+model OrganizerProfile {
+  id               String    @id @default(cuid())
+  userId           String    @unique
+  organizationName String?
+  phone            String?
+  verifiedAt       DateTime?
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+}
+
+// ทีมหนึ่งมีเจ้าของหนึ่งบัญชีและผู้เล่นหลายคน; version ใช้ป้องกันการบันทึกทับข้อมูลที่ใหม่กว่า
+model Team {
+  id             String           @id @default(cuid())
+  name           String
+  provinceCode   String           @db.Char(2)
+  province       Province         @relation(fields: [provinceCode], references: [code], onDelete: Restrict)
+  ownerId        String
+  owner          User             @relation("TeamOwner", fields: [ownerId], references: [id])
+  format         TournamentFormat @default(FIVE_V_FIVE)
+  isActive       Boolean          @default(true)
+  deactivatedAt  DateTime?
+  version        Int              @default(0)
+  members        TeamMember[]
+  players        TeamPlayer[]
+  registrations  Registration[]
+  bracketEntries BracketEntry[]
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  @@index([ownerId])
+  @@index([provinceCode])
+}
+
+// สมาชิกแบบเดิมที่ต้องมีบัญชี User เก็บไว้ให้ข้อมูลเก่าและเครื่องมือตรวจความต่างยังทำงานได้
+model TeamMember {
+  id            String         @id @default(cuid())
+  teamId        String
+  userId        String
+  role          TeamMemberRole
+  isActive      Boolean        @default(true)
+  deactivatedAt DateTime?
+  team          Team           @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt     DateTime       @default(now())
+
+  @@unique([teamId, userId])
+}
+
+// รายชื่อผู้เล่นปัจจุบัน กรอกได้โดยไม่ต้องมีบัญชี; ปิด isActive เมื่อนำออกเพื่อรักษาประวัติ
+model TeamPlayer {
+  id            String              @id @default(cuid())
+  teamId        String
+  firstName     String
+  lastName      String
+  nickname      String?
+  birthDate     DateTime            @db.Date
+  jerseyNumber  Int?
+  position      BasketballPosition?
+  phone         String?
+  isActive      Boolean             @default(true)
+  deactivatedAt DateTime?
+  team          Team                @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+
+  @@unique([teamId, firstName, lastName, birthDate])
+  @@index([teamId, isActive])
+}
+
+// รายการแข่งขันของผู้จัดหนึ่งคน เป็นจุดเชื่อมใบสมัคร สาย คู่ สื่อ ผลตรวจ และ audit
+model Tournament {
+  id                   String             @id @default(cuid())
+  slug                 String             @unique
+  title                String
+  provinceCode         String             @db.Char(2)
+  province             Province           @relation(fields: [provinceCode], references: [code], onDelete: Restrict)
+  venue                String
+  format               TournamentFormat
+  ageGroup             String
+  status               TournamentStatus   @default(DRAFT)
+  governanceStatus     TournamentGovernanceStatus @default(ACTIVE)
+  governanceReason     String?
+  governanceUpdatedAt  DateTime?
+  startsAt             DateTime
+  endsAt               DateTime
+  registrationDeadline DateTime
+  capacity             Int
+  // เว้นว่างได้ด้วยข้อความ "" เมื่อใช้เอกสารแนบแทน; ไม่จำเป็นต้องเป็น null
+  description          String
+  rules                String
+  version              Int                @default(0)
+  organizerId          String
+  organizer            User               @relation("TournamentOrganizer", fields: [organizerId], references: [id])
+  reviews              TournamentReview[]
+  registrations        Registration[]
+  brackets             Bracket[]
+  matches              Match[]
+  auditEvents          AuditLog[]
+  mediaAssets          MediaAsset[]
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+
+  @@index([organizerId, status])
+  @@index([status, startsAt])
+  @@index([governanceStatus, status])
+  @@index([provinceCode])
+}
+
+// ข้อมูลกลาง 77 จังหวัด ใช้รหัส 2 หลักเป็น foreign key แทนการพิมพ์ชื่อจังหวัดอิสระ
+model Province {
+  code        String       @id @db.Char(2)
+  nameTh      String       @unique
+  nameEn      String       @unique
+  teams       Team[]
+  tournaments Tournament[]
+}
+
+// ประวัติการตรวจแต่ละครั้ง เก็บผู้ตรวจ ผล เหตุผล และเวลา แยกจากสถานะล่าสุดของ Tournament
+model TournamentReview {
+  id           String         @id @default(cuid())
+  tournamentId String
+  reviewerId   String
+  decision     ReviewDecision
+  note         String
+  tournament   Tournament     @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  reviewer     User           @relation("ReviewAuthor", fields: [reviewerId], references: [id])
+  createdAt    DateTime       @default(now())
+
+  @@index([tournamentId, createdAt])
+}
+
+// ใบสมัครเชื่อม Team กับ Tournament; เก็บประวัติหลายครั้งได้และตรวจใบสมัคร active ในกฎงาน/ฐานข้อมูล
+model Registration {
+  id             String             @id @default(cuid())
+  tournamentId   String
+  teamId         String
+  status         RegistrationStatus @default(PENDING)
+  decisionNote   String?
+  decidedAt      DateTime?
+  cancelledAt    DateTime?
+  withdrawnAt    DateTime?
+  version        Int                @default(0)
+  tournament     Tournament         @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  team           Team               @relation(fields: [teamId], references: [id])
+  bracketEntries BracketEntry[]
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+
+  @@index([tournamentId, status])
+  @@index([tournamentId, teamId, createdAt])
+}
+
+// หัวสายของรายการ เก็บโหมด วิธีเรียงทีม token สำหรับสุ่ม และ version ของโครงสร้าง
+model Bracket {
+  id                String                    @id @default(cuid())
+  tournamentId      String
+  status            BracketStatus             @default(DRAFT)
+  mode              BracketMode               @default(SYSTEM_GENERATED)
+  generationMethod  BracketGenerationMethod?
+  drawToken         String?
+  entriesLockedAt   DateTime?
+  publishedAt       DateTime?
+  archivedAt        DateTime?
+  version           Int                       @default(0)
+  tournament        Tournament                @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  entries           BracketEntry[]
+  rounds            BracketRound[]
+  matches           Match[]
+  externalRevisions ExternalBracketRevision[]
+  createdAt         DateTime                  @default(now())
+  updatedAt         DateTime                  @updatedAt
+
+  @@index([tournamentId, status])
+}
+
+// ทีมที่ถูกตรึงเข้าสาย; snapshot ชื่อทีมไว้ ณ ตอนตรึง พร้อมตำแหน่งที่ใช้สร้างคู่
+model BracketEntry {
+  id                 String       @id @default(cuid())
+  bracketId          String
+  registrationId     String
+  teamId             String
+  teamNameSnapshot   String
+  seed               Int
+  drawPosition       Int
+  startRoundSequence Int
+  bracket            Bracket      @relation(fields: [bracketId], references: [id], onDelete: Cascade)
+  registration       Registration @relation(fields: [registrationId], references: [id], onDelete: Restrict)
+  team               Team         @relation(fields: [teamId], references: [id], onDelete: Restrict)
+  createdAt          DateTime     @default(now())
+
+  @@unique([bracketId, registrationId])
+  @@unique([bracketId, teamId])
+  @@unique([bracketId, seed])
+  @@index([bracketId, drawPosition])
+}
+
+// รอบในสาย เช่น Quarter Final/Semi Final/Final; sequence ใช้เรียงรอบ
+model BracketRound {
+  id        String  @id @default(cuid())
+  bracketId String
+  name      String
+  sequence  Int
+  bracket   Bracket @relation(fields: [bracketId], references: [id], onDelete: Cascade)
+  matches   Match[]
+
+  @@unique([bracketId, sequence])
+}
+
+// คู่แข่งขัน เก็บทีม เวลา สนาม คะแนนร่าง และทางส่งผู้ชนะไปคู่ถัดไป
+model Match {
+  id            String       @id @default(cuid())
+  tournamentId  String
+  bracketId     String
+  roundId       String
+  sequence      Int
+  purpose       MatchPurpose @default(STANDARD)
+  scheduledAt   DateTime?
+  court         String?
+  homeTeamId    String?
+  awayTeamId    String?
+  winnerTeamId  String?
+  homeScore     Int?
+  awayScore     Int?
+  status        MatchStatus  @default(SCHEDULED)
+  version       Int          @default(0)
+  // เชื่อมตัวเอง: ผู้ชนะของคู่นี้เข้าช่อง nextSlot ของคู่ nextMatchId; null หมายถึงไม่มีคู่ถัดไป
+  nextMatchId   String?
+  nextSlot      MatchSlot?
+  tournament    Tournament   @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  bracket       Bracket      @relation(fields: [bracketId], references: [id], onDelete: Cascade)
+  round         BracketRound @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  nextMatch     Match?       @relation("MatchAdvancement", fields: [nextMatchId], references: [id], onDelete: SetNull)
+  sourceMatches Match[]      @relation("MatchAdvancement")
+  result        MatchResult?
+  updatedAt     DateTime     @default(now()) @updatedAt
+
+  @@unique([roundId, sequence])
+  @@index([tournamentId, scheduledAt])
+  @@index([nextMatchId])
+}
+
+// ผลที่ยืนยันแล้วมีได้หนึ่งระเบียนต่อคู่ แยกจากคะแนนร่างบน Match และเก็บผู้ยืนยัน/เวลา
+model MatchResult {
+  id           String   @id @default(cuid())
+  matchId      String   @unique
+  confirmedBy  String
+  homeScore    Int
+  awayScore    Int
+  winnerTeamId String
+  confirmedAt  DateTime @default(now())
+  match        Match    @relation(fields: [matchId], references: [id], onDelete: Cascade)
+}
+
+// เก็บ metadata ของไฟล์; เนื้อไฟล์อยู่ใน Supabase Storage ที่ bucket/objectPath
+model MediaAsset {
+  id                      String                   @id @default(cuid())
+  tournamentId            String
+  kind                    MediaAssetKind
+  bucket                  String
+  objectPath              String
+  fileName                String
+  contentType             String
+  byteSize                Int
+  createdById             String
+  tournament              Tournament               @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  createdBy               User                     @relation("MediaAssetCreator", fields: [createdById], references: [id])
+  externalBracketRevision ExternalBracketRevision?
+  createdAt               DateTime                 @default(now())
+  deletedAt               DateTime?
+
+  @@unique([bucket, objectPath])
+  @@index([tournamentId, kind])
+  @@index([tournamentId, deletedAt])
+}
+
+// ผูกไฟล์หนึ่งไฟล์กับเวอร์ชันสาย และเก็บการเผยแพร่/เลิกใช้ของแต่ละ revision
+model ExternalBracketRevision {
+  id           String                        @id @default(cuid())
+  bracketId    String
+  mediaAssetId String                        @unique
+  revision     Int
+  status       ExternalBracketRevisionStatus @default(DRAFT)
+  publishedAt  DateTime?
+  retiredAt    DateTime?
+  createdById  String
+  bracket      Bracket                       @relation(fields: [bracketId], references: [id], onDelete: Cascade)
+  mediaAsset   MediaAsset                    @relation(fields: [mediaAssetId], references: [id], onDelete: Restrict)
+  createdBy    User                          @relation("ExternalBracketRevisionCreator", fields: [createdById], references: [id])
+  createdAt    DateTime                      @default(now())
+
+  @@unique([bracketId, revision])
+  @@index([bracketId, status])
+}
+
+// ประวัติผู้ทำคำสั่งและข้อมูลก่อน/หลังที่จำเป็น เพื่ออธิบายการเปลี่ยนสถานะและการใช้อำนาจแอดมินย้อนหลัง
+model AuditLog {
+  id           String      @id @default(cuid())
+  actorId      String
+  tournamentId String?
+  action       String
+  entityType   String
+  entityId     String
+  beforeJson   Json?
+  afterJson    Json?
+  actor        User        @relation("AuditActor", fields: [actorId], references: [id])
+  tournament   Tournament? @relation(fields: [tournamentId], references: [id], onDelete: SetNull)
+  createdAt    DateTime    @default(now())
+
+  @@index([tournamentId, createdAt])
+  @@index([actorId, createdAt])
+}

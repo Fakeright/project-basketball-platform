@@ -1,0 +1,22 @@
+// @vitest-environment node
+
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ทดสอบ external-bracket-route-import โดยจำลอง dependencies ตามกรณี และตรวจผลสำเร็จ/ข้อผิดพลาดด้วย assertions
+ */
+
+import { describe, expect, it, vi } from "vitest"
+
+vi.mock("pdfjs-dist/legacy/build/pdf.mjs", () => {
+  throw new ReferenceError("DOMMatrix is not defined")
+})
+
+describe("external bracket upload route in Node", () => {
+  it("loads without a browser DOMMatrix or the PDF.js canvas fallback", async () => {
+    const route = await import(
+      "@/app/api/organizer/tournaments/[id]/bracket/external/revisions/route"
+    )
+
+    expect(route.POST).toBeTypeOf("function")
+  })
+})
