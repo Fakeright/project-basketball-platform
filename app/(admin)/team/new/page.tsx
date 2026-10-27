@@ -5,12 +5,12 @@
  */
 
 import { TeamEditor } from "@/components/team/team-editor"
-import { createNextCookieCurrentActorProvider } from "@/features/identity/infrastructure/next-cookie-current-actor-provider"
+import { getCurrentActor } from "@/features/identity/infrastructure/get-current-actor"
 import { listReusableTeamPlayers } from "@/features/team-management/application/list-reusable-team-players"
 import { getTeamRepository } from "@/features/team-management/infrastructure/get-team-repository"
 
 export default async function NewTeamPage() {
-  const actor = await createNextCookieCurrentActorProvider().getCurrentActor()
+  const actor = await getCurrentActor()
   if (!actor) return null
   const reusablePlayers = await listReusableTeamPlayers(actor, {
     teams: getTeamRepository(),

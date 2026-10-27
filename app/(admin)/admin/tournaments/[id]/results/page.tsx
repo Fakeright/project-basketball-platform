@@ -13,12 +13,12 @@ import {
 } from "@/components/admin/match-result-correction-dialog"
 import { getOrganizerCompetition } from "@/features/competition/application/get-organizer-competition"
 import { getCompetitionRepository } from "@/features/competition/infrastructure/get-competition-repository"
-import { createNextCookieCurrentActorProvider } from "@/features/identity/infrastructure/next-cookie-current-actor-provider"
+import { getCurrentActor } from "@/features/identity/infrastructure/get-current-actor"
 
 export default async function AdminTournamentResultsPage({
   params,
 }: PageProps<"/admin/tournaments/[id]/results">) {
-  const actor = await createNextCookieCurrentActorProvider().getCurrentActor()
+  const actor = await getCurrentActor()
   if (actor?.role !== "PLATFORM_ADMIN") notFound()
   const { id } = await params
 

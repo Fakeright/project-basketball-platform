@@ -10,7 +10,7 @@ import {
   TournamentGovernancePanel,
   type TournamentGovernanceActionView,
 } from "@/components/admin/tournament-governance-panel"
-import { createNextCookieCurrentActorProvider } from "@/features/identity/infrastructure/next-cookie-current-actor-provider"
+import { getCurrentActor } from "@/features/identity/infrastructure/get-current-actor"
 import {
   getTournamentGovernanceIssues,
   type TournamentGovernanceAction,
@@ -102,7 +102,7 @@ const actionDefinitions: Array<
 export default async function AdminTournamentGovernancePage({
   params,
 }: PageProps<"/admin/tournaments/[id]">) {
-  const actor = await createNextCookieCurrentActorProvider().getCurrentActor()
+  const actor = await getCurrentActor()
   if (actor?.role !== "PLATFORM_ADMIN") notFound()
 
   const { id } = await params

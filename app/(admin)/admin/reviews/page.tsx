@@ -7,11 +7,11 @@
 import { notFound } from "next/navigation"
 
 import { TournamentReviewQueue, type ReviewQueueItem } from "@/components/admin/tournament-review-queue"
-import { createNextCookieCurrentActorProvider } from "@/features/identity/infrastructure/next-cookie-current-actor-provider"
+import { getCurrentActor } from "@/features/identity/infrastructure/get-current-actor"
 import { getTournamentOperationsRepository } from "@/features/tournament-operations/infrastructure/get-tournament-operations-repository"
 
 export default async function AdminReviewsPage() {
-  const actor = await createNextCookieCurrentActorProvider().getCurrentActor()
+  const actor = await getCurrentActor()
   if (actor?.role !== "PLATFORM_ADMIN") notFound()
 
   const repository = await getTournamentOperationsRepository()

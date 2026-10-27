@@ -14,14 +14,14 @@ import { getOrganizerExternalBracketWorkspace } from "@/features/competition/app
 import { getOrganizerCompetition } from "@/features/competition/application/get-organizer-competition"
 import { getCompetitionRepository } from "@/features/competition/infrastructure/get-competition-repository"
 import { getExternalBracketRepository } from "@/features/competition/infrastructure/get-external-bracket-repository"
-import { createNextCookieCurrentActorProvider } from "@/features/identity/infrastructure/next-cookie-current-actor-provider"
+import { getCurrentActor } from "@/features/identity/infrastructure/get-current-actor"
 import { SupabaseObjectStorage } from "@/features/tournament-media/infrastructure/supabase-object-storage"
 
 /** โหลดพื้นที่จัดสายของเจ้าของรายการ แล้วแยก UI ตามโหมดระบบหรือไฟล์ภายนอก */
 export default async function OrganizerBracketPage({
   params,
 }: PageProps<"/organizer/tournaments/[id]/bracket">) {
-  const actor = await createNextCookieCurrentActorProvider().getCurrentActor()
+  const actor = await getCurrentActor()
   if (!actor) redirect("/login")
 
   const { id } = await params

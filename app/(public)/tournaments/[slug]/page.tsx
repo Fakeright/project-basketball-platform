@@ -11,7 +11,7 @@ import { TournamentRegistrationAction } from "@/components/tournaments/tournamen
 import { TournamentDocumentList } from "@/components/tournaments/tournament-document-list"
 import { TournamentPoster } from "@/components/tournaments/tournament-poster"
 import type { Actor } from "@/features/identity/domain/actor"
-import { createNextCookieCurrentActorProvider } from "@/features/identity/infrastructure/next-cookie-current-actor-provider"
+import { getCurrentActor } from "@/features/identity/infrastructure/get-current-actor"
 import { getRegistrationRepository } from "@/features/registrations/infrastructure/get-registration-repository"
 import { getTeamRepository } from "@/features/team-management/infrastructure/get-team-repository"
 import { getTournamentBySlug } from "@/features/tournaments/application/get-tournament-by-slug"
@@ -45,7 +45,7 @@ export default async function TournamentDetailPage({
     notFound()
   }
 
-  const actor = await createNextCookieCurrentActorProvider().getCurrentActor()
+  const actor = await getCurrentActor()
   const registrationAvailability = await loadRegistrationAvailability(
     tournament,
     actor,

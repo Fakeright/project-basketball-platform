@@ -6,7 +6,7 @@
 
 import { TeamList } from "@/components/team/team-list"
 import { TeamWorkspaceHeader } from "@/components/team/team-workspace-header"
-import { createNextCookieCurrentActorProvider } from "@/features/identity/infrastructure/next-cookie-current-actor-provider"
+import { getCurrentActor } from "@/features/identity/infrastructure/get-current-actor"
 import { listOwnedTeamRegistrations } from "@/features/registrations/application/list-owned-team-registrations"
 import { getRegistrationRepository } from "@/features/registrations/infrastructure/get-registration-repository"
 import { getOwnedTeamWorkspace } from "@/features/team-management/application/get-owned-team-workspace"
@@ -15,7 +15,7 @@ import { getTeamRepository } from "@/features/team-management/infrastructure/get
 import { createTeamWorkflowGuidance } from "@/features/team-management/presentation/team-workflow-guidance"
 
 export default async function TeamPage() {
-  const actor = await createNextCookieCurrentActorProvider().getCurrentActor()
+  const actor = await getCurrentActor()
   if (!actor) return null
 
   const teamRepository = getTeamRepository()

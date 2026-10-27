@@ -7,7 +7,7 @@
 import Link from "next/link"
 import { notFound } from "next/navigation"
 
-import { createNextCookieCurrentActorProvider } from "@/features/identity/infrastructure/next-cookie-current-actor-provider"
+import { getCurrentActor } from "@/features/identity/infrastructure/get-current-actor"
 import { getAdminTeamDetail } from "@/features/team-management/application/read-admin-teams"
 import { getAdminTeamReadRepository } from "@/features/team-management/infrastructure/get-admin-team-read-repository"
 
@@ -16,7 +16,7 @@ export default async function AdminTeamDetailPage({
 }: {
   params: Promise<{ id: string }>
 }) {
-  const actor = await createNextCookieCurrentActorProvider().getCurrentActor()
+  const actor = await getCurrentActor()
   if (!actor) notFound()
 
   const { id } = await params

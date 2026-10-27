@@ -10,14 +10,14 @@ import { redirect } from "next/navigation"
 import { AccountSessionControl } from "@/components/account-session-control"
 import { AdminSidebar } from "@/components/admin/admin-sidebar"
 import { ThemeToggle } from "@/components/theme-toggle"
-import { createNextCookieCurrentActorProvider } from "@/features/identity/infrastructure/next-cookie-current-actor-provider"
+import { getCurrentActor } from "@/features/identity/infrastructure/get-current-actor"
 
 export default async function AdminLayout({
   children,
 }: {
   children: ReactNode
 }) {
-  const actor = await createNextCookieCurrentActorProvider().getCurrentActor()
+  const actor = await getCurrentActor()
   if (!actor) redirect("/login")
 
   return (

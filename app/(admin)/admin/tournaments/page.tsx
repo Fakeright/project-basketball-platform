@@ -11,7 +11,7 @@ import type { ReactNode } from "react"
 
 import type { TournamentOperationStatus } from "@/features/tournament-operations/domain/tournament-operation"
 import { getTournamentOperationsRepository } from "@/features/tournament-operations/infrastructure/get-tournament-operations-repository"
-import { createNextCookieCurrentActorProvider } from "@/features/identity/infrastructure/next-cookie-current-actor-provider"
+import { getCurrentActor } from "@/features/identity/infrastructure/get-current-actor"
 
 const statusLabels: Record<TournamentOperationStatus, string> = {
   DRAFT: "ฉบับร่าง",
@@ -32,7 +32,7 @@ const statuses = Object.keys(statusLabels) as TournamentOperationStatus[]
 export default async function AdminTournamentListPage({
   searchParams,
 }: PageProps<"/admin/tournaments">) {
-  const actor = await createNextCookieCurrentActorProvider().getCurrentActor()
+  const actor = await getCurrentActor()
   if (actor?.role !== "PLATFORM_ADMIN") notFound()
   const params = await searchParams
   const query = typeof params.q === "string" ? params.q.trim() : ""

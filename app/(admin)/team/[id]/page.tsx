@@ -10,7 +10,7 @@ import { TeamRegistrationList } from "@/components/team/team-registration-list"
 import { TeamDeleteDialog } from "@/components/team/team-delete-dialog"
 import { TeamWorkspaceManager } from "@/components/team/team-workspace-manager"
 import type { Actor } from "@/features/identity/domain/actor"
-import { createNextCookieCurrentActorProvider } from "@/features/identity/infrastructure/next-cookie-current-actor-provider"
+import { getCurrentActor } from "@/features/identity/infrastructure/get-current-actor"
 import { getOwnedTeamWorkspace } from "@/features/team-management/application/get-owned-team-workspace"
 import { getTeamRepository } from "@/features/team-management/infrastructure/get-team-repository"
 import { listOwnedTeamRegistrations } from "@/features/registrations/application/list-owned-team-registrations"
@@ -21,7 +21,7 @@ export default async function TeamDetailPage({
 }: {
   params: Promise<{ id: string }>
 }) {
-  const actor = await createNextCookieCurrentActorProvider().getCurrentActor()
+  const actor = await getCurrentActor()
   if (!actor) notFound()
 
   const { id } = await params

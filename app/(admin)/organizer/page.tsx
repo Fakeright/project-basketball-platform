@@ -8,13 +8,13 @@ import Link from "next/link"
 import { redirect } from "next/navigation"
 
 import { WorkflowNextAction } from "@/components/workflow/workflow-next-action"
-import { createNextCookieCurrentActorProvider } from "@/features/identity/infrastructure/next-cookie-current-actor-provider"
+import { getCurrentActor } from "@/features/identity/infrastructure/get-current-actor"
 import { listOwnedTournamentWorkflows } from "@/features/tournament-operations/application/list-owned-tournament-workflows"
 import { getTournamentOperationsRepository } from "@/features/tournament-operations/infrastructure/get-tournament-operations-repository"
 import { createOrganizerWorkflowGuidance } from "@/features/tournament-operations/presentation/organizer-workflow-guidance"
 
 export default async function OrganizerPage() {
-  const actor = await createNextCookieCurrentActorProvider().getCurrentActor()
+  const actor = await getCurrentActor()
   if (!actor) redirect("/login")
 
   const repository = await getTournamentOperationsRepository()

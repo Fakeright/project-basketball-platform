@@ -9,7 +9,7 @@ import { notFound } from "next/navigation"
 
 import { TournamentReviewPanel } from "@/components/admin/tournament-review-panel"
 import { TournamentReviewMedia } from "@/components/admin/tournament-review-media"
-import { createNextCookieCurrentActorProvider } from "@/features/identity/infrastructure/next-cookie-current-actor-provider"
+import { getCurrentActor } from "@/features/identity/infrastructure/get-current-actor"
 import { getAdminReviewMedia } from "@/features/tournament-media/application/get-admin-review-media"
 import { getTournamentMediaRepository } from "@/features/tournament-media/infrastructure/get-tournament-media-repository"
 import { SupabaseObjectStorage } from "@/features/tournament-media/infrastructure/supabase-object-storage"
@@ -18,7 +18,7 @@ import { getTournamentOperationsRepository } from "@/features/tournament-operati
 export default async function AdminReviewDetailPage({
   params,
 }: PageProps<"/admin/reviews/[id]">) {
-  const actor = await createNextCookieCurrentActorProvider().getCurrentActor()
+  const actor = await getCurrentActor()
   if (actor?.role !== "PLATFORM_ADMIN") notFound()
 
   const { id } = await params

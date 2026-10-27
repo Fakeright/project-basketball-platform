@@ -14,7 +14,7 @@ import { TournamentLifecycleActions } from "@/components/admin/tournament-lifecy
 import { TournamentWorkflowProgress } from "@/components/organizer/tournament-workflow-progress"
 import { utcToBangkokDateTimeLocal } from "@/features/admin/presentation/tournament-editor-time"
 import { authorize } from "@/features/identity/application/authorize"
-import { createNextCookieCurrentActorProvider } from "@/features/identity/infrastructure/next-cookie-current-actor-provider"
+import { getCurrentActor } from "@/features/identity/infrastructure/get-current-actor"
 import { getTournamentOperationsRepository } from "@/features/tournament-operations/infrastructure/get-tournament-operations-repository"
 import { getTournamentMediaRepository } from "@/features/tournament-media/infrastructure/get-tournament-media-repository"
 import { SupabaseObjectStorage } from "@/features/tournament-media/infrastructure/supabase-object-storage"
@@ -22,7 +22,7 @@ import { SupabaseObjectStorage } from "@/features/tournament-media/infrastructur
 export default async function EditTournamentPage({
   params,
 }: PageProps<"/organizer/tournaments/[id]">) {
-  const actor = await createNextCookieCurrentActorProvider().getCurrentActor()
+  const actor = await getCurrentActor()
   if (!actor) redirect("/login")
 
   const { id } = await params

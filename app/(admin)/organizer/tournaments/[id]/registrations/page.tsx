@@ -9,7 +9,7 @@ import { notFound, redirect } from "next/navigation"
 import { RegistrationReviewList } from "@/components/organizer/registration-review-list"
 import { TournamentWorkflowProgress } from "@/components/organizer/tournament-workflow-progress"
 import { SuspendedTournamentWorkspace } from "@/components/admin/tournament-governance-read-only"
-import { createNextCookieCurrentActorProvider } from "@/features/identity/infrastructure/next-cookie-current-actor-provider"
+import { getCurrentActor } from "@/features/identity/infrastructure/get-current-actor"
 import {
   listTournamentRegistrations,
   type TournamentRegistrationReview,
@@ -25,7 +25,7 @@ const submittedDateFormatter = new Intl.DateTimeFormat("th-TH", {
 export default async function TournamentRegistrationsPage({
   params,
 }: PageProps<"/organizer/tournaments/[id]/registrations">) {
-  const actor = await createNextCookieCurrentActorProvider().getCurrentActor()
+  const actor = await getCurrentActor()
   if (!actor) redirect("/login")
 
   const { id } = await params

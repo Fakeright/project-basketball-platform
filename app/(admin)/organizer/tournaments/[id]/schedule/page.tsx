@@ -16,13 +16,13 @@ import { TournamentWorkflowProgress } from "@/components/organizer/tournament-wo
 import { utcToBangkokDateTimeLocal } from "@/features/admin/presentation/tournament-editor-time"
 import { getOrganizerCompetition } from "@/features/competition/application/get-organizer-competition"
 import { getCompetitionRepository } from "@/features/competition/infrastructure/get-competition-repository"
-import { createNextCookieCurrentActorProvider } from "@/features/identity/infrastructure/next-cookie-current-actor-provider"
+import { getCurrentActor } from "@/features/identity/infrastructure/get-current-actor"
 
 /** เตรียมข้อมูลคู่และเวลาไทยให้ฟอร์มจัดตาราง; การบันทึกจริงทำผ่าน API */
 export default async function OrganizerSchedulePage({
   params,
 }: PageProps<"/organizer/tournaments/[id]/schedule">) {
-  const actor = await createNextCookieCurrentActorProvider().getCurrentActor()
+  const actor = await getCurrentActor()
   if (!actor) redirect("/login")
   const { id } = await params
 
