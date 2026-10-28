@@ -1,0 +1,50 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * อ่าน body เป็นส่วน ๆ พร้อมจำกัดขนาด เพื่อหยุดคำขอไฟล์ใหญ่ก่อนใช้หน่วยความจำเกินขอบเขต
+ * เรียกใช้จาก: features/admin/presentation/tournament-media-handler.ts, features/competition/presentation/external-bracket-handler.ts
+ */
+
+export class RequestBodyTooLargeError extends Error {
+  constructor() {
+    super("REQUEST_BODY_TOO_LARGE")
+  }
+}
+
+// อ่าน stream และนับ byte ระหว่างอ่าน; หยุดทันทีเมื่อเกินขนาดที่กำหนด
+export async function readRequestBodyWithLimit(
+  request: Request,
+  maximumBytes: number,
+): Promise<ArrayBuffer | null> {
+  const contentLength = request.headers.get("content-length")
+  if (contentLength) {
+    const declaredBytes = Number(contentLength)
+    if (Number.isFinite(declaredBytes) && declaredBytes > maximumBytes) {
+      throw new RequestBodyTooLargeError()
+    }
+  }
+  if (!request.body) return null
+
+  const reader = request.body.getReader()
+  const chunks: Uint8Array[] = []
+  let totalBytes = 0
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) break
+    totalBytes += value.byteLength
+    if (totalBytes > maximumBytes) {
+      try {
+        await reader.cancel()
+      } catch {}
+      throw new RequestBodyTooLargeError()
+    }
+    chunks.push(value)
+  }
+
+  const body = new Uint8Array(totalBytes)
+  let offset = 0
+  for (const chunk of chunks) {
+    body.set(chunk, offset)
+    offset += chunk.byteLength
+  }
+  return body.buffer
+}

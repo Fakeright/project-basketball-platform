@@ -1,0 +1,41 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * จัดการล้างไฟล์ที่บันทึกไม่สำเร็จและรายงานความผิดพลาดโดยไม่ทำให้ข้อมูลต้นเหตุหาย
+ * เรียกใช้จาก: features/tournament-media/application/delete-tournament-media.ts, features/tournament-media/application/upload-tournament-media.ts
+ */
+
+export type MediaCleanupOperation =
+  | "media.upload.compensate"
+  | "media.upload.retired_object"
+  | "media.delete.restore"
+  | "media.delete.cleanup"
+
+export interface MediaCleanupLogger {
+  error(event: {
+    operation: MediaCleanupOperation
+    assetId: string
+    errorType: "Error" | "NonError"
+  }): void
+}
+
+export function reportMediaCleanupFailure(
+  operation: MediaCleanupOperation,
+  assetId: string,
+  error: unknown,
+  logger?: MediaCleanupLogger,
+) {
+  const event = {
+    operation,
+    assetId,
+    errorType: error instanceof Error ? ("Error" as const) : ("NonError" as const),
+  }
+  try {
+    ;(logger ?? defaultMediaCleanupLogger).error(event)
+  } catch {}
+}
+
+const defaultMediaCleanupLogger: MediaCleanupLogger = {
+  error(event) {
+    console.error(event)
+  },
+}

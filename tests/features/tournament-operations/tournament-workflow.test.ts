@@ -1,0 +1,195 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ทดสอบ features/tournament-operations/application/create-tournament.ts, features/tournament-operations/domain/tournament-workflow.ts, features/tournament-operations/application/review-tournament.ts โดยจำลอง dependencies ตามกรณี และตรวจผลสำเร็จ/ข้อผิดพลาดด้วย assertions
+ */
+
+import { describe, expect, it, vi } from "vitest"
+
+import {
+  createTournament,
+  submitTournament,
+  updateTournament,
+} from "@/features/tournament-operations/application/create-tournament"
+import { assertCanPublish } from "@/features/tournament-operations/domain/tournament-workflow"
+import { reviewTournament } from "@/features/tournament-operations/application/review-tournament"
+import { InMemoryTournamentOperationsRepository } from "@/features/tournament-operations/infrastructure/in-memory-tournament-operations-repository"
+import { createTestActor } from "@/tests/fixtures/actor"
+
+const organizer = createTestActor("organizer-1", "TOURNAMENT_ORGANIZER")
+const admin = createTestActor("admin-1", "PLATFORM_ADMIN")
+
+const validInput = {
+  title: "Bangkok Admin Cup",
+  description: "รายการแข่งขันสำหรับการทดสอบ",
+  rules: "กติกามาตรฐาน",
+  provinceCode: "10",
+  venue: "COURTSIDE Arena",
+  format: "FIVE_V_FIVE" as const,
+  ageGroup: "Open",
+  startsAt: "2026-11-15T09:00:00+07:00",
+  endsAt: "2026-11-16T18:00:00+07:00",
+  registrationDeadline: "2026-11-01T23:59:00+07:00",
+  capacity: 16,
+}
+
+describe("tournament workflow", () => {
+  it("creates and publishes a tournament without text details or rules", async () => {
+    const repository = new InMemoryTournamentOperationsRepository()
+    const tournament = await createTournament(
+      repository,
+      { ...validInput, description: "", rules: "" },
+      organizer,
+    )
+
+    expect(tournament).toMatchObject({ description: "", rules: "" })
+    expect(() => assertCanPublish(
+      { ...tournament, status: "APPROVED" },
+      new Date("2026-10-01"),
+    )).not.toThrow()
+  })
+
+  it("creates a draft owned by the organizer", async () => {
+    const repository = new InMemoryTournamentOperationsRepository()
+    const tournament = await createTournament(repository, validInput, organizer)
+
+    expect(tournament).toMatchObject({ status: "DRAFT", organizerId: organizer.id, version: 0 })
+  })
+
+  it("submits a complete draft for review", async () => {
+    const repository = new InMemoryTournamentOperationsRepository()
+    const tournament = await createTournament(repository, validInput, organizer)
+
+    const submitted = await submitTournament(repository, tournament.id, organizer)
+
+    expect(submitted.status).toBe("SUBMITTED")
+  })
+
+  it("updates the displayed province and audit snapshot from a new province code", async () => {
+    const repository = new InMemoryTournamentOperationsRepository()
+    const tournament = await createTournament(repository, validInput, organizer)
+
+    const updated = await updateTournament(
+      repository,
+      tournament.id,
+      { ...validInput, provinceCode: "92", version: tournament.version },
+      organizer,
+    )
+
+    expect(updated).toMatchObject({ provinceCode: "92", province: "ตรัง" })
+    expect(repository.audits.at(-1)?.after).toMatchObject({
+      provinceCode: "92",
+      province: "ตรัง",
+    })
+  })
+
+  it.each([8, 16, 32])("accepts a full bracket capacity of %i", async (capacity) => {
+    const repository = new InMemoryTournamentOperationsRepository()
+
+    await expect(
+      createTournament(repository, { ...validInput, capacity }, organizer),
+    ).resolves.toMatchObject({ capacity })
+  })
+
+  it.each([5, 6, 7, 10, 10.5, 12, 14, 24, 33])(
+    "rejects an invalid capacity of %s",
+    async (capacity) => {
+      const repository = new InMemoryTournamentOperationsRepository()
+
+      await expect(
+        createTournament(repository, { ...validInput, capacity }, organizer),
+      ).rejects.toThrow("CAPACITY_INVALID")
+    },
+  )
+
+  it("retains a legacy capacity on an unrelated edit and publication", async () => {
+    const repository = new InMemoryTournamentOperationsRepository()
+    const legacy = await repository.create({ ...validInput, capacity: 6, organizerId: organizer.id })
+
+    const updated = await updateTournament(
+      repository,
+      legacy.id,
+      { ...validInput, title: "Renamed Cup", capacity: 6, version: legacy.version },
+      organizer,
+    )
+    expect(updated).toMatchObject({ title: "Renamed Cup", capacity: 6 })
+    expect(() => assertCanPublish({ ...updated, status: "APPROVED" }, new Date("2026-10-01"))).not.toThrow()
+  })
+
+  it("rejects changing a legacy capacity to a different unsupported value", async () => {
+    const repository = new InMemoryTournamentOperationsRepository()
+    const legacy = await repository.create({ ...validInput, capacity: 6, organizerId: organizer.id })
+
+    await expect(updateTournament(
+      repository,
+      legacy.id,
+      { ...validInput, capacity: 10, version: legacy.version },
+      organizer,
+    )).rejects.toThrow("CAPACITY_INVALID")
+  })
+
+  it.each(["U12", "U14", "U16", "U18", "U23", "Open"])(
+    "accepts the canonical age group %s",
+    async (ageGroup) => {
+      const repository = new InMemoryTournamentOperationsRepository()
+
+      await expect(
+        createTournament(repository, { ...validInput, ageGroup }, organizer),
+      ).resolves.toMatchObject({ ageGroup })
+    },
+  )
+
+  it.each(["", "U20", "35+", "open"])(
+    "rejects the unsupported age group %s",
+    async (ageGroup) => {
+      const repository = new InMemoryTournamentOperationsRepository()
+
+      await expect(
+        createTournament(repository, { ...validInput, ageGroup }, organizer),
+      ).rejects.toThrow("AGE_GROUP_INVALID")
+    },
+  )
+
+  it("requires a note when an admin requests changes", async () => {
+    const repository = new InMemoryTournamentOperationsRepository()
+    const tournament = await createTournament(repository, validInput, organizer)
+
+    await expect(
+      reviewTournament(repository, tournament.id, { decision: "CHANGES_REQUESTED", note: "", version: tournament.version }, admin),
+    ).rejects.toThrow("REVIEW_NOTE_REQUIRED")
+  })
+
+  it("blocks updating a suspended tournament before persistence", async () => {
+    const repository = new InMemoryTournamentOperationsRepository()
+    const tournament = await createTournament(repository, validInput, organizer)
+    await repository.updateWithVersion(tournament.id, tournament.version, {
+      governanceStatus: "SUSPENDED",
+    })
+    const updateWithVersion = vi.spyOn(repository, "updateWithVersion")
+    updateWithVersion.mockClear()
+
+    await expect(
+      updateTournament(
+        repository,
+        tournament.id,
+        { ...validInput, title: "Blocked edit", version: 1 },
+        organizer,
+      ),
+    ).rejects.toMatchObject({ issues: ["TOURNAMENT_SUSPENDED"] })
+    expect(updateWithVersion).not.toHaveBeenCalled()
+  })
+
+  it("blocks submitting a removed tournament before persistence", async () => {
+    const repository = new InMemoryTournamentOperationsRepository()
+    const tournament = await createTournament(repository, validInput, organizer)
+    await repository.updateWithVersion(tournament.id, tournament.version, {
+      governanceStatus: "REMOVED",
+    })
+    const updateWithVersion = vi.spyOn(repository, "updateWithVersion")
+    updateWithVersion.mockClear()
+
+    await expect(
+      submitTournament(repository, tournament.id, organizer),
+    ).rejects.toMatchObject({ issues: ["TOURNAMENT_REMOVED"] })
+    expect(updateWithVersion).not.toHaveBeenCalled()
+  })
+})

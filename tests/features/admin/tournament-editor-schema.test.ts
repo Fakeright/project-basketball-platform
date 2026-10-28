@@ -1,0 +1,106 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * ทดสอบ features/admin/presentation/tournament-editor-schema.ts โดยจำลอง dependencies ตามกรณี และตรวจผลสำเร็จ/ข้อผิดพลาดด้วย assertions
+ */
+
+import { describe, expect, it } from "vitest"
+
+import {
+  tournamentEditorSchema,
+  tournamentEditorSchemaForMode,
+} from "@/features/admin/presentation/tournament-editor-schema"
+
+const validInput = {
+  title: "Capacity Cup",
+  description: "การแข่งขันสำหรับทดสอบจำนวนทีม",
+  provinceCode: "10",
+  venue: "COURTSIDE Arena",
+  format: "FIVE_V_FIVE",
+  ageGroup: "Open",
+  startsAt: "2026-12-10T09:00",
+  endsAt: "2026-12-11T18:00",
+  registrationDeadline: "2026-12-01T23:59",
+  rules: "ใช้กติกามาตรฐาน",
+}
+
+describe("tournamentEditorSchema capacity", () => {
+  it("accepts blank description and rules when documents provide them", () => {
+    const result = tournamentEditorSchema.safeParse({
+      ...validInput,
+      description: "  ",
+      rules: "",
+      capacity: "16",
+    })
+
+    expect(result.success).toBe(true)
+    if (result.success) expect(result.data).toMatchObject({ description: "", rules: "" })
+  })
+
+  it.each([8, 16, 32])("accepts %i teams", (capacity) => {
+    const result = tournamentEditorSchema.safeParse({
+      ...validInput,
+      capacity: String(capacity),
+    })
+
+    expect(result.success).toBe(true)
+    if (result.success) expect(result.data.capacity).toBe(capacity)
+  })
+
+  it.each(["", "abc", "5", "6", "7", "10", "12", "24", "10.5", "33"])(
+    "rejects %s teams",
+    (capacity) => {
+      const result = tournamentEditorSchema.safeParse({
+        ...validInput,
+        capacity,
+      })
+
+      expect(result.success).toBe(false)
+      if (!result.success) {
+        expect(result.error.issues[0]?.message).toBe(
+          "จำนวนทีมต้องเป็น 8, 16 หรือ 32 ทีม",
+        )
+      }
+    },
+  )
+
+  it("parses a legacy capacity in edit mode for authoritative update validation", () => {
+    const result = tournamentEditorSchemaForMode(true).safeParse({
+      ...validInput,
+      capacity: "6",
+    })
+
+    expect(result.success).toBe(true)
+    if (result.success) expect(result.data.capacity).toBe(6)
+  })
+})
+
+describe("tournamentEditorSchema age group", () => {
+  it.each(["U12", "U14", "U16", "U18", "U23", "Open"])(
+    "accepts %s",
+    (ageGroup) => {
+      const result = tournamentEditorSchema.safeParse({
+        ...validInput,
+        ageGroup,
+        capacity: "16",
+      })
+
+      expect(result.success).toBe(true)
+      if (result.success) expect(result.data.ageGroup).toBe(ageGroup)
+    },
+  )
+
+  it.each(["", "U20", "35+", "open"])("rejects %s", (ageGroup) => {
+    const result = tournamentEditorSchema.safeParse({
+      ...validInput,
+      ageGroup,
+      capacity: "16",
+    })
+
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.error.issues[0]?.message).toBe(
+        "กรุณาเลือกรุ่นอายุจากรายการ",
+      )
+    }
+  })
+})

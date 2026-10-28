@@ -1,0 +1,96 @@
+/**
+ * COURTSIDE: คำอธิบายไฟล์
+ * กำหนดรูปแบบฟอร์มด้วย Zod รวมจังหวัด รุ่นอายุ จำนวนทีม และวันเวลา; รายละเอียดกับกติกาเว้นว่างได้
+ * เรียกใช้จาก: components/admin/tournament-editor.tsx, features/admin/presentation/save-tournament-handler.ts
+ * ตามการทำงานต่อ: features/admin/presentation/tournament-editor-time.ts, features/provinces/application/assert-province-code.ts
+ */
+
+import { z } from "zod"
+
+import { tournamentDateTimeToUtc } from "./tournament-editor-time"
+import { assertProvinceCode } from "@/features/provinces/application/assert-province-code"
+import { isTournamentAgeGroup } from "@/features/tournament-operations/domain/tournament-age-group"
+import {
+  isLegacyTournamentCapacity,
+  isValidTournamentCapacity,
+} from "@/features/tournament-operations/domain/tournament-capacity"
+
+const requiredText = (message: string) => z.string().trim().min(1, message)
+const tournamentCapacityMessage = "จำนวนทีมต้องเป็น 8, 16 หรือ 32 ทีม"
+const dateTime = (requiredMessage: string) =>
+  requiredText(requiredMessage).transform((value, context) => {
+    try {
+      return tournamentDateTimeToUtc(value)
+    } catch {
+      context.addIssue({
+        code: "custom",
+        message: "กรุณาระบุวันและเวลาให้ถูกต้อง",
+      })
+      return z.NEVER
+    }
+  })
+
+export const tournamentEditorSchemaForMode = (allowLegacyCapacity: boolean) => z
+  .object({
+    title: requiredText("กรุณาระบุชื่อรายการ"),
+    description: z.string().trim(),
+    provinceCode: z.string().trim().refine(
+      (value) => {
+        try {
+          assertProvinceCode(value)
+          return true
+        } catch {
+          return false
+        }
+      },
+      { message: "กรุณาเลือกจังหวัดจากรายการ" },
+    ),
+    venue: requiredText("กรุณาระบุสถานที่"),
+    format: z.enum(["FIVE_V_FIVE", "THREE_V_THREE"]),
+    ageGroup: z
+      .string()
+      .trim()
+      .refine(isTournamentAgeGroup, {
+        message: "กรุณาเลือกรุ่นอายุจากรายการ",
+      }),
+    startsAt: dateTime("กรุณาระบุวันเริ่มแข่งขัน"),
+    endsAt: dateTime("กรุณาระบุวันสิ้นสุดการแข่งขัน"),
+    registrationDeadline: dateTime("กรุณาระบุวันปิดรับสมัคร"),
+    capacity: z.coerce
+      .number({ error: tournamentCapacityMessage })
+      .refine((capacity) =>
+        isValidTournamentCapacity(capacity) ||
+        (allowLegacyCapacity && isLegacyTournamentCapacity(capacity)), {
+        message: tournamentCapacityMessage,
+      }),
+    rules: z.string().trim(),
+    version: z.coerce.number().int().nonnegative().optional(),
+  })
+
+export const tournamentEditorSchema = tournamentEditorSchemaForMode(false)
+  .superRefine((value, context) => {
+    const startsAt = Date.parse(value.startsAt)
+    const endsAt = Date.parse(value.endsAt)
+    const deadline = Date.parse(value.registrationDeadline)
+
+    if (Number.isFinite(startsAt) && Number.isFinite(endsAt) && endsAt <= startsAt) {
+      context.addIssue({
+        code: "custom",
+        path: ["endsAt"],
+        message: "วันสิ้นสุดต้องอยู่หลังวันเริ่มแข่งขัน",
+      })
+    }
+    if (
+      Number.isFinite(startsAt) &&
+      Number.isFinite(deadline) &&
+      deadline >= startsAt
+    ) {
+      context.addIssue({
+        code: "custom",
+        path: ["registrationDeadline"],
+        message: "วันปิดรับสมัครต้องอยู่ก่อนวันเริ่มแข่งขัน",
+      })
+    }
+  })
+
+export type TournamentEditorInput = z.infer<typeof tournamentEditorSchema>
