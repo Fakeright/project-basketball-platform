@@ -73,14 +73,17 @@ function repositoryWithTransactionClient(client: object) {
 }
 
 describe("PrismaRegistrationRepository transactions", () => {
-  it("locks player identities in stable order and detects an active registration in another unfinished tournament", async () => {
+  it("locks player identities and only checks tournaments whose time windows overlap", async () => {
     const queryRaw = vi.fn()
       .mockResolvedValueOnce([{ id: "a" }, { id: "b" }])
       .mockResolvedValueOnce([{ id: "registration-player-1" }])
     const { repository } = repositoryWithTransactionClient({ $queryRaw: queryRaw })
 
     const conflict = await repository.inTransaction((registrations) =>
-      registrations.findConflictingPlayers(["b", "a"]),
+      registrations.findConflictingPlayers(["b", "a"], {
+        startsAt: "2026-11-15T02:00:00.000Z",
+        endsAt: "2026-11-16T12:00:00.000Z",
+      }),
     )
 
     expect(conflict).toBe(true)
@@ -89,6 +92,11 @@ describe("PrismaRegistrationRepository transactions", () => {
     expect(queryRaw.mock.calls[1][0].text).not.toContain('r."tournamentId" <>')
     expect(queryRaw.mock.calls[1][0].text).toContain("'PENDING', 'APPROVED'")
     expect(queryRaw.mock.calls[1][0].text).toContain("'COMPLETED', 'ARCHIVED'")
+    expect(queryRaw.mock.calls[1][0].text).toContain('t."startsAt" <')
+    expect(queryRaw.mock.calls[1][0].text).toContain('t."endsAt" >')
+    expect(queryRaw.mock.calls[1][0].values).toEqual([
+      "a", "b", new Date("2026-11-16T12:00:00.000Z"), new Date("2026-11-15T02:00:00.000Z"),
+    ])
   })
 
   it("shows the submitted roster snapshot even after the team's current roster changes", async () => {
@@ -416,6 +424,7 @@ describe("PrismaRegistrationRepository transactions", () => {
           format: "FIVE_V_FIVE",
           ageGroup: "U18",
           startsAt: new Date("2026-11-15T02:00:00.000Z"),
+          endsAt: new Date("2026-11-16T12:00:00.000Z"),
           status: "PUBLISHED",
           governanceStatus: "SUSPENDED",
           registrationDeadline: new Date("2026-11-01T00:00:00.000Z"),
@@ -483,6 +492,7 @@ describe("PrismaRegistrationRepository transactions", () => {
     expect(context?.tournament).toMatchObject({
       ageGroup: "U18",
       startsAt: "2026-11-15T02:00:00.000Z",
+      endsAt: "2026-11-16T12:00:00.000Z",
       governanceStatus: "SUSPENDED",
       capacity: 8,
       approvedCount: 7,

@@ -18,6 +18,7 @@ export interface RegistrationApplicationContext {
     format: RosterFormat
     ageGroup: string
     startsAt: string
+    endsAt: string
     status: RegistrationTournamentStatus
     governanceStatus: TournamentGovernanceStatus
     registrationDeadline: string
@@ -108,7 +109,10 @@ export interface RegistrationRepositoryTransaction {
     teamId: string,
     teamName: string,
   ): Promise<boolean>
-  findConflictingPlayers(playerIdentityIds: readonly string[]): Promise<boolean>
+  findConflictingPlayers(
+    playerIdentityIds: readonly string[],
+    interval: { startsAt: string; endsAt: string },
+  ): Promise<boolean>
   createPending(input: {
     tournamentId: string
     teamId: string

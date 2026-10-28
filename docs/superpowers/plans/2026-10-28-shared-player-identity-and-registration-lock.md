@@ -10,6 +10,8 @@
 
 **Spec:** `docs/superpowers/specs/2026-10-28-shared-player-identity-and-registration-lock-design.md`
 
+**ข้อกำหนดล่าสุด:** กันใบสมัครซ้ำเฉพาะรายการที่ช่วงวันเวลาแข่งขันทับกัน; รายการที่วันเวลาไม่ทับกันใช้ผู้เล่นคนเดิมได้ แม้รายการเดิมยังไม่จบ
+
 ## Global Constraints
 
 - ไม่ลบข้อมูลทีม/ใบสมัคร/ผลการแข่งขันเดิม; migration แบบเพิ่มข้อมูลและ backfill
@@ -54,7 +56,7 @@
 
 **Files:** `features/registrations/application/{apply-to-tournament,ports/registration-repository}.ts`, `features/registrations/infrastructure/prisma-registration-repository.ts`, `features/registrations/presentation/registration-handler.ts`, focused tests
 
-**Interfaces:** `RegistrationRepositoryTransaction.findConflictingPlayers(playerIdentityIds, excludedTournamentId)` and `createPending({ ..., playerSnapshots })`. SQL locks identities sorted by ID before checking active `PENDING`/`APPROVED` registrations of tournaments other than released `COMPLETED`/`ARCHIVED`; returns `409 PLAYER_ALREADY_COMPETING`.
+**Interfaces:** `RegistrationRepositoryTransaction.findConflictingPlayers(playerIdentityIds, { startsAt, endsAt })` and `createPending({ ..., playerSnapshots })`. SQL locks identities sorted by ID, then checks active `PENDING`/`APPROVED` registrations in unfinished tournaments whose interval overlaps the new tournament (`old.startsAt < new.endsAt` and `old.endsAt > new.startsAt`); returns `409 PLAYER_ALREADY_COMPETING` only for an overlap.
 
 - [ ] Write failing domain/use-case/route/repository tests: first application, pending/approved blocked, terminal statuses released, completed tournament released, legacy conflict, concurrent requests
 - [ ] Run focused tests and verify red

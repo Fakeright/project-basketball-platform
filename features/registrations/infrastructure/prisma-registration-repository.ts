@@ -74,8 +74,8 @@ export class PrismaRegistrationRepository implements RegistrationRepository {
     return this.operations.hasActiveNameConflict(tournamentId, teamId, teamName)
   }
 
-  findConflictingPlayers(playerIdentityIds: readonly string[]) {
-    return this.operations.findConflictingPlayers(playerIdentityIds)
+  findConflictingPlayers(playerIdentityIds: readonly string[], interval: { startsAt: string; endsAt: string }) {
+    return this.operations.findConflictingPlayers(playerIdentityIds, interval)
   }
 
   createPending(input: Parameters<RegistrationRepositoryTransaction["createPending"]>[0]) {
@@ -260,6 +260,7 @@ class PrismaRegistrationOperations implements RegistrationRepositoryTransaction 
         format: RegistrationApplicationContext["tournament"]["format"]
         ageGroup: RegistrationApplicationContext["tournament"]["ageGroup"]
         startsAt: Date
+        endsAt: Date
         status: RegistrationApplicationContext["tournament"]["status"]
         governanceStatus: RegistrationApplicationContext["tournament"]["governanceStatus"]
         registrationDeadline: Date
@@ -267,7 +268,7 @@ class PrismaRegistrationOperations implements RegistrationRepositoryTransaction 
       }>
     >(
       Prisma.sql`
-        SELECT "id", "format", "ageGroup", "startsAt", "status", "governanceStatus", "registrationDeadline", "capacity"
+        SELECT "id", "format", "ageGroup", "startsAt", "endsAt", "status", "governanceStatus", "registrationDeadline", "capacity"
         FROM "Tournament"
         WHERE "id" = ${tournamentId}
         FOR UPDATE
@@ -309,6 +310,7 @@ class PrismaRegistrationOperations implements RegistrationRepositoryTransaction 
         format: tournament.format,
         ageGroup: tournament.ageGroup,
         startsAt: tournament.startsAt.toISOString(),
+        endsAt: tournament.endsAt.toISOString(),
         status: tournament.status,
         governanceStatus: tournament.governanceStatus,
         registrationDeadline: tournament.registrationDeadline.toISOString(),
@@ -343,7 +345,7 @@ class PrismaRegistrationOperations implements RegistrationRepositoryTransaction 
     return registrations.length > 0
   }
 
-  async findConflictingPlayers(playerIdentityIds: readonly string[]) {
+  async findConflictingPlayers(playerIdentityIds: readonly string[], interval: { startsAt: string; endsAt: string }) {
     if (playerIdentityIds.length === 0) return false
     const ids = [...new Set(playerIdentityIds)].sort()
     await this.prisma.$queryRaw(
@@ -357,6 +359,8 @@ class PrismaRegistrationOperations implements RegistrationRepositoryTransaction 
         WHERE rp."playerIdentityId" IN (${Prisma.join(ids)})
           AND r."status" IN ('PENDING', 'APPROVED')
           AND t."status" NOT IN ('COMPLETED', 'ARCHIVED')
+          AND t."startsAt" < ${new Date(interval.endsAt)}
+          AND t."endsAt" > ${new Date(interval.startsAt)}
         LIMIT 1
       `,
     )

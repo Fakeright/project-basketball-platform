@@ -234,7 +234,7 @@ function registrationFailureResponse(
     REGISTRATION_ALREADY_ACTIVE: { status: 409, message: "ทีมนี้สมัครรายการนี้อยู่แล้ว" },
     PLAYER_ALREADY_COMPETING: {
       status: 409,
-      message: "มีผู้เล่นในทีมกำลังสมัครหรือแข่งขันในรายการอื่น กรุณารอให้รายการนั้นจบ หรือยกเลิกใบสมัครก่อน",
+      message: "มีผู้เล่นในทีมอยู่ในใบสมัครของรายการที่ช่วงแข่งขันทับกัน กรุณาเปลี่ยนรายชื่อหรือเลือกวันแข่งขันอื่น",
     },
     REGISTRATION_TEAM_NAME_TAKEN: {
       status: 409,

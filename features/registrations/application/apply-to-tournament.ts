@@ -39,7 +39,10 @@ export async function applyToTournament(
       }
     })
     const playerIdentityIds = playerSnapshots.map((player) => player.playerIdentityId)
-    if (await registrations.findConflictingPlayers(playerIdentityIds)) {
+    if (await registrations.findConflictingPlayers(playerIdentityIds, {
+      startsAt: context.tournament.startsAt,
+      endsAt: context.tournament.endsAt,
+    })) {
       throw new Error("PLAYER_ALREADY_COMPETING")
     }
     return registrations.createPending({

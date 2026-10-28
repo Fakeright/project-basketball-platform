@@ -38,7 +38,7 @@ describe("registration route handlers", () => {
 
     expect(response.status).toBe(409)
     await expect(response.json()).resolves.toEqual({
-      message: "มีผู้เล่นในทีมกำลังสมัครหรือแข่งขันในรายการอื่น กรุณารอให้รายการนั้นจบ หรือยกเลิกใบสมัครก่อน",
+      message: "มีผู้เล่นในทีมอยู่ในใบสมัครของรายการที่ช่วงแข่งขันทับกัน กรุณาเปลี่ยนรายชื่อหรือเลือกวันแข่งขันอื่น",
     })
   })
   it("returns 409 when another team with the same name has applied", async () => {

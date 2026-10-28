@@ -46,6 +46,7 @@ const context = {
     format: "FIVE_V_FIVE" as const,
     ageGroup: "Open" as const,
     startsAt: "2026-11-15T02:00:00.000Z",
+    endsAt: "2026-11-16T12:00:00.000Z",
     status: "PUBLISHED" as const,
     governanceStatus: "ACTIVE" as const,
     registrationDeadline: "2026-11-01T00:00:00.000Z",
@@ -90,7 +91,7 @@ function createRepository(overrides: Partial<RegistrationRepository> = {}): Regi
 }
 
 describe("applyToTournament", () => {
-  it("blocks an application when a roster identity is committed to another active tournament", async () => {
+  it("blocks an application when a roster identity is committed during the tournament dates", async () => {
     const repository = createRepository({
       findConflictingPlayers: vi.fn(async () => true),
     })
@@ -102,6 +103,7 @@ describe("applyToTournament", () => {
     )).rejects.toThrow("PLAYER_ALREADY_COMPETING")
     expect(repository.findConflictingPlayers).toHaveBeenCalledWith(
       ["identity-0", "identity-1", "identity-2", "identity-3", "identity-4"],
+      { startsAt: "2026-11-15T02:00:00.000Z", endsAt: "2026-11-16T12:00:00.000Z" },
     )
     expect(repository.createPending).not.toHaveBeenCalled()
   })
