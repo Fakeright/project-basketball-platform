@@ -74,12 +74,11 @@ export class PrismaRegistrationRepository implements RegistrationRepository {
     return this.operations.hasActiveNameConflict(tournamentId, teamId, teamName)
   }
 
-  createPending(input: {
-    tournamentId: string
-    teamId: string
-    actorId: string
-    adminOverride: boolean
-  }) {
+  findConflictingPlayers(playerIdentityIds: readonly string[]) {
+    return this.operations.findConflictingPlayers(playerIdentityIds)
+  }
+
+  createPending(input: Parameters<RegistrationRepositoryTransaction["createPending"]>[0]) {
     return this.inTransaction((registrations) =>
       registrations.createPending(input),
     )
@@ -186,6 +185,10 @@ export class PrismaRegistrationRepository implements RegistrationRepository {
     const registrations = await this.prisma.registration.findMany({
       where: { tournamentId },
       include: {
+        players: {
+          orderBy: { id: "asc" },
+          select: { id: true, firstNameSnapshot: true, lastNameSnapshot: true, jerseyNumberSnapshot: true },
+        },
         team: {
           include: {
             province: true,
@@ -195,8 +198,7 @@ export class PrismaRegistrationRepository implements RegistrationRepository {
               // ข้อมูลติดต่อและวันเกิดไม่จำเป็นต่อการตรวจรายชื่อ จึงไม่ส่งออกจากฐานข้อมูล
               select: {
                 id: true,
-                firstName: true,
-                lastName: true,
+                playerIdentity: { select: { firstName: true, lastName: true } },
                 jerseyNumber: true,
               },
             },
@@ -207,21 +209,31 @@ export class PrismaRegistrationRepository implements RegistrationRepository {
       orderBy: { createdAt: "asc" },
     })
 
-    return registrations.map((registration) => ({
-      ...mapRegistration(registration),
-      teamName: registration.team.name,
-      province: registration.team.province.nameTh,
-      playerCount: registration.team.players.length,
-      managerCoachCount: registration.team.ownerId ? 1 : 0,
-      managerCoachName: registration.team.owner.displayName,
-      players: registration.team.players.map((player) => ({
-        id: player.id,
-        firstName: player.firstName,
-        lastName: player.lastName,
-        jerseyNumber: player.jerseyNumber,
-      })),
-      submittedAt: registration.createdAt.toISOString(),
-    }))
+    return registrations.map((registration) => {
+      const players = registration.players.length > 0
+        ? registration.players.map((player) => ({
+            id: player.id,
+            firstName: player.firstNameSnapshot,
+            lastName: player.lastNameSnapshot,
+            jerseyNumber: player.jerseyNumberSnapshot,
+          }))
+        : registration.team.players.map((player) => ({
+            id: player.id,
+            firstName: player.playerIdentity.firstName,
+            lastName: player.playerIdentity.lastName,
+            jerseyNumber: player.jerseyNumber,
+          }))
+      return {
+        ...mapRegistration(registration),
+        teamName: registration.team.name,
+        province: registration.team.province.nameTh,
+        playerCount: players.length,
+        managerCoachCount: registration.team.ownerId ? 1 : 0,
+        managerCoachName: registration.team.owner.displayName,
+        players,
+        submittedAt: registration.createdAt.toISOString(),
+      }
+    })
   }
 }
 
@@ -280,6 +292,7 @@ class PrismaRegistrationOperations implements RegistrationRepositoryTransaction 
       }),
       this.prisma.teamPlayer.findMany({
         where: { teamId, isActive: true },
+        include: { playerIdentity: true },
         orderBy: { createdAt: "asc" },
       }),
       this.prisma.registration.count({
@@ -330,19 +343,49 @@ class PrismaRegistrationOperations implements RegistrationRepositoryTransaction 
     return registrations.length > 0
   }
 
-  async createPending(input: {
-    tournamentId: string
-    teamId: string
-    actorId: string
-    adminOverride: boolean
-  }) {
+  async findConflictingPlayers(playerIdentityIds: readonly string[]) {
+    if (playerIdentityIds.length === 0) return false
+    const ids = [...new Set(playerIdentityIds)].sort()
+    await this.prisma.$queryRaw(
+      Prisma.sql`SELECT "id" FROM "PlayerIdentity" WHERE "id" IN (${Prisma.join(ids)}) ORDER BY "id" FOR UPDATE`,
+    )
+    const conflicts = await this.prisma.$queryRaw<Array<{ id: string }>>(
+      Prisma.sql`
+        SELECT rp."id" FROM "RegistrationPlayer" rp
+        JOIN "Registration" r ON r."id" = rp."registrationId"
+        JOIN "Tournament" t ON t."id" = r."tournamentId"
+        WHERE rp."playerIdentityId" IN (${Prisma.join(ids)})
+          AND r."status" IN ('PENDING', 'APPROVED')
+          AND t."status" NOT IN ('COMPLETED', 'ARCHIVED')
+        LIMIT 1
+      `,
+    )
+    return conflicts.length > 0
+  }
+
+  async createPending(input: Parameters<RegistrationRepositoryTransaction["createPending"]>[0]) {
     try {
       await lockActiveTournamentForMutation(
         this.prisma,
         input.tournamentId,
       )
       const registration = await this.prisma.registration.create({
-        data: { tournamentId: input.tournamentId, teamId: input.teamId, status: "PENDING" },
+        data: {
+          tournamentId: input.tournamentId,
+          teamId: input.teamId,
+          status: "PENDING",
+          players: {
+            create: input.playerSnapshots.map((player) => ({
+              playerIdentityId: player.playerIdentityId,
+              teamPlayerId: player.id,
+              firstNameSnapshot: player.firstName,
+              lastNameSnapshot: player.lastName,
+              birthDateSnapshot: new Date(player.birthDate),
+              jerseyNumberSnapshot: player.jerseyNumber,
+              positionSnapshot: player.position,
+            })),
+          },
+        },
       })
       await this.prisma.auditLog.create({
         data: {
@@ -649,14 +692,17 @@ function mapTeam(team: Team & { province: { nameTh: string } }): TeamSummary {
 }
 
 // แปลงแถวผู้เล่นเป็นข้อมูล domain รวมรูปแบบวันที่และค่าที่เว้นว่างได้
-function mapPlayer(player: PrismaTeamPlayer): TeamPlayer {
+function mapPlayer(player: PrismaTeamPlayer & {
+  playerIdentity?: { firstName: string; lastName: string; birthDate: Date }
+}): TeamPlayer {
   return {
     id: player.id,
     teamId: player.teamId,
-    firstName: player.firstName,
-    lastName: player.lastName,
+    ...(player.playerIdentityId ? { playerIdentityId: player.playerIdentityId } : {}),
+    firstName: player.playerIdentity?.firstName ?? player.firstName,
+    lastName: player.playerIdentity?.lastName ?? player.lastName,
     nickname: player.nickname,
-    birthDate: player.birthDate.toISOString().slice(0, 10),
+    birthDate: (player.playerIdentity?.birthDate ?? player.birthDate).toISOString().slice(0, 10),
     jerseyNumber: player.jerseyNumber,
     position: player.position,
     phone: player.phone,

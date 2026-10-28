@@ -108,11 +108,13 @@ export interface RegistrationRepositoryTransaction {
     teamId: string,
     teamName: string,
   ): Promise<boolean>
+  findConflictingPlayers(playerIdentityIds: readonly string[]): Promise<boolean>
   createPending(input: {
     tournamentId: string
     teamId: string
     actorId: string
     adminOverride: boolean
+    playerSnapshots: Array<Omit<Pick<TeamPlayer, "id" | "playerIdentityId" | "firstName" | "lastName" | "birthDate" | "jerseyNumber" | "position">, "playerIdentityId"> & { playerIdentityId: string }>
   }): Promise<TournamentRegistration>
   findById(id: string): Promise<TournamentRegistrationWithOwnership | null>
   cancelWithVersion(

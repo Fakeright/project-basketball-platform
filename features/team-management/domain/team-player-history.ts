@@ -1,6 +1,6 @@
 /**
  * COURTSIDE: คำอธิบายไฟล์
- * รวมผู้เล่นคนเดิมจากหลายทีมด้วยชื่อ นามสกุล วันเกิด และเลือกข้อมูลล่าสุดเพื่อใช้สร้างทีมใหม่
+ * รวมสมาชิกหลายทีมด้วยรหัสตัวตนผู้เล่น และเลือกข้อมูลล่าสุดเพื่อใช้สร้างทีมใหม่
  * เรียกใช้จาก: components/team/reusable-player-selector.tsx, components/team/team-creation-roster-editor.tsx
  */
 
@@ -8,6 +8,7 @@ import type { TeamPlayer, TeamPlayerDraft } from "./team"
 
 export interface TeamPlayerHistorySource extends TeamPlayer {
   teamName: string
+  isCommitted?: boolean
 }
 
 export interface ReusableTeamPlayerSourceTeam {
@@ -20,6 +21,7 @@ export interface ReusableTeamPlayer {
   key: string
   player: TeamPlayerDraft
   isActive: boolean
+  isCommitted?: boolean
   sourceTeams: ReusableTeamPlayerSourceTeam[]
 }
 
@@ -28,14 +30,14 @@ interface PlayerHistoryGroup {
   sources: TeamPlayerHistorySource[]
 }
 
-// จัดกลุ่มคนเดิมจากชื่อ/นามสกุล/วันเกิด แล้วเลือกข้อมูลล่าสุดและรวมทีมต้นทาง
+// จัดกลุ่มด้วยรหัสตัวตน; รองรับข้อมูลทดสอบเดิมที่ยังไม่มีรหัสด้วยชื่อและวันเกิด
 export function projectReusableTeamPlayers(
   sources: readonly TeamPlayerHistorySource[],
 ): ReusableTeamPlayer[] {
   const groups = new Map<string, PlayerHistoryGroup>()
 
   for (const source of sources) {
-    const identity = normalizedPlayerIdentity(source)
+    const identity = source.playerIdentityId ?? normalizedPlayerIdentity(source)
     const group = groups.get(identity)
 
     if (!group) {
@@ -92,7 +94,7 @@ function projectPlayerHistoryGroup(group: PlayerHistoryGroup): ReusableTeamPlaye
   }
 
   return {
-    key: selected.id,
+    key: selected.playerIdentityId ?? selected.id,
     player: {
       firstName: selected.firstName,
       lastName: selected.lastName,
@@ -103,6 +105,7 @@ function projectPlayerHistoryGroup(group: PlayerHistoryGroup): ReusableTeamPlaye
       phone: selected.phone,
     },
     isActive: group.sources.some((source) => source.isActive),
+    ...(group.sources.some((source) => source.isCommitted) ? { isCommitted: true } : {}),
     sourceTeams: [...sourceTeams.values()].sort((left, right) =>
       compareStrings(left.id, right.id),
     ),

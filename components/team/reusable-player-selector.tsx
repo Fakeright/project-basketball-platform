@@ -185,7 +185,7 @@ export function ReusablePlayerSelector({
                           </span>
                         </span>
                         <span className="col-start-2 w-fit border border-border px-2 py-1 text-xs font-medium sm:col-start-auto">
-                          {player.isActive ? "ใช้งานอยู่" : "เคยนำออก"}
+                          {player.isCommitted ? "ติดใบสมัคร" : player.isActive ? "ใช้งานอยู่" : "เคยนำออก"}
                         </span>
                       </label>
                     )

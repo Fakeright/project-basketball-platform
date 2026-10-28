@@ -47,12 +47,12 @@ export class PrismaAdminTeamReadRepository implements AdminTeamReadRepository {
           orderBy: [{ createdAt: "asc" }, { id: "asc" }],
           select: {
             id: true,
-            firstName: true,
-            lastName: true,
+            playerIdentity: {
+              select: { firstName: true, lastName: true, birthDate: true },
+            },
             nickname: true,
             jerseyNumber: true,
             position: true,
-            birthDate: true,
           },
         },
       },
@@ -69,12 +69,12 @@ export class PrismaAdminTeamReadRepository implements AdminTeamReadRepository {
       activePlayerCount: team.players.length,
       players: team.players.map((player) => ({
         id: player.id,
-        firstName: player.firstName,
-        lastName: player.lastName,
+        firstName: player.playerIdentity.firstName,
+        lastName: player.playerIdentity.lastName,
         nickname: player.nickname,
         jerseyNumber: player.jerseyNumber,
         position: player.position,
-        birthDate: player.birthDate.toISOString().slice(0, 10),
+        birthDate: player.playerIdentity.birthDate.toISOString().slice(0, 10),
       })),
     }
   }

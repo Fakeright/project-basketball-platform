@@ -69,6 +69,7 @@ const optionalTrimmedString = (maximumLength: number) =>
     .transform((value) => value || null)
 
 const teamPlayerSchema = z.object({
+  playerIdentityId: z.string().min(1).optional(),
   firstName: z.string().trim().min(1).max(80),
   lastName: z.string().trim().min(1).max(80),
   nickname: optionalTrimmedString(40),

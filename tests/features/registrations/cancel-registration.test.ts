@@ -21,6 +21,7 @@ function createRepository(
     getApplicationContext: vi.fn(),
     findActive: vi.fn(),
     hasActiveNameConflict: vi.fn(async () => false),
+    findConflictingPlayers: vi.fn(async () => false),
     createPending: vi.fn(),
     findById: vi.fn(async () => ({
       id: "registration-1",

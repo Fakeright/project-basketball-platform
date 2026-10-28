@@ -76,6 +76,7 @@ describe("PrismaAdminTeamReadRepository", () => {
         id: "player-1",
         firstName: "Anan",
         lastName: "Suk",
+        playerIdentity: { firstName: "Canonical", lastName: "Suk", birthDate: new Date("2010-05-12T00:00:00.000Z") },
         nickname: "Nan",
         jerseyNumber: 7,
         position: "PG" as const,
@@ -96,7 +97,7 @@ describe("PrismaAdminTeamReadRepository", () => {
       activePlayerCount: 1,
       players: [{
         id: "player-1",
-        firstName: "Anan",
+        firstName: "Canonical",
         lastName: "Suk",
         nickname: "Nan",
         jerseyNumber: 7,
@@ -114,12 +115,12 @@ describe("PrismaAdminTeamReadRepository", () => {
           orderBy: [{ createdAt: "asc" }, { id: "asc" }],
           select: {
             id: true,
-            firstName: true,
-            lastName: true,
+            playerIdentity: {
+              select: { firstName: true, lastName: true, birthDate: true },
+            },
             nickname: true,
             jerseyNumber: true,
             position: true,
-            birthDate: true,
           },
         },
       },

@@ -23,6 +23,8 @@ type TableName =
   | "tournaments"
   | "teams"
   | "players"
+  | "identities"
+  | "registrationPlayers"
   | "registrations"
   | "brackets"
   | "entries"
@@ -251,7 +253,7 @@ class RecordingPrisma {
   writeCalls: WriteCall[] = []
   private readonly queryResponses = new Map<string, QueryResponder>()
   private readonly tables: Record<TableName, Map<string, Row>> = {
-    provinces: new Map(), users: new Map(), organizerProfiles: new Map(), tournaments: new Map(), teams: new Map(), players: new Map(), registrations: new Map(), brackets: new Map(), entries: new Map(), rounds: new Map(), matches: new Map(), results: new Map(), audits: new Map(),
+    provinces: new Map(), users: new Map(), organizerProfiles: new Map(), tournaments: new Map(), teams: new Map(), players: new Map(), identities: new Map(), registrationPlayers: new Map(), registrations: new Map(), brackets: new Map(), entries: new Map(), rounds: new Map(), matches: new Map(), results: new Map(), audits: new Map(),
   }
 
   readonly user = { findMany: (args: unknown) => this.findMany("users", "user.findMany", args), upsert: (args: unknown) => this.upsert("users", "user.upsert", args) }
@@ -260,6 +262,8 @@ class RecordingPrisma {
   readonly tournament = { findMany: (args: unknown) => this.findMany("tournaments", "tournament.findMany", args), findUnique: (args: unknown) => this.findUnique("tournaments", "tournament.findUnique", args), upsert: (args: unknown) => this.upsert("tournaments", "tournament.upsert", args) }
   readonly team = { findMany: (args: unknown) => this.findMany("teams", "team.findMany", args), upsert: (args: unknown) => this.upsert("teams", "team.upsert", args) }
   readonly teamPlayer = { findMany: (args: unknown) => this.findMany("players", "teamPlayer.findMany", args), upsert: (args: unknown) => this.upsert("players", "teamPlayer.upsert", args) }
+  readonly playerIdentity = { upsert: (args: unknown) => this.upsertIdentity(args) }
+  readonly registrationPlayer = { createMany: (args: unknown) => this.createMany("registrationPlayers", "registrationPlayer.createMany", args) }
   readonly registration = { findMany: (args: unknown) => this.findMany("registrations", "registration.findMany", args), upsert: (args: unknown) => this.upsert("registrations", "registration.upsert", args) }
   readonly bracket = { findUnique: (args: unknown) => this.findUnique("brackets", "bracket.findUnique", args), deleteMany: (args: unknown) => this.deleteBrackets(args), create: (args: unknown) => this.create("brackets", "bracket.create", args) }
   readonly bracketEntry = { findMany: (args: unknown) => this.findMany("entries", "bracketEntry.findMany", args), createMany: (args: unknown) => this.createMany("entries", "bracketEntry.createMany", args) }
@@ -334,6 +338,16 @@ class RecordingPrisma {
     return next
   }
 
+  private async upsertIdentity(args: unknown): Promise<Row> {
+    this.recordWrite("playerIdentity.upsert", args)
+    const create = normalizeRow(recordValue(args).create)
+    const id = fixtureIdentityId(create)
+    const current = this.tables.identities.get(id)
+    const next = current ?? { ...create, id }
+    this.tables.identities.set(id, next)
+    return next
+  }
+
   private async create(table: TableName, key: string, args: unknown): Promise<Row> {
     this.recordWrite(key, args)
     const data = { ...modelDefaults(table), ...normalizeRow(recordValue(args).data) }
@@ -391,8 +405,9 @@ class RecordingPrisma {
 function createPort(prisma: RecordingPrisma) { return createPrismaDemoSeedPort(prisma as unknown as PrismaClient) }
 
 function expectExactFixtureTables(tables: Record<TableName, Row[]>): void {
-  expect(Object.fromEntries(Object.entries(tables).map(([name, rows]) => [name, rows.length]))).toEqual({ provinces: 77, users: 10, organizerProfiles: 2, tournaments: 6, teams: 23, players: 23, registrations: 21, brackets: 3, entries: 18, rounds: 8, matches: 15, results: 9, audits: 3 })
-  expect(tables).toEqual(expectedFixtureTables())
+  const expected = expectedFixtureTables()
+  expect(Object.fromEntries(Object.entries(tables).map(([name, rows]) => [name, rows.length]))).toEqual({ provinces: 77, users: 10, organizerProfiles: 2, tournaments: 6, teams: 23, players: 23, identities: expected.identities.length, registrationPlayers: expected.registrationPlayers.length, registrations: 21, brackets: 3, entries: 18, rounds: 8, matches: 15, results: 9, audits: 3 })
+  expect(tables).toEqual(expected)
 }
 
 function expectedFixtureTables(): Record<TableName, Row[]> {
@@ -406,7 +421,24 @@ function expectedFixtureTables(): Record<TableName, Row[]> {
     organizerProfiles: base.users.filter(({ role }) => role === "TOURNAMENT_ORGANIZER").map(({ id, displayName }) => ({ userId: id, organizationName: displayName, createdAt: timestamp, updatedAt: timestamp })),
     tournaments: base.tournaments.map((tournament) => ({ ...tournament, createdAt: timestamp, updatedAt: timestamp })),
     teams: [...base.teams.map((team) => ({ id: team.id, name: team.name, provinceCode: team.provinceCode, ownerId: team.ownerId, format: team.format, isActive: true, deactivatedAt: null, createdAt: timestamp, updatedAt: timestamp })), ...fixtures.flatMap((fixture) => fixture.teams.map((team) => ({ id: team.id, name: team.name, provinceCode: tournamentById.get(fixture.tournamentId)!.provinceCode, ownerId: "team-manager-1", format: tournamentById.get(fixture.tournamentId)!.format, isActive: true, deactivatedAt: null, createdAt: timestamp, updatedAt: timestamp })))],
-    players: base.teams.flatMap((team) => team.players.map((player) => ({ ...player, birthDate: new Date(player.birthDate).toISOString(), teamId: team.id, deactivatedAt: null, createdAt: timestamp, updatedAt: timestamp }))),
+    players: base.teams.flatMap((team) => team.players.map((player) => ({ ...player, playerIdentityId: identityIdForPlayer(team, player), birthDate: new Date(player.birthDate).toISOString(), teamId: team.id, deactivatedAt: null, createdAt: timestamp, updatedAt: timestamp }))),
+    identities: [...new Map(base.teams.flatMap((team) => team.players.map((player) => {
+      const firstName = player.firstName.trim()
+      const lastName = player.lastName.trim()
+      const birthDate = new Date(player.birthDate).toISOString()
+      const id = identityIdForPlayer(team, player)
+      return [id, { id, ownerId: team.ownerId, firstName, lastName, birthDate, normalizedFirstName: firstName.toLowerCase(), normalizedLastName: lastName.toLowerCase() }] as const
+    }))).values()],
+    registrationPlayers: base.registrations.flatMap(({ id: registrationId, team }) => team.players.map((player) => ({
+      registrationId,
+      playerIdentityId: identityIdForPlayer(team, player),
+      teamPlayerId: player.id,
+      firstNameSnapshot: player.firstName,
+      lastNameSnapshot: player.lastName,
+      birthDateSnapshot: new Date(player.birthDate).toISOString(),
+      jerseyNumberSnapshot: player.jerseyNumber,
+      positionSnapshot: undefined,
+    }))),
     registrations: [...base.registrations.map(({ team, ...registration }) => ({ ...registration, teamId: team.id, createdAt: timestamp, updatedAt: timestamp, cancelledAt: null, withdrawnAt: null })), ...fixtures.flatMap((fixture) => fixture.entries.map((entry) => ({ id: entry.registrationId, tournamentId: fixture.tournamentId, teamId: entry.id, status: "APPROVED", decisionNote: "ข้อมูลตัวอย่างสำหรับทดสอบสายการแข่งขัน", createdAt: timestamp, updatedAt: timestamp, decidedAt: timestamp, cancelledAt: null, withdrawnAt: null })))],
     brackets: fixtures.map((fixture) => ({ id: fixture.bracketId, tournamentId: fixture.tournamentId, status: fixture.bracketStatus, mode: "SYSTEM_GENERATED", generationMethod: fixture.generationMethod, entriesLockedAt: timestamp, publishedAt: timestamp, createdAt: timestamp, updatedAt: timestamp })),
     entries: fixtures.flatMap((fixture) => fixture.entries.map((entry) => ({ id: entry.entryId, bracketId: fixture.bracketId, registrationId: entry.registrationId, teamId: entry.id, teamNameSnapshot: entry.name, seed: entry.seed, drawPosition: entry.seed, startRoundSequence: entry.startRoundSequence, createdAt: timestamp }))),
@@ -439,5 +471,19 @@ function normalizeRow(value: unknown): Row { const normalized = normalize(value)
 function normalize(value: unknown): unknown { if (value instanceof Date) return value.toISOString(); if (Array.isArray(value)) return value.map(normalize); return isRecord(value) ? Object.fromEntries(Object.entries(value).map(([key, entry]) => [key, normalize(entry)])) : value }
 function recordValue(value: unknown): Row { return isRecord(value) ? value : {} }
 function isRecord(value: unknown): value is Row { return typeof value === "object" && value !== null && !Array.isArray(value) }
-function rowKey(row: Row): string { return stringValue(row.id) ?? stringValue(row.userId) ?? stringValue(row.code) ?? "missing" }
+function rowKey(row: Row): string {
+  return stringValue(row.id) ?? stringValue(row.userId) ?? stringValue(row.code) ??
+    (row.registrationId && row.playerIdentityId
+      ? `${row.registrationId}:${row.playerIdentityId}`
+      : "missing")
+}
+function fixtureIdentityId(row: Row): string { return `identity:${row.ownerId}:${row.normalizedFirstName}:${row.normalizedLastName}:${row.birthDate}` }
+function identityIdForPlayer(team: { ownerId: string }, player: { firstName: string; lastName: string; birthDate: string }): string {
+  return fixtureIdentityId({
+    ownerId: team.ownerId,
+    normalizedFirstName: player.firstName.trim().toLowerCase(),
+    normalizedLastName: player.lastName.trim().toLowerCase(),
+    birthDate: new Date(player.birthDate).toISOString(),
+  })
+}
 function stringValue(value: unknown): string | null { return typeof value === "string" ? value : null }

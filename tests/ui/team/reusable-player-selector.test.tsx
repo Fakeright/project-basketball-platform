@@ -62,6 +62,15 @@ const players: readonly ReusableTeamPlayer[] = [
 ]
 
 describe("ReusablePlayerSelector", () => {
+  it("shows an active application status for a reusable player", () => {
+    render(<ReusablePlayerSelector
+      maximumSelection={4}
+      onSelectionChange={vi.fn()}
+      players={[{ ...players[0], isCommitted: true }]}
+      selectedKeys={new Set()}
+    />)
+    expect(screen.getByText("ติดใบสมัคร")).toBeTruthy()
+  })
   it("groups source teams deterministically and shows shared players with status and every source team", () => {
     renderSelector()
 

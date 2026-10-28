@@ -232,6 +232,10 @@ function registrationFailureResponse(
     FORBIDDEN: { status: 403, message: "คุณไม่มีสิทธิ์ดำเนินการนี้" },
     NOT_FOUND: { status: 404, message: "ไม่พบรายการสมัคร" },
     REGISTRATION_ALREADY_ACTIVE: { status: 409, message: "ทีมนี้สมัครรายการนี้อยู่แล้ว" },
+    PLAYER_ALREADY_COMPETING: {
+      status: 409,
+      message: "มีผู้เล่นในทีมกำลังสมัครหรือแข่งขันในรายการอื่น กรุณารอให้รายการนั้นจบ หรือยกเลิกใบสมัครก่อน",
+    },
     REGISTRATION_TEAM_NAME_TAKEN: {
       status: 409,
       message: "มีทีมชื่อนี้สมัครรายการแล้ว กรุณาเปลี่ยนชื่อทีมก่อนสมัคร",

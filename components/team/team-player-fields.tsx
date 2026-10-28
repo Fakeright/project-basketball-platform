@@ -33,6 +33,7 @@ const selectClassName =
 
 export function TeamPlayerFields({
   disabled = false,
+  identityReadOnly = false,
   errors = {},
   hideLabelsOnDesktop = false,
   idPrefix,
@@ -40,6 +41,7 @@ export function TeamPlayerFields({
   values,
 }: {
   disabled?: boolean
+  identityReadOnly?: boolean
   errors?: TeamPlayerFieldErrors
   hideLabelsOnDesktop?: boolean
   idPrefix: string
@@ -52,6 +54,7 @@ export function TeamPlayerFields({
       "aria-describedby": errors[field] ? errorId : undefined,
       "aria-invalid": Boolean(errors[field]),
       disabled,
+      readOnly: identityReadOnly && ["firstName", "lastName", "birthDate"].includes(field),
       id: `${idPrefix}-${field}`,
       onChange: (event: ChangeEvent<HTMLInputElement>) =>
         onChange(field, event.target.value),

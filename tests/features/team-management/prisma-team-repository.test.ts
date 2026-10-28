@@ -52,20 +52,29 @@ function createPrismaMock() {
     team: {
       create: vi.fn(),
       delete: vi.fn(),
-      findUnique: vi.fn(),
+      findUnique: vi.fn(async () => teamRow),
       findMany: vi.fn(),
       update: vi.fn(),
       updateMany: vi.fn(),
     },
     registration: { findFirst: vi.fn(), findMany: vi.fn(), groupBy: vi.fn() },
+    registrationPlayer: {
+      findMany: vi.fn<() => Promise<Array<{ playerIdentityId: string }>>>(async () => []),
+    },
     teamMember: { count: vi.fn(), groupBy: vi.fn() },
     teamPlayer: {
+      findFirst: vi.fn(),
       findUnique: vi.fn(),
       findMany: vi.fn(),
       groupBy: vi.fn(),
       create: vi.fn(),
       update: vi.fn(),
       updateMany: vi.fn(),
+    },
+    playerIdentity: {
+      findUnique: vi.fn(),
+      upsert: vi.fn(async ({ create }) => ({ ...create, id: `identity-${create.firstName}` })),
+      update: vi.fn(),
     },
     auditLog: { create: vi.fn() },
   }
@@ -76,6 +85,73 @@ function createPrismaMock() {
 }
 
 describe("PrismaTeamRepository", () => {
+  it("marks historical players committed while their applications are pending or approved", async () => {
+    const prisma = createPrismaMock()
+    prisma.teamPlayer.findMany.mockResolvedValue([{
+      ...playerRow, playerIdentityId: "identity-1", team: { name: "Bangkok Ballers" },
+    }])
+    prisma.registrationPlayer.findMany.mockResolvedValue([{ playerIdentityId: "identity-1" }])
+    const repository = new PrismaTeamRepository(prisma as unknown as PrismaClient)
+
+    const history = await repository.listPlayerHistoryByOwner("manager-1")
+    expect(history[0]?.isCommitted).toBe(true)
+    expect(prisma.registrationPlayer.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({
+        playerIdentityId: { in: ["identity-1"] },
+        registration: {
+          status: { in: ["PENDING", "APPROVED"] },
+          tournament: { status: { notIn: ["COMPLETED", "ARCHIVED"] } },
+        },
+      }),
+    }))
+  })
+  it("updates the shared identity without rewriting historical memberships", async () => {
+    const prisma = createPrismaMock()
+    prisma.teamPlayer.findUnique
+      .mockResolvedValueOnce({ ...playerRow, playerIdentityId: "person-1" })
+      .mockResolvedValueOnce({ ...playerRow, playerIdentityId: "person-1", firstName: "Updated" })
+    prisma.teamPlayer.updateMany.mockResolvedValue({ count: 1 })
+    const repository = new PrismaTeamRepository(prisma as unknown as PrismaClient)
+
+    await repository.updatePlayer("team-1", "player-1", { ...playerDraft, firstName: "Updated" })
+
+    expect(prisma.playerIdentity.update).toHaveBeenCalledWith(expect.objectContaining({
+      where: { id: "person-1" },
+      data: expect.objectContaining({ firstName: "Updated", normalizedFirstName: "updated" }),
+    }))
+    expect(prisma.teamPlayer.updateMany).not.toHaveBeenCalledWith(expect.objectContaining({
+      where: { playerIdentityId: "person-1" },
+    }))
+  })
+
+  it("projects the canonical identity for active roster instead of an older membership name", async () => {
+    const prisma = createPrismaMock()
+    prisma.teamPlayer.findMany.mockResolvedValue([{
+      ...playerRow,
+      playerIdentityId: "person-1",
+      playerIdentity: {
+        firstName: "Canonical", lastName: "Player", birthDate: new Date("2010-02-03"),
+      },
+    }])
+    const repository = new PrismaTeamRepository(prisma as unknown as PrismaClient)
+
+    const roster = await repository.listActivePlayers("team-1")
+    expect(roster[0]?.firstName).toBe("Canonical")
+  })
+  it("rejects reuse of a player identity belonging to another owner", async () => {
+    const prisma = createPrismaMock()
+    prisma.team.findUnique.mockResolvedValue(teamRow)
+    prisma.playerIdentity.findUnique.mockResolvedValue({
+      id: "foreign-person", ownerId: "other-manager", firstName: "One",
+      lastName: "Player", birthDate: new Date("2010-02-03"),
+    })
+    const repository = new PrismaTeamRepository(prisma as unknown as PrismaClient)
+
+    await expect(repository.addPlayers("team-1", [
+      { ...playerDraft, playerIdentityId: "foreign-person" },
+    ])).rejects.toThrow("FORBIDDEN")
+    expect(prisma.teamPlayer.create).not.toHaveBeenCalled()
+  })
   it("locks the team owner before checking another active team with the same normalized name", async () => {
     const prisma = createPrismaMock()
     prisma.$queryRaw
@@ -374,7 +450,7 @@ describe("PrismaTeamRepository", () => {
     ])
     expect(prisma.teamPlayer.findMany).toHaveBeenCalledWith({
       where: { team: { ownerId: "manager-1" } },
-      include: { team: { select: { name: true } } },
+      include: { team: { select: { name: true } }, playerIdentity: true },
       orderBy: [{ updatedAt: "desc" }, { id: "asc" }],
     })
     expect(prisma.teamMember.count).not.toHaveBeenCalled()
@@ -398,6 +474,7 @@ describe("PrismaTeamRepository", () => {
     )
     expect(prisma.teamPlayer.findMany).toHaveBeenCalledWith({
       where: { teamId: "team-1", isActive: true },
+      include: { playerIdentity: true },
       orderBy: { createdAt: "asc" },
     })
   })
@@ -474,6 +551,19 @@ describe("PrismaTeamRepository", () => {
 
     await expect(jerseyRepository.addPlayers("team-1", [playerDraft])).rejects.toThrow(
       "JERSEY_ALREADY_IN_USE",
+    )
+  })
+
+  it("maps the active shared-identity database constraint to a duplicate player conflict", async () => {
+    const prisma = createPrismaMock()
+    prisma.teamPlayer.findUnique.mockResolvedValue(null)
+    prisma.teamPlayer.create.mockRejectedValue({
+      code: "P2002", meta: { target: ["teamId", "playerIdentityId"] },
+    })
+    const repository = new PrismaTeamRepository(prisma as unknown as PrismaClient)
+
+    await expect(repository.addPlayers("team-1", [playerDraft])).rejects.toThrow(
+      "PLAYER_ALREADY_EXISTS",
     )
   })
 

@@ -204,6 +204,7 @@ describe("TeamEditor", () => {
               jerseyNumber: 12,
               position: "PG",
               phone: "0812345678",
+              playerIdentityId: "history-player-1",
             },
             {
               firstName: "มานะ",

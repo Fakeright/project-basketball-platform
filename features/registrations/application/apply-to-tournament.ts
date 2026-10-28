@@ -25,11 +25,28 @@ export async function applyToTournament(
   dependencies: { registrations: RegistrationRepository; now: () => Date },
 ): Promise<TournamentRegistration> {
   return dependencies.registrations.inTransaction(async (registrations) => {
-    await loadEligibleApplicationContext(input, actor, registrations, dependencies.now())
+    const context = await loadEligibleApplicationContext(input, actor, registrations, dependencies.now())
+    const playerSnapshots = context.roster.map((player) => {
+      if (!player.playerIdentityId) throw new Error("PLAYER_IDENTITY_MISSING")
+      return {
+        id: player.id,
+        playerIdentityId: player.playerIdentityId,
+        firstName: player.firstName,
+        lastName: player.lastName,
+        birthDate: player.birthDate,
+        jerseyNumber: player.jerseyNumber,
+        position: player.position,
+      }
+    })
+    const playerIdentityIds = playerSnapshots.map((player) => player.playerIdentityId)
+    if (await registrations.findConflictingPlayers(playerIdentityIds)) {
+      throw new Error("PLAYER_ALREADY_COMPETING")
+    }
     return registrations.createPending({
       ...input,
       actorId: actor.id,
       adminOverride: actor.role === "PLATFORM_ADMIN",
+      playerSnapshots,
     })
   })
 }

@@ -26,6 +26,21 @@ function request(method: string, body: unknown) {
 }
 
 describe("registration route handlers", () => {
+  it("explains a player conflict without exposing another team's details", async () => {
+    const response = await handleApplyToTournament(
+      "tournament-1",
+      request("POST", { teamId: "team-1" }),
+      {
+        actorProvider: { getCurrentActor: vi.fn(async () => teamManager) },
+        apply: vi.fn(async () => { throw new Error("PLAYER_ALREADY_COMPETING") }),
+      },
+    )
+
+    expect(response.status).toBe(409)
+    await expect(response.json()).resolves.toEqual({
+      message: "มีผู้เล่นในทีมกำลังสมัครหรือแข่งขันในรายการอื่น กรุณารอให้รายการนั้นจบ หรือยกเลิกใบสมัครก่อน",
+    })
+  })
   it("returns 409 when another team with the same name has applied", async () => {
     const response = await handleApplyToTournament(
       "tournament-1",

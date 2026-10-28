@@ -62,6 +62,7 @@ function registrationRepository(): RegistrationRepository {
     getApplicationContext: vi.fn(),
     findActive: vi.fn(async () => null),
     hasActiveNameConflict: vi.fn(async () => false),
+    findConflictingPlayers: vi.fn(async () => false),
     createPending: vi.fn(),
     findById: vi.fn(),
     cancelWithVersion: vi.fn(),

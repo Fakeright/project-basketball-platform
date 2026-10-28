@@ -73,6 +73,43 @@ function repositoryWithTransactionClient(client: object) {
 }
 
 describe("PrismaRegistrationRepository transactions", () => {
+  it("locks player identities in stable order and detects an active registration in another unfinished tournament", async () => {
+    const queryRaw = vi.fn()
+      .mockResolvedValueOnce([{ id: "a" }, { id: "b" }])
+      .mockResolvedValueOnce([{ id: "registration-player-1" }])
+    const { repository } = repositoryWithTransactionClient({ $queryRaw: queryRaw })
+
+    const conflict = await repository.inTransaction((registrations) =>
+      registrations.findConflictingPlayers(["b", "a"]),
+    )
+
+    expect(conflict).toBe(true)
+    expect(queryRaw.mock.calls[0][0].text).toMatch(/FROM "PlayerIdentity"[\s\S]*ORDER BY "id" FOR UPDATE/)
+    expect(queryRaw.mock.calls[0][0].values).toEqual(["a", "b"])
+    expect(queryRaw.mock.calls[1][0].text).not.toContain('r."tournamentId" <>')
+    expect(queryRaw.mock.calls[1][0].text).toContain("'PENDING', 'APPROVED'")
+    expect(queryRaw.mock.calls[1][0].text).toContain("'COMPLETED', 'ARCHIVED'")
+  })
+
+  it("shows the submitted roster snapshot even after the team's current roster changes", async () => {
+    const registration = registrationRow("APPROVED", 1)
+    const repository = new PrismaRegistrationRepository({
+      registration: { findMany: vi.fn(async () => [{
+        ...registration,
+        players: [{ id: "snapshot-1", firstNameSnapshot: "At submission", lastNameSnapshot: "Player", jerseyNumberSnapshot: 8 }],
+        team: {
+          ...teamRow,
+          owner: { displayName: "Manager" },
+          players: [{ id: "current-1", firstName: "New", lastName: "Player", jerseyNumber: 9 }],
+        },
+      }]) },
+    } as unknown as PrismaClient)
+
+    const rows = await repository.listByTournament("tournament-1")
+    expect(rows[0]?.players).toEqual([
+      { id: "snapshot-1", firstName: "At submission", lastName: "Player", jerseyNumber: 8 },
+    ])
+  })
   it("checks active registrations for another team with the same normalized name", async () => {
     const queryRaw = vi.fn().mockResolvedValue([{ id: "registration-2" }])
     const { repository } = repositoryWithTransactionClient({ $queryRaw: queryRaw })
@@ -97,6 +134,7 @@ describe("PrismaRegistrationRepository transactions", () => {
             teamId: "team-1",
             actorId: "manager-1",
             adminOverride: false,
+            playerSnapshots: [],
           }),
         ),
     },
@@ -290,6 +328,7 @@ describe("PrismaRegistrationRepository transactions", () => {
           teamId: "team-1",
           actorId: "manager-1",
           adminOverride: false,
+          playerSnapshots: [],
         }),
     },
     {
@@ -389,6 +428,8 @@ describe("PrismaRegistrationRepository transactions", () => {
       teamId: "team-1",
       firstName: "Player",
       lastName: "One",
+      playerIdentityId: "identity-1",
+      playerIdentity: { firstName: "Canonical", lastName: "One", birthDate: new Date("2008-01-01T00:00:00.000Z") },
       nickname: null,
       birthDate: new Date("2008-01-01T00:00:00.000Z"),
       jerseyNumber: 1,
@@ -421,8 +462,9 @@ describe("PrismaRegistrationRepository transactions", () => {
     expect(context?.roster).toEqual([
       {
         id: "team-player-1",
+        playerIdentityId: "identity-1",
         teamId: "team-1",
-        firstName: "Player",
+        firstName: "Canonical",
         lastName: "One",
         nickname: null,
         birthDate: "2008-01-01",
@@ -485,6 +527,7 @@ describe("PrismaRegistrationRepository transactions", () => {
     const findMany = vi.fn(async () => [
       {
         ...registration,
+        players: [],
         team: {
           ...teamRow,
           isActive: true,
@@ -495,12 +538,14 @@ describe("PrismaRegistrationRepository transactions", () => {
               id: "player-1",
               firstName: "Anan",
               lastName: "Suk",
+              playerIdentity: { firstName: "Anan", lastName: "Suk" },
               jerseyNumber: 7,
             },
             {
               id: "player-2",
               firstName: "Niran",
               lastName: "Dee",
+              playerIdentity: { firstName: "Niran", lastName: "Dee" },
               jerseyNumber: null,
             },
           ],
@@ -525,6 +570,10 @@ describe("PrismaRegistrationRepository transactions", () => {
     expect(findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         include: {
+          players: {
+            orderBy: { id: "asc" },
+            select: { id: true, firstNameSnapshot: true, lastNameSnapshot: true, jerseyNumberSnapshot: true },
+          },
           team: {
             include: {
               province: true,
@@ -533,8 +582,7 @@ describe("PrismaRegistrationRepository transactions", () => {
                 orderBy: { createdAt: "asc" },
                 select: {
                   id: true,
-                  firstName: true,
-                  lastName: true,
+                  playerIdentity: { select: { firstName: true, lastName: true } },
                   jerseyNumber: true,
                 },
               },
@@ -574,6 +622,7 @@ describe("PrismaRegistrationRepository transactions", () => {
         teamId: "team-1",
         actorId: "admin-1",
         adminOverride: true,
+        playerSnapshots: [],
       }),
     )
     await repository.inTransaction((registrations) =>

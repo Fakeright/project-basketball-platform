@@ -27,6 +27,7 @@ const context = {
   team,
   roster: Array.from({ length: 5 }, (_, index) => ({
     id: `player-${index}`,
+    playerIdentityId: `identity-${index}`,
     teamId: team.id,
     firstName: "Player",
     lastName: String(index + 1),
@@ -58,6 +59,7 @@ function createRepository(overrides: Partial<RegistrationRepository> = {}): Regi
     getApplicationContext: vi.fn(async () => context),
     findActive: vi.fn(async () => null),
     hasActiveNameConflict: vi.fn(async () => false),
+    findConflictingPlayers: vi.fn(async () => false),
     createPending: vi.fn(async () => ({
       id: "registration-1",
       tournamentId: "tournament-1",
@@ -88,6 +90,35 @@ function createRepository(overrides: Partial<RegistrationRepository> = {}): Regi
 }
 
 describe("applyToTournament", () => {
+  it("blocks an application when a roster identity is committed to another active tournament", async () => {
+    const repository = createRepository({
+      findConflictingPlayers: vi.fn(async () => true),
+    })
+
+    await expect(applyToTournament(
+      { tournamentId: "tournament-1", teamId: "team-1" },
+      teamManager,
+      { registrations: repository, now: () => new Date("2026-10-01T00:00:00Z") },
+    )).rejects.toThrow("PLAYER_ALREADY_COMPETING")
+    expect(repository.findConflictingPlayers).toHaveBeenCalledWith(
+      ["identity-0", "identity-1", "identity-2", "identity-3", "identity-4"],
+    )
+    expect(repository.createPending).not.toHaveBeenCalled()
+  })
+
+  it("saves the eligible roster as a snapshot with the pending application", async () => {
+    const repository = createRepository()
+    await applyToTournament(
+      { tournamentId: "tournament-1", teamId: "team-1" },
+      teamManager,
+      { registrations: repository, now: () => new Date("2026-10-01T00:00:00Z") },
+    )
+    expect(repository.createPending).toHaveBeenCalledWith(expect.objectContaining({
+      playerSnapshots: expect.arrayContaining([
+        expect.objectContaining({ playerIdentityId: "identity-0", firstName: "Player" }),
+      ]),
+    }))
+  })
   it("rejects another team with the same name in an active registration", async () => {
     const repository = createRepository({
       hasActiveNameConflict: vi.fn(async () => true),
@@ -249,12 +280,12 @@ describe("applyToTournament", () => {
     )
 
     expect(repository.inTransaction).toHaveBeenCalledOnce()
-    expect(repository.createPending).toHaveBeenCalledWith({
+    expect(repository.createPending).toHaveBeenCalledWith(expect.objectContaining({
       tournamentId: "tournament-1",
       teamId: "team-1",
       actorId: teamManager.id,
       adminOverride: false,
-    })
+    }))
   })
 
   it("allows a platform admin to apply on behalf of an owned team", async () => {

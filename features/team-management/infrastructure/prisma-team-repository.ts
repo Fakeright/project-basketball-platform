@@ -22,6 +22,7 @@ import type {
   TeamPlayerDraft,
   TeamSummary,
 } from "@/features/team-management/domain/team"
+import { normalizedPlayerIdentityParts } from "@/features/team-management/domain/player-identity"
 
 const teamWithProvinceInclude = {
   province: true,
@@ -29,7 +30,7 @@ const teamWithProvinceInclude = {
 
 type TeamDatabaseClient = Pick<
   PrismaClient,
-  "team" | "teamMember" | "teamPlayer" | "auditLog"
+  "team" | "teamMember" | "teamPlayer" | "playerIdentity" | "auditLog"
   | "registration" | "$queryRaw"
 >
 
@@ -91,12 +92,27 @@ export class PrismaTeamRepository implements TeamRepository {
   async listPlayerHistoryByOwner(ownerId: string) {
     const players = await this.prisma.teamPlayer.findMany({
       where: { team: { ownerId } },
-      include: { team: { select: { name: true } } },
+      include: { team: { select: { name: true } }, playerIdentity: true },
       orderBy: [{ updatedAt: "desc" }, { id: "asc" }],
     })
+    const identityIds = [...new Set(players.map((player) => player.playerIdentityId))]
+    const commitments = identityIds.length > 0
+      ? await this.prisma.registrationPlayer.findMany({
+          where: {
+            playerIdentityId: { in: identityIds },
+            registration: {
+              status: { in: ["PENDING", "APPROVED"] },
+              tournament: { status: { notIn: ["COMPLETED", "ARCHIVED"] } },
+            },
+          },
+          select: { playerIdentityId: true },
+        })
+      : []
+    const committedIds = new Set(commitments.map((entry) => entry.playerIdentityId))
     return players.map(({ team, ...player }) => ({
       ...mapPlayer(player),
       teamName: team.name,
+      ...(committedIds.has(player.playerIdentityId) ? { isCommitted: true } : {}),
     }))
   }
 
@@ -374,6 +390,7 @@ class PrismaTeamMutationRepository implements TeamMutationRepository {
   async listActivePlayers(teamId: string) {
     const players = await this.prisma.teamPlayer.findMany({
       where: { teamId, isActive: true },
+      include: { playerIdentity: true },
       orderBy: { createdAt: "asc" },
     })
     return players.map(mapPlayer)
@@ -413,13 +430,38 @@ class PrismaTeamMutationRepository implements TeamMutationRepository {
     input: TeamPlayerDraft,
   ) {
     try {
+      const current = await this.prisma.teamPlayer.findUnique({ where: { id: playerId } })
+      if (!current || current.teamId !== teamId || !current.isActive) {
+        throw new Error("PLAYER_NOT_FOUND")
+      }
+      const firstName = input.firstName.trim()
+      const lastName = input.lastName.trim()
+      const birthDate = new Date(input.birthDate)
+      if (
+        current.firstName !== firstName || current.lastName !== lastName ||
+        toDateOnly(current.birthDate) !== input.birthDate
+      ) {
+        const normalized = normalizedPlayerIdentityParts(firstName, lastName, input.birthDate)
+        await this.prisma.playerIdentity.update({
+          where: { id: current.playerIdentityId },
+          data: {
+            firstName,
+            lastName,
+            birthDate,
+            normalizedFirstName: normalized.firstName,
+            normalizedLastName: normalized.lastName,
+          },
+        })
+      }
       const updated = await this.prisma.teamPlayer.updateMany({
         where: { id: playerId, teamId, isActive: true },
-        data: playerData(input),
+        data: optionalPlayerData(input),
       })
       if (updated.count !== 1) throw new Error("PLAYER_NOT_FOUND")
 
-      const player = await this.prisma.teamPlayer.findUnique({ where: { id: playerId } })
+      const player = await this.prisma.teamPlayer.findUnique({
+        where: { id: playerId }, include: { playerIdentity: true },
+      })
       if (!player) throw new Error("PLAYER_NOT_FOUND")
       return mapPlayer(player)
     } catch (error) {
@@ -434,20 +476,60 @@ class PrismaTeamMutationRepository implements TeamMutationRepository {
     })
     if (updated.count !== 1) throw new Error("PLAYER_NOT_FOUND")
 
-    const player = await this.prisma.teamPlayer.findUnique({ where: { id: playerId } })
+    const player = await this.prisma.teamPlayer.findUnique({
+      where: { id: playerId }, include: { playerIdentity: true },
+    })
     if (!player) throw new Error("PLAYER_NOT_FOUND")
     return mapPlayer(player)
   }
 
   private async addPlayer(teamId: string, input: TeamPlayerDraft): Promise<TeamPlayer> {
+    const team = await this.prisma.team.findUnique({
+      where: { id: teamId },
+      select: { ownerId: true },
+    })
+    if (!team) throw new Error("NOT_FOUND")
+    const normalized = normalizedPlayerIdentityParts(input.firstName, input.lastName, input.birthDate)
+
+    const playerIdentity = input.playerIdentityId
+      ? await this.prisma.playerIdentity.findUnique({ where: { id: input.playerIdentityId } })
+      : await this.prisma.playerIdentity.upsert({
+          where: {
+            ownerId_normalizedFirstName_normalizedLastName_birthDate: {
+              ownerId: team.ownerId,
+              normalizedFirstName: normalized.firstName,
+              normalizedLastName: normalized.lastName,
+              birthDate: new Date(input.birthDate),
+            },
+          },
+          create: {
+            ownerId: team.ownerId,
+            firstName: input.firstName.trim(),
+            lastName: input.lastName.trim(),
+            birthDate: new Date(input.birthDate),
+            normalizedFirstName: normalized.firstName,
+            normalizedLastName: normalized.lastName,
+          },
+          update: {},
+        })
+    if (!playerIdentity || playerIdentity.ownerId !== team.ownerId) throw new Error("FORBIDDEN")
+    const canonicalInput = {
+      ...input,
+      firstName: playerIdentity.firstName,
+      lastName: playerIdentity.lastName,
+      birthDate: toDateOnly(playerIdentity.birthDate),
+    }
     const identity = {
       teamId,
-      firstName: input.firstName,
-      lastName: input.lastName,
-      birthDate: new Date(input.birthDate),
+      firstName: canonicalInput.firstName,
+      lastName: canonicalInput.lastName,
+      birthDate: new Date(canonicalInput.birthDate),
     }
-    const existing = await this.prisma.teamPlayer.findUnique({
+    const existingByName = await this.prisma.teamPlayer.findUnique({
       where: { teamId_firstName_lastName_birthDate: identity },
+    })
+    const existing = existingByName ?? await this.prisma.teamPlayer.findFirst({
+      where: { teamId, playerIdentityId: playerIdentity.id },
     })
     if (existing?.isActive) throw new Error("PLAYER_ALREADY_EXISTS")
 
@@ -455,11 +537,13 @@ class PrismaTeamMutationRepository implements TeamMutationRepository {
       try {
         const updated = await this.prisma.teamPlayer.updateMany({
           where: { id: existing.id, teamId, isActive: false },
-          data: { ...optionalPlayerData(input), isActive: true, deactivatedAt: null },
+          data: { ...optionalPlayerData(canonicalInput), isActive: true, deactivatedAt: null },
         })
         if (updated.count !== 1) throw new Error("PLAYER_ALREADY_EXISTS")
 
-        const player = await this.prisma.teamPlayer.findUnique({ where: { id: existing.id } })
+        const player = await this.prisma.teamPlayer.findUnique({
+          where: { id: existing.id }, include: { playerIdentity: true },
+        })
         if (!player) throw new Error("PLAYER_NOT_FOUND")
         return mapPlayer(player)
       } catch (error) {
@@ -469,7 +553,7 @@ class PrismaTeamMutationRepository implements TeamMutationRepository {
 
     try {
       const player = await this.prisma.teamPlayer.create({
-        data: { teamId, ...playerData(input) },
+        data: { teamId, playerIdentityId: playerIdentity.id, ...playerData(canonicalInput) },
       })
       return mapPlayer(player)
     } catch (error) {
@@ -510,14 +594,17 @@ function mapTeam(team: Team & { province: { nameTh: string } }): TeamSummary {
 }
 
 // แปลงแถวผู้เล่นเป็นข้อมูล domain รวมรูปแบบวันที่และค่าที่เว้นว่างได้
-function mapPlayer(player: PrismaTeamPlayer): TeamPlayer {
+function mapPlayer(player: PrismaTeamPlayer & {
+  playerIdentity?: { firstName: string; lastName: string; birthDate: Date }
+}): TeamPlayer {
   return {
     id: player.id,
     teamId: player.teamId,
-    firstName: player.firstName,
-    lastName: player.lastName,
+    ...(player.playerIdentityId ? { playerIdentityId: player.playerIdentityId } : {}),
+    firstName: player.playerIdentity?.firstName ?? player.firstName,
+    lastName: player.playerIdentity?.lastName ?? player.lastName,
     nickname: player.nickname,
-    birthDate: toDateOnly(player.birthDate),
+    birthDate: toDateOnly(player.playerIdentity?.birthDate ?? player.birthDate),
     jerseyNumber: player.jerseyNumber,
     position: player.position,
     phone: player.phone,
@@ -573,6 +660,8 @@ function mapPlayerUniqueError(error: unknown): unknown {
   if (target.includes("jersey")) return new Error("JERSEY_ALREADY_IN_USE")
   if (
     target.includes("firstname") ||
+    target.includes("playeridentityid") ||
+    target.includes("normalized") ||
     target.includes("lastname") ||
     target.includes("birthdate")
   ) {

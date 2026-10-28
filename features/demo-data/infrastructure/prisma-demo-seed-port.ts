@@ -6,6 +6,7 @@
  */
 
 import type { DemoCompetitionFixture } from "@/features/competition/infrastructure/demo-competition-fixtures"
+import { normalizedPlayerIdentityParts } from "@/features/team-management/domain/player-identity"
 import {
   Prisma,
   PrismaClient,
@@ -152,6 +153,7 @@ class PrismaDemoSeedTransactionPort implements DemoSeedTransactionPort {
           decidedAt: scenario.decidedAt ? new Date(scenario.decidedAt) : null,
         },
       })
+      await this.seedRegistrationPlayers(scenario.id, scenario.team.id)
     }
   }
 
@@ -272,6 +274,7 @@ class PrismaDemoSeedTransactionPort implements DemoSeedTransactionPort {
           decidedAt: timestamp,
         },
       })
+      await this.seedRegistrationPlayers(team.registrationId, team.id)
     }
 
     await this.createBracket(fixture, timestamp)
@@ -307,10 +310,33 @@ class PrismaDemoSeedTransactionPort implements DemoSeedTransactionPort {
     })
 
     for (const player of team.players) {
+      const normalized = normalizedPlayerIdentityParts(
+        player.firstName, player.lastName, player.birthDate,
+      )
+      const identity = await this.transaction.playerIdentity.upsert({
+        where: {
+          ownerId_normalizedFirstName_normalizedLastName_birthDate: {
+            ownerId: team.ownerId,
+            normalizedFirstName: normalized.firstName,
+            normalizedLastName: normalized.lastName,
+            birthDate: new Date(player.birthDate),
+          },
+        },
+        update: {},
+        create: {
+          ownerId: team.ownerId,
+          firstName: player.firstName,
+          lastName: player.lastName,
+          normalizedFirstName: normalized.firstName,
+          normalizedLastName: normalized.lastName,
+          birthDate: new Date(player.birthDate),
+        },
+      })
       await this.transaction.teamPlayer.upsert({
         where: { id: player.id },
         update: {
           firstName: player.firstName,
+          playerIdentityId: identity.id,
           lastName: player.lastName,
           birthDate: new Date(player.birthDate),
           jerseyNumber: player.jerseyNumber,
@@ -322,6 +348,7 @@ class PrismaDemoSeedTransactionPort implements DemoSeedTransactionPort {
         create: {
           id: player.id,
           teamId: team.id,
+          playerIdentityId: identity.id,
           firstName: player.firstName,
           lastName: player.lastName,
           birthDate: new Date(player.birthDate),
@@ -332,6 +359,26 @@ class PrismaDemoSeedTransactionPort implements DemoSeedTransactionPort {
         },
       })
     }
+  }
+
+  private async seedRegistrationPlayers(registrationId: string, teamId: string) {
+    const players = await this.transaction.teamPlayer.findMany({
+      where: { teamId, isActive: true },
+    })
+    if (players.length === 0) return
+    await this.transaction.registrationPlayer.createMany({
+      data: players.map((player) => ({
+        registrationId,
+        playerIdentityId: player.playerIdentityId,
+        teamPlayerId: player.id,
+        firstNameSnapshot: player.firstName,
+        lastNameSnapshot: player.lastName,
+        birthDateSnapshot: player.birthDate,
+        jerseyNumberSnapshot: player.jerseyNumber,
+        positionSnapshot: player.position,
+      })),
+      skipDuplicates: true,
+    })
   }
 
   private async createBracket(

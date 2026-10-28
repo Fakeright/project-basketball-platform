@@ -149,6 +149,7 @@ model User {
   mediaAssets              MediaAsset[]              @relation("MediaAssetCreator")
   externalBracketRevisions ExternalBracketRevision[] @relation("ExternalBracketRevisionCreator")
   authRecoveryGrants       AuthRecoveryGrant[]
+  playerIdentities         PlayerIdentity[]
   createdAt                DateTime                  @default(now())
   updatedAt                DateTime                  @updatedAt
 }
@@ -217,10 +218,30 @@ model TeamMember {
   @@unique([teamId, userId])
 }
 
+// ตัวตนผู้เล่นหนึ่งคนต่อบัญชีผู้จัดการ; สมาชิกทีมหลายแถวอ้างคนเดียวกันได้
+model PlayerIdentity {
+  id                  String               @id @default(cuid())
+  ownerId             String
+  firstName           String
+  lastName            String
+  birthDate           DateTime             @db.Date
+  normalizedFirstName String
+  normalizedLastName  String
+  owner               User                 @relation(fields: [ownerId], references: [id], onDelete: Restrict)
+  teamPlayers         TeamPlayer[]
+  registrationPlayers RegistrationPlayer[]
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+
+  @@unique([ownerId, normalizedFirstName, normalizedLastName, birthDate])
+  @@index([ownerId])
+}
+
 // รายชื่อผู้เล่นปัจจุบัน กรอกได้โดยไม่ต้องมีบัญชี; ปิด isActive เมื่อนำออกเพื่อรักษาประวัติ
 model TeamPlayer {
   id            String              @id @default(cuid())
   teamId        String
+  playerIdentityId String
   firstName     String
   lastName      String
   nickname      String?
@@ -231,11 +252,14 @@ model TeamPlayer {
   isActive      Boolean             @default(true)
   deactivatedAt DateTime?
   team          Team                @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  playerIdentity PlayerIdentity     @relation(fields: [playerIdentityId], references: [id], onDelete: Restrict)
+  registrationPlayers RegistrationPlayer[]
   createdAt     DateTime            @default(now())
   updatedAt     DateTime            @updatedAt
 
   @@unique([teamId, firstName, lastName, birthDate])
   @@index([teamId, isActive])
+  @@index([playerIdentityId, isActive])
 }
 
 // รายการแข่งขันของผู้จัดหนึ่งคน เป็นจุดเชื่อมใบสมัคร สาย คู่ สื่อ ผลตรวจ และ audit
@@ -314,11 +338,32 @@ model Registration {
   tournament     Tournament         @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
   team           Team               @relation(fields: [teamId], references: [id])
   bracketEntries BracketEntry[]
+  players        RegistrationPlayer[]
   createdAt      DateTime           @default(now())
   updatedAt      DateTime           @updatedAt
 
   @@index([tournamentId, status])
   @@index([tournamentId, teamId, createdAt])
+}
+
+// รายชื่อที่ส่งสมัคร ณ เวลานั้น ไม่เปลี่ยนตามการแก้สมาชิกทีมภายหลัง
+model RegistrationPlayer {
+  id                   String             @id @default(cuid())
+  registrationId       String
+  playerIdentityId     String
+  teamPlayerId         String?
+  firstNameSnapshot    String
+  lastNameSnapshot     String
+  birthDateSnapshot    DateTime           @db.Date
+  jerseyNumberSnapshot Int?
+  positionSnapshot     BasketballPosition?
+  backfilled           Boolean            @default(false)
+  registration         Registration       @relation(fields: [registrationId], references: [id], onDelete: Cascade)
+  playerIdentity       PlayerIdentity     @relation(fields: [playerIdentityId], references: [id], onDelete: Restrict)
+  teamPlayer           TeamPlayer?        @relation(fields: [teamPlayerId], references: [id], onDelete: SetNull)
+
+  @@unique([registrationId, playerIdentityId])
+  @@index([playerIdentityId])
 }
 
 // หัวสายของรายการ เก็บโหมด วิธีเรียงทีม token สำหรับสุ่ม และ version ของโครงสร้าง

@@ -21,6 +21,7 @@ export interface TeamSummary {
 }
 
 export interface TeamPlayerDraft {
+  playerIdentityId?: string
   firstName: string
   lastName: string
   nickname: string | null

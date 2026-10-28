@@ -139,9 +139,10 @@ export function TeamEditor({
             format,
             ...(!initialTeam
               ? {
-                  players: submittedRosterRows.map((row) =>
-                    playerDraftFromValues(row.values),
-                  ),
+                  players: submittedRosterRows.map((row) => ({
+                    ...playerDraftFromValues(row.values),
+                    ...(row.sourceKey ? { playerIdentityId: row.sourceKey } : {}),
+                  })),
                 }
               : {}),
             ...(initialTeam ? { expectedVersion: version } : {}),

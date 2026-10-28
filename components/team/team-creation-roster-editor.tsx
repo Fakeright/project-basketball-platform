@@ -223,6 +223,7 @@ export function TeamCreationRosterEditor({
                   <TeamPlayerFields
                     errors={row.errors}
                     hideLabelsOnDesktop
+                    identityReadOnly={row.sourceKey !== null}
                     idPrefix={row.id}
                     onChange={(field, value) => updateRow(row.id, field, value)}
                     values={row.values}

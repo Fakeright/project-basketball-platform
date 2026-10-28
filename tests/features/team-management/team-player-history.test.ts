@@ -33,6 +33,20 @@ function historySource(
 }
 
 describe("projectReusableTeamPlayers", () => {
+  it("shows a shared identity as committed when any source membership is committed", () => {
+    const result = projectReusableTeamPlayers([
+      historySource({ playerIdentityId: "person-1", isCommitted: true }),
+    ])
+    expect(result[0]?.isCommitted).toBe(true)
+  })
+  it("uses the persistent player identity as the selection key", () => {
+    const result = projectReusableTeamPlayers([
+      historySource({ id: "membership-a", playerIdentityId: "person-1" }),
+      historySource({ id: "membership-b", playerIdentityId: "person-1", teamId: "team-b" }),
+    ])
+    expect(result).toHaveLength(1)
+    expect(result[0]?.key).toBe("person-1")
+  })
   it("combines normalized identities using the latest snapshot and unique source teams", () => {
     const sources = [
       historySource({
